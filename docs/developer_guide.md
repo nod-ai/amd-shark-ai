@@ -93,8 +93,15 @@ different variant, run one of these commands first:
 # Install editable local projects.
 pip install -r requirements.txt -e sharktank/ shortfin/
 
-# Optionally clone and install the latest editable iree-turbine dep in deps/,
-# along with nightly versions of iree-base-compiler and iree-base-runtime.
+# Install the latest nightly release of iree-turbine, alond with
+# nightly versions of iree-base-compiler and iree-base-runtime.
+pip install -f https://iree.dev/pip-release-links.html --upgrade --pre \
+  iree-base-compiler iree-base-runtime iree-turbine
+```
+
+You can also install an editable iree-turbine dep:
+```bash
+# Optionally clone and install the latest editable iree-turbine dep in deps/.
 pip install -f https://iree.dev/pip-release-links.html --upgrade --pre \
   iree-base-compiler iree-base-runtime --src deps \
   -e "git+https://github.com/iree-org/iree-turbine.git#egg=iree-turbine"
