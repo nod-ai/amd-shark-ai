@@ -92,7 +92,7 @@ class PathConfig:
         base_dir = Path(f"./tuning_{timestamp}")
         return base_dir
 
-    def _set_run_log(self, run_log: Path):
+    def set_run_log(self, run_log: Path):
         object.__setattr__(self, "run_log", run_log)
 
     def get_candidate_spec_filename(self, candidate_id: int) -> str:
@@ -334,10 +334,10 @@ def parse_arguments(
     return parser.parse_args()
 
 
-def setup_logging(args: argparse.Namespace, path_config: PathConfig):
+def setup_logging(args: argparse.Namespace, path_config: PathConfig) -> logging.Logger:
     log_file_name = f"autotune_{args.input_file.stem}.log"
     run_log_path = path_config.base_dir / log_file_name
-    path_config._set_run_log(run_log_path)
+    path_config.set_run_log(run_log_path)
 
     # Create file handler for logging to a file
     if path_config.run_log is None:
@@ -384,7 +384,9 @@ def setup_logging(args: argparse.Namespace, path_config: PathConfig):
     # Log all arguments
     logging.debug(f"Input Arguments:")
     for arg, value in vars(args).items():
-        tune_logger.info(f"{arg}: {value}")
+        logging.debug(f"{arg}: {value}")
+
+    return logging.getLogger()
 
 
 def handle_error(
@@ -717,8 +719,16 @@ def generate_candidate_specs(
         tune_logger.exception("Error in candidate_gen.py:")
         raise
 
-    logging.info(f"Generated [{len(candidates) - 1}] candidates")
+    logging.debug(f"Generated [{len(candidates) - 1}] candidates")
     return candidates
+
+
+def get_compilation_success_rate(compiled_candiates: list[Optional[int]]) -> float:
+    if not compiled_candiates:
+        return 0.0
+    successful_candidates = [c for c in compiled_candiates if c is not None]
+    success_rate = float(len(successful_candidates)) / float(len(compiled_candiates))
+    return success_rate
 
 
 def collision_handler(index_hash_list: list[tuple[int, str]]) -> tuple[bool, list[int]]:
@@ -800,11 +810,11 @@ def compile(
     compiled_candidates = multiprocess_progress_wrapper(
         num_worker=num_worker, task_list=task_list, function=run_iree_compile_command
     )
-    compiled_candidates = [c for c in compiled_candidates if c is not None]
-    success_rate = float(len(compiled_candidates)) / float(len(candidates))
-    logging.info(
+    success_rate = get_compilation_success_rate(compiled_candidates)
+    logging.debug(
         f"Successfully compiled [{len(compiled_candidates)}] candidates. Success rate: {success_rate:.2f}"
     )
+    compiled_candidates = [c for c in compiled_candidates if c is not None]
 
     # Remove duplicate vmfbs from the candidate list.
     compiled_candidate_hashes = []
@@ -818,7 +828,7 @@ def compile(
     if collision_detected:
         compiled_candidates = unique_compiled_candidates
 
-    logging.info(f"Produced [{len(compiled_candidates)}] unique vmfbs")
+    logging.debug(f"Produced [{len(compiled_candidates)}] unique vmfbs")
     return compiled_candidates
 
 
@@ -875,7 +885,8 @@ def select_best_benchmark_results(
             speedup = f"{round(get_speedup(r) * 100, 2)}% of baseline"
         else:
             speedup = "baseline unavailable"
-        logging.info(f"Candidate {r.candidate_id} time: {r.time:.2f} ({speedup})")
+        result = f"Candidate {r.candidate_id} time: {r.time:.2f} ms ({speedup})"
+        logging.info(result)
     return best_results
 
 
