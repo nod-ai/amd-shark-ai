@@ -435,11 +435,21 @@ class InferenceExecutorProcess(sf.Process):
                 args = [tokens, seq_lens, start_positions, seq_block_ids]
             else:
                 args = [tokens, seq_lens, seq_block_ids]
-            args.extend(self.page_tables)
+            for page_table in self.page_tables:
+                args.append(sfnp.disable_barrier(page_table))
             logger.info(
                 "INVOKE %r: %s",
                 fn,
-                "".join([f"\n  {i}: {ary.shape}" for i, ary in enumerate(args)]),
+                "".join(
+                    [
+                        (
+                            f"\n  {i}: {ary.shape}"
+                            if not isinstance(ary, sfnp.disable_barrier)
+                            else f"\n  {i}: {ary.delegate().shape}"
+                        )
+                        for i, ary in enumerate(args)
+                    ]
+                ),
             )
 
             # pre-invocation args dump
