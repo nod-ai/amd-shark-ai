@@ -401,10 +401,7 @@ class InferenceExecutorProcess(sf.Process):
                     m.fill(
                         1  # Must pad with a nonzero value because a division by 0 during softmax floods clobber page (page 0) in cache with NaN values.
                     )
-                    m.items = [
-                        req.start_position + len(req.input_token_ids)
-                        for req in self.exec_requests
-                    ]
+                    m.items = [req.start_position + 1 for req in self.exec_requests]
                 seq_lens_host.copy_to(seq_lens)
 
             # Populate cache pages.
