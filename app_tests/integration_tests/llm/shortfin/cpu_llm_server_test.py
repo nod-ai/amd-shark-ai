@@ -40,10 +40,16 @@ class TestLLMServer:
             pytest.param(
                 "llama3.1_8b",
                 {"model": "llama3.1_8b", "prefix_sharing": "none"},
+                marks=pytest.mark.skip(
+                    "Skipping meta llama because we haven't set up the model artifact downloading yet."
+                ),
             ),
             pytest.param(
                 "llama3.1_8b",
                 {"model": "llama3.1_8b", "prefix_sharing": "trie"},
+                marks=pytest.mark.skip(
+                    "Skipping meta llama because we haven't set up the model artifact downloading yet."
+                ),
             ),
         ],
         ids=[
@@ -89,11 +95,17 @@ class TestLLMServer:
                 "llama3.1_8b",
                 {"model": "llama3.1_8b", "prefix_sharing": "none"},
                 "0 1 2 3 4 5 ",
+                marks=pytest.mark.skip(
+                    "Skipping meta llama because we haven't set up the model artifact downloading yet."
+                ),
             ),
             pytest.param(
                 "llama3.1_8b",
                 {"model": "llama3.1_8b", "prefix_sharing": "trie"},
                 "0 1 2 3 4 5 ",
+                marks=pytest.mark.skip(
+                    "Skipping meta llama because we haven't set up the model artifact downloading yet."
+                ),
             ),
         ],
         ids=[
