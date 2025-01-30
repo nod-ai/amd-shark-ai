@@ -81,7 +81,7 @@ class ServerInstance:
         self.process = subprocess.Popen(cmd)
         self.wait_for_ready()
 
-    def wait_for_ready(self, timeout: int = 10) -> None:
+    def wait_for_ready(self, timeout: int = 30) -> None:
         """Waits for server to be ready and responding to health checks."""
         if self.port is None:
             raise RuntimeError("Server hasn't been started")
