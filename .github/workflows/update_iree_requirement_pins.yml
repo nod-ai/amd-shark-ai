@@ -102,7 +102,7 @@ jobs:
           branch: ${{ env.GIT_BRANCH_NAME }}
           author: shark-pr-automator[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           signoff: true
-          title: "Bump IREE requirement pins to their latest versions."
+          title: "Bump IREE requirement pins to ${{ env.LATEST_IREE_BASE_COMPILER_VERSION }}"
           body: |
             Diff: https://github.com/iree-org/iree/compare/iree-${{ env.CURRENT_IREE_BASE_COMPILER_VERSION }}...iree-${{ env.LATEST_IREE_BASE_COMPILER_VERSION }}
 
