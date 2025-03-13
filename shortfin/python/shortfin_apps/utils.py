@@ -1,5 +1,6 @@
 from iree.build.executor import FileNamespace, BuildAction, BuildContext, BuildFile
 import os
+import re
 import urllib
 import logging
 import asyncio
@@ -268,21 +269,39 @@ class GenerateService:
             )
         self.fibers_per_worker = int(self.fibers_per_device / self.workers_per_device)
 
-    def load_inference_module(self, vmfb_path: Path, component: str = "main"):
+    def load_inference_module(
+        self, vmfb_path: Path, component: str = "main", batch_size: int = None
+    ):
         """Load an inference module from a VMFB file.
 
         Args:
             vmfb_path: Path to the VMFB file
             component: Optional component name for organizing modules
         """
+        if batch_size:
+            bs = batch_size
+        else:
+            match = re.search(r"_bs(\d+)_", str(vmfb_path))
+            if match:
+                bs = int(match.group(1))
+            else:
+                bs = None
         if not hasattr(self, "inference_modules"):
             self.inference_modules = {}
-
-        if not self.inference_modules.get(component):
-            self.inference_modules[component] = []
-        self.inference_modules[component].append(
-            sf.ProgramModule.load(self.sysman.ls, vmfb_path)
-        )
+        if bs:
+            if not self.inference_modules.get(component):
+                self.inference_modules[component] = {}
+            if not self.inference_modules[component].get(bs):
+                self.inference_modules[component][bs] = []
+            self.inference_modules[component][bs].append(
+                sf.ProgramModule.load(self.sysman.ls, vmfb_path)
+            )
+        else:
+            if not self.inference_modules.get(component):
+                self.inference_modules[component] = []
+            self.inference_modules[component].append(
+                sf.ProgramModule.load(self.sysman.ls, vmfb_path)
+            )
 
     def load_inference_parameters(
         self,
