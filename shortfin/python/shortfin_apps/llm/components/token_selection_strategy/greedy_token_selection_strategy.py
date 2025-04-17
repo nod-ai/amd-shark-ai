@@ -26,7 +26,6 @@ class GreedyBeam(Beam):
         Returns:
             int: The `argmax` of the logits.
         """
-        self.apply_temperature()
         exec_req = self.exec_req
         decode_config = self.decode_config
         top_k = decode_config.top_k

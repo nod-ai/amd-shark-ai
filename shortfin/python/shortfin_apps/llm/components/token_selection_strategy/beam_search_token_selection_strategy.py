@@ -32,7 +32,10 @@ TOP_P_DEFAULT_SELECTION = 32
 
 
 class BeamSearchBeam(Beam):
-    def _convert_results_to_log_probs(self, probs: List):
+    def _convert_results_to_log_probs(
+        self,
+        probs: List,
+    ):
         device = self.exec_req.result_logits.device
         dtype = self.exec_req.result_logits.dtype
         probs_sf = convert_list_to_device_array(
@@ -69,22 +72,42 @@ class BeamSearchBeam(Beam):
         Returns:
             Tuple[List[int], List[float]]: Tuple containing (top_tokens, top_values)
         """
-        self.apply_temperature()
+        logits = self.exec_req.result_logits
         decode_config = self.decode_config
         num_beams = decode_config.num_beams
         top_k = decode_config.top_k
         top_p = decode_config.top_p
 
         if (top_k, top_p) == (None, None):
-            log_softmax_logits = self.convert_logits_normalization(
-                self.decode_config.logits_normalization,
-                LogitsNormalization.LOG_SOFTMAX,
-                self.exec_req.result_logits,
+            tokens, probs = self.sampler.select_top_k(logits, -k)
+
+            # TODO: https://github.com/nod-ai/shark-ai/issues/1278 find cleaner way to do these conversions
+            if logits.dtype in [sfnp.float16]:
+                probs = [convert_float_to_int(prob, logits.dtype) for prob in probs]
+
+            probs_sf = convert_list_to_device_array(
+                probs,
+                [len(probs)],
+                logits.device,
+                logits.dtype,
             )
 
-            return self.sampler.select_top_k(log_softmax_logits, -k)
+            if self.decode_config.logits_normalization == LogitsNormalization.NONE:
+                probs_sf = self.apply_temperature(probs_sf)
 
-        logits = self.exec_req.result_logits
+            log_probs = self.convert_logits_normalization(
+                self.decode_config.logits_normalization,
+                LogitsNormalization.LOG_SOFTMAX,
+                probs_sf,
+            ).items.tolist()
+
+            if logits.dtype in [sfnp.float16]:
+                log_probs = [
+                    convert_int_to_float(log_prob, logits.dtype)
+                    for log_prob in log_probs
+                ]
+
+            return tokens, log_probs
 
         if top_k is not None:
             # Sample from `top_k` tokens
@@ -110,7 +133,9 @@ class BeamSearchBeam(Beam):
         if logits.dtype in [sfnp.float16]:
             probs = [convert_float_to_int(prob, logits.dtype) for prob in probs]
 
-        log_probs = self._convert_results_to_log_probs(probs)
+        log_probs = self._convert_results_to_log_probs(
+            probs,
+        )
 
         return tokens, log_probs
 

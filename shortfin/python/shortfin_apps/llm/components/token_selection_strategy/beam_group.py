@@ -43,17 +43,15 @@ class Beam(ABC):
     accumulated_normalization: float = 0.0
     last_token: int | None = None
 
-    def apply_temperature(self):
+    def apply_temperature(self, logits: sfnp.device_array):
         """Apply temperature to the logits of a decode invocation.
 
         Args:
             temperature (float): Value to use for `temperature`.
         """
         if self.decode_config.temperature == 1.0:
-            return
-        self.exec_req.result_logits = sfnp.divide(
-            self.exec_req.result_logits, self.decode_config.temperature
-        )
+            return logits
+        return sfnp.divide(logits, self.decode_config.temperature)
 
     def convert_logits_normalization(
         self,
@@ -114,6 +112,10 @@ class Beam(ABC):
             device,
             dtype,
         )
+
+        if logits_normalization == LogitsNormalization.NONE:
+            probs_sf = self.apply_temperature(probs_sf)
+
         probs = self.convert_logits_normalization(
             logits_normalization,
             LogitsNormalization.SOFTMAX,

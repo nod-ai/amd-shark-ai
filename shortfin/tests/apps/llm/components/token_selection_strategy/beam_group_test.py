@@ -75,25 +75,25 @@ def test_beam_apply_temperature(device, exec_req, decode_config):
 
     with patch.object(sfnp, "divide") as temp_mock:
         expected = value / temperature
-        beam.apply_temperature()
-        logits = beam.exec_req.result_logits.items.tolist()
-        assert all(approximately_equal(expected, logit) for logit in logits)
+        logits = beam.exec_req.result_logits
+        result = beam.apply_temperature(logits).items.tolist()
+        assert all(approximately_equal(expected, logit) for logit in result)
         temp_mock.assert_not_called()
 
     temperature = 0.5
     beam.decode_config.temperature = temperature
     expected = value / temperature
-    beam.apply_temperature()
-    logits = beam.exec_req.result_logits.items.tolist()
-    assert all(approximately_equal(expected, logit) for logit in logits)
+    logits = beam.exec_req.result_logits
+    result = beam.apply_temperature(logits).items.tolist()
+    assert all(approximately_equal(expected, logit) for logit in result)
 
     temperature = 1.5
     beam.exec_req.result_logits.items = data
     beam.decode_config.temperature = temperature
     expected = value / temperature
-    beam.apply_temperature()
-    logits = beam.exec_req.result_logits.items.tolist()
-    assert all(approximately_equal(expected, logit) for logit in logits)
+    logits = beam.exec_req.result_logits
+    result = beam.apply_temperature(logits).items.tolist()
+    assert all(approximately_equal(expected, logit) for logit in result)
 
 
 def test_convert_logits_normalization_none(device, exec_req, decode_config):
