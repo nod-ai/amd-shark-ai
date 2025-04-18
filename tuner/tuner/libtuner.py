@@ -631,21 +631,21 @@ def multiprocess_progress_wrapper(
     results = []
     initializer_inputs = initializer_inputs or ()
 
-    # Create a multiprocessing pool
+    # Create a multiprocessing pool.
     sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
     with multiprocessing.Pool(
         num_worker, initializer, initializer_inputs
     ) as worker_pool:
         signal.signal(signal.SIGINT, sigint_handler)
-        # Use tqdm to create a progress bar
+        # Use tqdm to create a progress bar.
         with tqdm(total=len(task_list)) as pbar:
             try:
-                # Use imap_unordered to asynchronously execute the worker function on each task
+                # Use imap_unordered to asynchronously execute the worker function on each task.
                 for result in worker_pool.imap_unordered(function, task_list):
                     pbar.update(1)  # Update progress bar
                     results.append(result)
             except KeyboardInterrupt:
-                # If Ctrl+C is pressed, terminate all child processes
+                # If Ctrl+C is pressed, terminate all child processes.
                 worker_pool.terminate()
                 worker_pool.join()
                 sys.exit(1)  # Exit the script
@@ -850,22 +850,31 @@ def benchmark_baseline(
     tuning_client: TuningClient,
     candidate_tracker: CandidateTracker,
 ) -> list[BenchmarkResult]:
-    task_list = [
-        BenchmarkPack(
-            iree_benchmark_module_flags=tuning_client.get_iree_benchmark_module_flags(),
-            benchmark_timeout=tuning_client.get_benchmark_timeout_s(),
-            candidate_tracker=candidate_tracker,
-        )
-    ] * len(devices)
 
-    worker_context_queue = create_worker_context_queue(devices)
-    baseline_results = multiprocess_progress_wrapper(
-        num_worker=len(devices),
-        task_list=task_list,
-        function=run_iree_benchmark_module_command,
-        initializer=init_worker_context,
-        initializer_inputs=(worker_context_queue,),
-    )
+    global worker_id, device_id
+
+    baseline_results = list()
+
+    # Use tqdm to create a progress bar.
+    with tqdm(total=len(devices)) as pbar:
+        try:
+            for worker_id_, device_id_ in enumerate(devices):
+                worker_id = worker_id_
+                device_id = device_id_
+                result = run_iree_benchmark_module_command(
+                    BenchmarkPack(
+                        iree_benchmark_module_flags=tuning_client.get_iree_benchmark_module_flags(),
+                        benchmark_timeout=tuning_client.get_benchmark_timeout_s(),
+                        candidate_tracker=candidate_tracker,
+                    )
+                )
+
+                baseline_results.append(result)
+                pbar.update(1)  # Update progress bar
+        except KeyboardInterrupt:
+            # If Ctrl+C is pressed, terminate all child processes.
+            sys.exit(1)  # Exit the script.
+
     return baseline_results
 
 
