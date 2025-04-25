@@ -420,7 +420,7 @@ def split_elementwise_binary(
         operator(pt_x, pt_y, *args, **kwargs) for pt_x, pt_y in zip(pt_xs, pt_ys)
     ]
     return SplitPrimitiveTensor(
-        shard_dim=x.shard_dim,
+        shard_dim=x_shard_dim,
         shape=torch.broadcast_shapes(x.shape, y.shape),
         ts=partials,
     )
@@ -1313,7 +1313,23 @@ def reshard_like_replicated_to_replicated(
 def reshard_like_replicated_to_split(
     tensor: ReplicatedTensor, like: SplitPrimitiveTensor
 ) -> SplitPrimitiveTensor:
-    return reshard_split(tensor, dim=like.shard_dim, count=like.shard_count)
+    """
+    Adjust to handle broadcasting.
+    If `like` has more dims than `tensor`, we meed to decrease dim by the difference.
+    If it has more dims we need to increase dim instead.
+    Conceptually we are right aligning the dims.
+      like.shape     == [1, 2, 3]
+      tensor.shape   == [2, 3]
+    Becomes:
+      like.shape     == [1, 2, 3]
+      tensor.shape   == [   2, 3]
+    """
+    dim = (
+        like.shard_dim
+        - max(0, len(like.shape) - len(tensor.shape))
+        + max(0, len(tensor.shape) - len(like.shape))
+    )
+    return reshard_split(tensor, dim=dim, count=like.shard_count)
 
 
 @reshard_like.override(SplitPrimitiveTensor, SplitPrimitiveTensor)
