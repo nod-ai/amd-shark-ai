@@ -4,6 +4,8 @@
 # See https://llvm.org/LICENSE.txt for license information.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
+from collections.abc import Iterable
+from typing import Callable
 import unittest
 import itertools
 import math
@@ -1458,6 +1460,38 @@ class SoftmaxTest(unittest.TestCase):
         sharded_tensor = ops.reshard_split(tensor, dim=dim, count=2)
         ops.equal(expected_result, ops.softmax(sharded_tensor, dim=dim - 1))
         ops.equal(expected_result, ops.softmax(sharded_tensor, dim=dim + 1))
+
+
+class SumTest(unittest.TestCase):
+    def setUp(self):
+        torch.random.manual_seed(12345)
+
+    @parameterized.expand(list(itertools.product((0, [0, 1], [2, 0]), [True, False])))
+    def testSumReplicated(self, sum_dim: int | list[int], keepdim: bool):
+        tensor = torch.rand(4, 6, 5, dtype=torch.float32)
+        expected_result = ops.sum(tensor, dim=sum_dim, keepdim=keepdim)
+        actual_result = ops.sum(
+            ops.replicate(tensor, count=3), dim=sum_dim, keepdim=keepdim
+        )
+        torch.testing.assert_close(expected_result, ops.unbox_tensor(actual_result))
+
+    @parameterized.expand(list(itertools.product((0, [0, 1], [2, 0]), [True, False])))
+    def testSumSplit(self, sum_dim: int | list[int], keepdim: bool):
+        tensor = torch.rand(4, 6, 5, dtype=torch.float32)
+        dim = 1
+        expected_result = ops.sum(tensor, dim=sum_dim, keepdim=keepdim)
+        sharded_tensor = ops.reshard_split(tensor, dim=dim, count=2)
+        actual_result = ops.sum(sharded_tensor, dim=sum_dim, keepdim=keepdim)
+        torch.testing.assert_close(expected_result, ops.unbox_tensor(actual_result))
+
+    @parameterized.expand(((list,), (tuple,), (reversed,)))
+    def testSumBuiltinFunction(
+        self, iterable_transform: Callable[[Iterable], Iterable]
+    ):
+        values = list(range(1, 10))
+        expected_result = __builtins__["sum"](values)
+        actual_result = ops.sum(iterable_transform(values))
+        assert expected_result == actual_result
 
 
 class TopKTest(unittest.TestCase):
