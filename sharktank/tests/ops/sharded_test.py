@@ -1447,19 +1447,24 @@ class SoftmaxTest(unittest.TestCase):
         torch.random.manual_seed(12345)
 
     def testSoftmaxReplicated(self):
-        tensor = torch.rand(4, 6, 5, dtype=torch.float32)
+        tensor = torch.rand(2, 4, 3, dtype=torch.float32)
         dim = 1
         expected_result = ops.softmax(tensor, dim=dim)
         actual_result = ops.softmax(ops.replicate(tensor, count=3), dim=dim)
-        ops.equal(expected_result, actual_result)
+        assert ops.equal(expected_result, actual_result)
 
     def testSoftmaxSplit(self):
-        tensor = torch.rand(4, 6, 5, dtype=torch.float32)
+        tensor = torch.rand(2, 2, 2, dtype=torch.float32)
         dim = 1
-        expected_result = ops.softmax(tensor, dim=dim)
         sharded_tensor = ops.reshard_split(tensor, dim=dim, count=2)
-        ops.equal(expected_result, ops.softmax(sharded_tensor, dim=dim - 1))
-        ops.equal(expected_result, ops.softmax(sharded_tensor, dim=dim + 1))
+
+        expected_result = ops.softmax(tensor, dim=dim - 1)
+        actual_result = ops.softmax(sharded_tensor, dim=dim - 1)
+        assert ops.equal(expected_result, actual_result)
+
+        expected_result = ops.softmax(tensor, dim=dim + 1)
+        actual_result = ops.softmax(sharded_tensor, dim=dim + 1)
+        assert ops.equal(expected_result, actual_result)
 
 
 class SumTest(unittest.TestCase):
@@ -1575,7 +1580,7 @@ class ViewTest(unittest.TestCase):
 
         expected_result = ops.view(tensor, new_shape)
         actual_result = tensor_rep.view(new_shape)
-        ops.equal(expected_result, actual_result)
+        assert ops.equal(expected_result, actual_result)
 
     @parameterized.expand((([8, 5, 3, 2],), ([4, 2, 5, 3, 2],)))
     def testViewReplicatedExpand(self, new_shape: list[int]):
@@ -1584,7 +1589,7 @@ class ViewTest(unittest.TestCase):
 
         expected_result = ops.view(tensor, new_shape)
         actual_result = tensor_rep.view(new_shape)
-        ops.equal(expected_result, actual_result)
+        assert ops.equal(expected_result, actual_result)
 
     @parameterized.expand(
         (
@@ -1601,7 +1606,7 @@ class ViewTest(unittest.TestCase):
 
         expected_result = ops.view(tensor, new_shape)
         actual_result = tensor_split.view(new_shape)
-        ops.equal(expected_result, actual_result)
+        assert ops.equal(expected_result, actual_result)
 
     @parameterized.expand((([8, 5, 3, 2],), ([4, 2, 5, 3, 2],)))
     def testViewSplitExpand(self, new_shape: list[int]):
@@ -1609,7 +1614,7 @@ class ViewTest(unittest.TestCase):
         tensor_split = ops.reshard_split(tensor, dim=0, count=2)
         expected_result = ops.view(tensor, new_shape)
         actual_result = tensor_split.view(new_shape)
-        ops.equal(expected_result, actual_result)
+        assert ops.equal(expected_result, actual_result)
 
     @parameterized.expand(
         (
@@ -1627,7 +1632,7 @@ class ViewTest(unittest.TestCase):
 
         expected_result = ops.view(tensor, new_shape)
         actual_result = tensor_split.view(new_shape)
-        ops.equal(expected_result, actual_result)
+        assert ops.equal(expected_result, actual_result)
 
 
 if __name__ == "__main__":
