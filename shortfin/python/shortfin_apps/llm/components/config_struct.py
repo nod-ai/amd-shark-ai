@@ -12,17 +12,18 @@ Classes:
 - ServerParams: for specifying config keys needed by `python -m shortfin_apps.llm.server`
 """
 
+import dataclasses_json
+
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
-import dataclasses_json
 from dataclasses_json import dataclass_json, Undefined
-
-import shortfin.array as sfnp
 
 from .token_selection_strategy.config import DecodeConfig
 from .token_selection_strategy.config import LogitsNormalization
+
+import shortfin.array as sfnp
 
 
 def _decode_dtype(name: str) -> sfnp.DType:
@@ -145,6 +146,12 @@ class ModelParams:
 
     # The element type of the attention caches.
     attn_dtype: sfnp.DType = sfnp.float16
+
+    # TODO(stbaione): Update comment when export with `top_k > 1` is enabled.
+    # Define the `top_k` kernel that model was exported with.
+    # If `top_k` is None, no `top_k` kernels were exported.
+    # If `top_k == 1`, argmax is exported.
+    top_k: int | None = None
 
     # Cache parameters.
     paged_kv_cache: PagedKVCacheParams | None = None

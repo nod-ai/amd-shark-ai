@@ -119,6 +119,7 @@ def main():
             "decode_batch_sizes": decode_bs,
             "transformer_block_count": hp.block_count,
             "logits_normalization": logits_normalization,
+            "top_k": args.top_k,
             "paged_kv_cache": {
                 "attention_head_count_kv": hp.attention_head_count_kv,
                 "block_seq_stride": llama_config.block_seq_stride,
@@ -427,12 +428,40 @@ def main():
 
             return logits
 
+    def generate_argmax():
+        logits: torch.Tensor = torch.empty(
+            1,
+            1,
+            hp.context_length,
+            dtype=llama_config.activation_dtype,
+        )
+
+        arg_affinities = [DeviceAffinity("0")]
+
+        @fxb.export_program(
+            name="argmax",
+            args=(logits,),
+            dynamic_shapes={},
+            strict=args.strict,
+            arg_device=arg_affinities,
+        )
+        def _(
+            _,
+            logits=logits,
+            axis=-1,
+        ):
+            return ops.argmax(logits, axis)
+
     if not args.skip_prefill:
         for bs in args.bs_prefill:
             generate_batch_prefill(bs)
     if not args.skip_decode:
         for bs in args.bs_decode:
             generate_batch_decode(bs)
+
+    if args.top_k is not None:
+        if args.top_k == 1:
+            generate_argmax()
 
     config = generate_params_json(
         hp, args.bs_prefill, args.bs_decode, args.logits_normalization

@@ -385,6 +385,14 @@ def scaled_dot_product_attention_torch(q, k, v, a, is_causal, scale) -> Tensor:
     )
 
 
+@argmax.override(Tensor)
+def argmax_default(
+    x: Tensor,
+    axis: int,
+) -> None:
+    return torch.argmax(unbox_tensor(x), dim=axis)
+
+
 @mean.override(Tensor)
 def mean_default(
     x: Tensor, dim: Union[int, List[int]], keepdim: bool, *, dtype: torch.dtype

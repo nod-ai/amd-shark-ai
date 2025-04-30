@@ -28,6 +28,7 @@ from ._registry import *
 __all__ = [
     "all_gather",
     "all_reduce",
+    "argmax",
     "barrier_on_logical_device",
     "cat",
     "conv2d",
@@ -117,6 +118,23 @@ def _all_reduce_trampoline(d: SignatureDispatcher, tensor: AnyTensor):
     tensors = (tensor,)
     for override in d.find_overrides(tensors):
         result = override(tensor)
+        if result is not NotImplemented:
+            return override, result
+    else:
+        d.fail(tensors)
+
+
+@overridable
+def argmax(tensor: AnyTensor, axis: int) -> AnyTensor:
+    "Take argmax of the tensor"
+    ...
+
+
+@argmax.trampoline
+def _argmax_trampoline(d: SignatureDispatcher, tensor: AnyTensor, axis: int):
+    tensors = (tensor,)
+    for override in d.find_overrides(tensors):
+        result = override(tensor, axis)
         if result is not NotImplemented:
             return override, result
     else:
