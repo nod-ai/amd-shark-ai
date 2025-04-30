@@ -306,6 +306,11 @@ class InferenceTensor(ABC):
 
         return permute(self, dims=dims)
 
+    def bool(self) -> "InferenceTensor":
+        from sharktank.ops import to
+
+        return to(self, dtype=torch.bool)
+
     @property
     def dtype(self) -> torch.dtype:
         raise NotImplementedError()
@@ -347,6 +352,11 @@ class InferenceTensor(ABC):
         from sharktank.ops import index_select
 
         return index_select(self, dim, index)
+
+    def masked_fill(self, mask: "AnyTensor", value: Number) -> "InferenceTensor":
+        from sharktank.ops import masked_fill
+
+        return masked_fill(self, mask, value)
 
     def mean(
         self,
@@ -460,6 +470,9 @@ class InferenceTensor(ABC):
         from sharktank.ops import elementwise
 
         return elementwise(torch.add, self, rhs)
+
+    def __invert__(self):
+        pass
 
     def __radd__(self, lhs):
         # Assumes commutative addition due to torch elementwise ops not handling
@@ -604,6 +617,9 @@ class DefaultPrimitiveTensor(PrimitiveTensor):
         self, new_globals: dict[str, torch.Tensor]
     ) -> "InferenceTensor":
         return DefaultPrimitiveTensor(name=self.name, data=new_globals[self.name])
+
+    def __invert__(self):
+        return DefaultPrimitiveTensor(data=~self._data, name=self.name)
 
     def __getitem__(self, key):
         keys = [key]
@@ -817,6 +833,9 @@ class ShardedTensor(InferenceTensor):
             else t
             for i, t in enumerate(ts)
         )
+
+    def __invert__(self):
+        return self.clone(ts=[~t for t in self._shards])
 
     @property
     def devices(self) -> Tuple[int]:
