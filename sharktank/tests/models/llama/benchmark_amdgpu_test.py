@@ -91,7 +91,7 @@ class BaseBenchmarkTest(unittest.TestCase):
         return benchmark_args
 
     def export_compile_benchmark(self, skip_decode: bool = False):
-        self.export_artifact.export_and_compile_llm()
+        self.export_artifact.export_and_compile_llm(batch_size=self.batch_size)
 
         benchmark_filename = self.export_artifact.output_name.with_suffix(".txt")
         self.export_artifact.iree_benchmark(
@@ -110,6 +110,7 @@ class BenchmarkLlama3_1_8B(BaseBenchmarkTest):
     def setUp(self):
         super().setUp(artifact_dir=Path("/shark-dev/8b"), dir_path_name="llama-8b")
         # TODO: add numpy files to Azure and download from it
+        self.batch_size = 4
 
         self.prefill_args_fp16 = {
             128: self.save_benchmarks(
@@ -188,7 +189,6 @@ class BenchmarkLlama3_1_8B(BaseBenchmarkTest):
     def test_benchmark8B_f16_tp1(self, input_size: int):
         self.export_artifact = ExportArtifacts(
             irpa_path=self.llama3_8b_f16_model,
-            batch_size=4,
             iree_hip_target=self.iree_hip_target,
             iree_hal_target_device=self.iree_hal_target_device,
             attention_kernel="torch",
@@ -208,7 +208,6 @@ class BenchmarkLlama3_1_8B(BaseBenchmarkTest):
     def test_benchmark8B_fp8_tp1_input_len_128(self):
         self.export_artifact = ExportArtifacts(
             irpa_path=self.llama3_8b_f8_model,
-            batch_size=4,
             iree_hip_target=self.iree_hip_target,
             iree_hal_target_device=self.iree_hal_target_device,
             attention_kernel="torch",
@@ -233,7 +232,6 @@ class BenchmarkLlama3_1_8B(BaseBenchmarkTest):
     def test_benchmark8B_fp8_attnf8_tp1(self, input_size: int):
         self.export_artifact = ExportArtifacts(
             irpa_path=self.llama3_8b_f8_attnf8_model,
-            batch_size=4,
             iree_hip_target=self.iree_hip_target,
             iree_hal_target_device=self.iree_hal_target_device,
             attention_kernel="sharktank",
@@ -261,6 +259,8 @@ class BenchmarkLlama3_1_70B(BaseBenchmarkTest):
     def setUp(self):
         super().setUp(artifact_dir=Path("/shark-dev/70b"), dir_path_name="llama-70b")
         # TODO: add numpy files to Azure and download from it
+
+        self.batch_size = 4
 
         self.prefill_args_fp16 = {
             1: {
@@ -352,7 +352,6 @@ class BenchmarkLlama3_1_70B(BaseBenchmarkTest):
             irpa_path = self.llama3_70b_f16_tp8_model
         self.export_artifact = ExportArtifacts(
             irpa_path=irpa_path,
-            batch_size=4,
             iree_hip_target=self.iree_hip_target,
             iree_hal_target_device=self.iree_hal_target_device,
             attention_kernel="torch",
@@ -374,7 +373,6 @@ class BenchmarkLlama3_1_70B(BaseBenchmarkTest):
     def test_benchmark70B_fp8_tp1(self):
         self.export_artifact = ExportArtifacts(
             irpa_path=self.llama3_70b_f8_model,
-            batch_size=4,
             iree_hip_target=self.iree_hip_target,
             iree_hal_target_device=self.iree_hal_target_device,
             attention_kernel="torch",
@@ -400,6 +398,8 @@ class BenchmarkLlama3_1_405B(BaseBenchmarkTest):
     def setUp(self):
         super().setUp(artifact_dir=Path("/shark-dev/405b"), dir_path_name="llama-405b")
         # TODO: add numpy files to Azure and download from it
+
+        self.batch_size = 4
 
         self.prefill_args_tp8_fp16 = {
             128: self.save_benchmarks(
@@ -453,7 +453,6 @@ class BenchmarkLlama3_1_405B(BaseBenchmarkTest):
     def test_benchmark405B_f16_tp8(self, input_size: int):
         self.export_artifact = ExportArtifacts(
             irpa_path=self.llama3_405b_f16_tp8_model,
-            batch_size=4,
             iree_hip_target=self.iree_hip_target,
             iree_hal_target_device=self.iree_hal_target_device,
             attention_kernel="torch",
@@ -475,7 +474,6 @@ class BenchmarkLlama3_1_405B(BaseBenchmarkTest):
     def test_benchmark405B_fp8_tp8(self):
         self.export_artifact = ExportArtifacts(
             irpa_path=self.llama3_405b_f8_tp8_model,
-            batch_size=4,
             iree_hip_target=self.iree_hip_target,
             iree_hal_target_device=self.iree_hal_target_device,
             attention_kernel="torch",
