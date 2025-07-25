@@ -56,7 +56,13 @@ add_sharkfuser_test(
 )
 
 add_sharkfuser_lit_test(
-  SRC test_example_lit.cpp
+  SRC lit/test_asm_emitter.cpp
+  TOOLS
+    filecheck
+)
+
+add_sharkfuser_lit_test(
+  SRC lit/test_conv_asm_emitter.cpp
   TOOLS
     filecheck
     iree-opt
