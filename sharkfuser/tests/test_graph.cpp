@@ -9,6 +9,7 @@
 #include "utils.h"
 
 #include <catch2/catch_test_macros.hpp>
+#include <filesystem>
 #include <optional>
 #include <vector>
 
@@ -231,11 +232,17 @@ TEST_CASE("Graph `readOrGenerateCompiledArtifacts`", "[graph]") {
   }
 
   SECTION("Invalid input IR") {
-    Graph g;
-    g.setName("invalid_input_ir");
-    ErrorObject err = g.readOrGenerateCompiledArtifact("invalid mlir");
-    REQUIRE(isError(err));
-    REQUIRE(err.getCode() == ErrorCode::CompileFailure);
-    REQUIRE(err.getMessage() == "iree-compile command failed");
+    std::string graphName;
+    {
+      Graph g;
+      g.setName("invalid_input_ir");
+      ErrorObject err = g.readOrGenerateCompiledArtifact("invalid mlir");
+      REQUIRE(isError(err));
+      REQUIRE(err.getCode() == ErrorCode::CompileFailure);
+      REQUIRE(err.getMessage() == "iree-compile command failed");
+    }
+    // Cache created with "remove", ensure it is removed after the test.
+    REQUIRE(!std::filesystem::exists(
+        CacheFile::getPath(graphName, "test").parent_path()));
   }
 }

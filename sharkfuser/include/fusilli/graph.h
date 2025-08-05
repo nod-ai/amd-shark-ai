@@ -25,6 +25,7 @@
 
 #include <cassert>
 #include <cstdlib>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <set>
@@ -121,15 +122,6 @@ public:
                                         const std::shared_ptr<TensorAttr> &w,
                                         ConvFPropAttr &attributes);
 
-  // Holds cached assets generated from a `generateCompiledArtifacts` call. If
-  // `CacheFiles` are set to be removed RAII based removal will be tied to the
-  // lifetime of this object.
-  struct CachedAssets {
-    CacheFile input;
-    CacheFile output;
-    CacheFile compileCommand;
-  };
-
   // Return compiled artifact. The first invocation will always generate
   // compiled artifact, subsequent invocations may return cached versions
   // assuming cache invalidation checks pass. Set `remove = true` to remove
@@ -206,24 +198,30 @@ private:
                             bool remove = false) {
     FUSILLI_LOG_LABEL_ENDL("INFO: Generating compiled artifacts");
 
-    // Create cache files.
-    CacheFile input = FUSILLI_TRY(CacheFile::create(
-        /*graphName=*/getName(),
-        /*fileName=*/IREE_COMPILE_INPUT_FILENAME,
-        /*remove*/ remove));
-    FUSILLI_CHECK_ERROR(input.write(generatedAsm));
-    CacheFile output = FUSILLI_TRY(CacheFile::create(
-        /*graphName=*/getName(),
-        /*fileName=*/IREE_COMPILE_OUTPUT_FILENAME,
-        /*remove*/ remove));
-    CacheFile compileCommand = FUSILLI_TRY(CacheFile::create(
-        /*graphName=*/getName(),
-        /*fileName=*/IREE_COMPILE_COMMAND_FILENAME,
-        /*remove*/ remove));
+    // Create cache.
+    CachedAssets cache = CachedAssets(
+        /*in=*/
+        FUSILLI_TRY(CacheFile::create(
+            /*graphName=*/getName(),
+            /*fileName=*/IREE_COMPILE_INPUT_FILENAME,
+            /*remove*/ remove)),
+        /*out=*/
+        FUSILLI_TRY(CacheFile::create(
+            /*graphName=*/getName(),
+            /*fileName=*/IREE_COMPILE_OUTPUT_FILENAME,
+            /*remove*/ remove)),
+        /*cmd=*/
+        FUSILLI_TRY(CacheFile::create(
+            /*graphName=*/getName(),
+            /*fileName=*/IREE_COMPILE_COMMAND_FILENAME,
+            /*remove*/ remove)));
+
+    // Write input asm to cache.
+    FUSILLI_CHECK_ERROR(cache.input.write(generatedAsm));
 
     // Build + cache + log compile command.
-    std::string cmd = buildCompileCommand(input, output);
-    FUSILLI_CHECK_ERROR(compileCommand.write(cmd));
+    std::string cmd = buildCompileCommand(cache.input, cache.output);
+    FUSILLI_CHECK_ERROR(cache.compileCommand.write(cmd));
     FUSILLI_LOG_LABEL_ENDL("INFO: iree-compile command");
     FUSILLI_LOG_ENDL(cmd);
 
@@ -234,9 +232,7 @@ private:
     FUSILLI_RETURN_ERROR_IF(returnCode, ErrorCode::CompileFailure,
                             "iree-compile command failed");
 
-    return ok(CachedAssets{.input = std::move(input),
-                           .output = std::move(output),
-                           .compileCommand = std::move(compileCommand)});
+    return ok(std::move(cache));
   }
 
   // Check for cache validity. Cache should be invalidated if:
