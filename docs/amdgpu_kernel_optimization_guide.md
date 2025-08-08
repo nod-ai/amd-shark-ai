@@ -4,7 +4,7 @@ Author: Jakub Kuderski @kuhar
 
 Date: 2024-06-24
 
-Last Update: 2025-04-08
+Last Update: 2025-08-08
 
 ## Introduction
 
@@ -309,7 +309,10 @@ For `ds_read_b128`, the access happens in four phases of 16 threads each:
   3. `T4`-`T7`,`T8`-`T11`,`T16`-`T19`,`T28`-`T31`
   4. `T36`-`T39`,`T40`-`T43`,`T48`-`T51`,`T60`-`T63`
 
-[!TIP] `ds_read_b128` access pattern makes it difficult to use padding to avoid bank conflicts when accessing LDS in a column-wise fashion, as with MFMA instructions. Instead, prefer XOR-based swizzling as described [here](https://rocm.blogs.amd.com/software-tools-optimization/lds-bank-conflict/README.html)
+> [!TIP]
+> `ds_read_b128` access pattern makes it difficult to use padding
+> to avoid bank conflicts when accessing LDS in a > column-wise fashion, as with MFMA instructions.
+> Instead, prefer XOR-based swizzling as described [here](https://rocm.blogs.amd.com/software-tools-optimization/lds-bank-conflict/README.html)
 
 ### Global Memory
 
