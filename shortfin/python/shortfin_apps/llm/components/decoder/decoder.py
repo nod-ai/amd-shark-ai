@@ -154,17 +154,19 @@ class PageManager:
         else:
             used = set()
             for beam in new_beam_page_ids:
-                if beam[-1] in used:
-                    new_page = self.allocate(1)[0]
-                    self._page_pool.copy_page_index(beam[-1], new_page)
-                    beam[-1] = new_page
+                if len(beam) > 0:
+                    if beam[-1] in used:
+                        new_page = self.allocate(1)[0]
+                        self._page_pool.copy_page_index(beam[-1], new_page)
+                        beam[-1] = new_page
+                    used.add(beam[-1])
 
-                used.add(beam[-1])
-
-        first_page = new_beam_page_ids[0][0]
-        if all(first_page == b[0] for b in new_beam_page_ids):
-            self._shared_pages.append(first_page)
-            new_beam_page_ids = [b[1:] for b in new_beam_page_ids]
+        # Check if the pages a shared between all queries:
+        if len(new_beam_page_ids[0]) > 0:
+            first_page = new_beam_page_ids[0][0]
+            if all(first_page == b[0] for b in new_beam_page_ids):
+                self._shared_pages.append(first_page)
+                new_beam_page_ids = [b[1:] for b in new_beam_page_ids]
 
         self._beam_page_ids = new_beam_page_ids
         self._position += 1
