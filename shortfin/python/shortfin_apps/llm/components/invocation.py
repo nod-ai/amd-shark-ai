@@ -1,10 +1,10 @@
 import logging
 import math
-import traceback
 
 import shortfin as sf
 import shortfin.array as sfnp
 
+from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple, Union
 
 from .buffers import copy_buffers_to_host, create_argument_buffers
@@ -13,6 +13,18 @@ from .messages import LlmInferenceExecRequest
 
 
 logger = logging.getLogger(__name__)
+
+
+class LlmTaskResponder(ABC):
+    @abstractmethod
+    def set_success(
+        self, logits: sfnp.device_array, indices: Optional[sfnp.device_array]
+    ):
+        ...
+
+    @abstractmethod
+    def set_failure(self, exception: Exception):
+        ...
 
 
 class LlmTask:
@@ -75,7 +87,7 @@ class LlmTask:
         logits: sfnp.device_array,
         indices: Optional[sfnp.device_array],
         device0: sf.ScopedDevice,
-    ):
+    ) -> Tuple[sfnp.device_array, Optional[sfnp.device_array]]:
         """Process the results of the invocation.
 
         Args:
@@ -83,6 +95,11 @@ class LlmTask:
             logits (sfnp.device_array): Logits from invocation.
             indices (Optional[sfnp.device_array]): Indices from invocation.
             device0 (sf.ScopedDevice): Device used for invocation.
+
+        Returns:
+            Tuple[sfnp.device_array, Optional[sfnp.device_array]]:
+                - First item is logits
+                - Seconds items is optional indices
         """
         exec_requests = self._exec_requests
         buffers = (logits, indices)
@@ -96,20 +113,7 @@ class LlmTask:
         # Release arg allocations
         [arg.release() for arg in args]
 
-        await self._set_results(logits, indices)
-
-    async def _set_results(
-        self,
-        logits: sfnp.device_array,
-        indices: Optional[sfnp.device_array],
-    ):
-        """Get the results after a prefill invocation.
-
-        Args:
-            logits (sfnp.device_array): The logits output from prefill.
-            indices (Optional[sfnp.device_array]): The indices output from prefill, if any.
-            req_count (int): The number of requests in the batch.
-        """
+        return logits, indices
 
 
 def _pad_list(
@@ -221,33 +225,6 @@ class PrefillTask(LlmTask):
 
         return args
 
-    async def _set_results(
-        self,
-        logits: sfnp.device_array,
-        indices: Optional[sfnp.device_array],
-    ):
-        for i in range(self.req_count):
-            req = self._exec_requests[i]
-            sl = len(req.input_token_ids) - 1
-
-            if logits.shape[1] == 1:
-                logits_item = logits.view(i)
-            else:
-                logits_item = logits.view(i, sl)
-
-            index_item = None
-            if indices is not None:
-                if indices.shape[1] == 1:
-                    index_item = indices.view(i)
-                else:
-                    index_item = indices.view(i, sl)
-
-            req.result_logits = logits_item
-            req.result_indices = index_item
-
-        for req in self._exec_requests:
-            req.done.set_success()
-
 
 class DecodeTask(LlmTask):
     """Handles the transfer and preparation of data for VMFB invocation."""
@@ -349,25 +326,6 @@ class DecodeTask(LlmTask):
 
         return args
 
-    async def _set_results(
-        self,
-        logits: sfnp.device_array,
-        indices: Optional[sfnp.device_array],
-    ):
-        for i in range(self.req_count):
-            req = self._exec_requests[i]
-            logits_item = logits.view(i, 0)
-
-            index_item = None
-            if indices is not None:
-                index_item = indices.view(i, 0)
-
-            req.result_logits = logits_item
-            req.result_indices = index_item
-
-        for req in self._exec_requests:
-            req.done.set_success()
-
 
 class LlmInvocationProcess(sf.Process):
     """Executes the invocation of LLM for a batch of requests."""
@@ -379,6 +337,7 @@ class LlmInvocationProcess(sf.Process):
         llm_task: LlmTask,
         functions: dict[int, sf.ProgramFunction],
         program_isolation: sf.ProgramIsolation,
+        responder: LlmTaskResponder,
     ):
         super().__init__(fiber=fiber)
         self.name = name
@@ -387,6 +346,7 @@ class LlmInvocationProcess(sf.Process):
 
         self.device0 = fiber.device(0)
         self.llm_task = llm_task
+        self.responder = responder
 
     async def run(self):
         """Invoke `prefill` or `decode` function, with IREE, on a batch of requests.
@@ -416,22 +376,14 @@ class LlmInvocationProcess(sf.Process):
             if len(results) > 1:
                 indices = results[1]
 
-            # TODO (stbaione): Move process_results logic into responder
-            await self.llm_task.process_results(
+            logits, indices = await self.llm_task.process_results(
                 args,
                 logits,
                 indices,
                 self.device0,
             )
 
-        # TODO (stbaione): Move error handling logic into responder
-        except Exception:
-            logger.error(
-                f"""Fatal error in prefetch invocation:
-                {traceback.format_exc()}
-                """
-            )
-            for req in self.llm_task._exec_requests:
-                req.result_logits = None
-                req.free_cache_pages()
-                req.done.set_success()
+            self.responder.set_success(logits, indices)
+
+        except Exception as exception:
+            self.responder.set_failure(exception)

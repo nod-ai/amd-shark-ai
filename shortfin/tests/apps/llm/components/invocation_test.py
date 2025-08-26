@@ -1,36 +1,41 @@
 import asyncio
 import logging
 import math
-from typing import List, Union
 import pytest
 
 import shortfin as sf
 import shortfin.array as sfnp
 
 from random import randint
-from unittest.mock import AsyncMock, patch
+from typing import List, Union
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+from shortfin_apps.llm.components.batcher import (
+    DecodeTaskResponder,
+    PrefillTaskResponder,
+)
+from shortfin_apps.llm.components.config_struct import ModelParams, PagedKVCacheParams
 from shortfin_apps.llm.components.device_array_cache import (
     Allocation,
     WrappedAllocation,
 )
-from shortfin_apps.llm.components.kvcache.base_attention_cache import (
-    BasePagedAttentionCacheAllocation,
-)
-from shortfin_apps.llm.components.config_struct import ModelParams, PagedKVCacheParams
 from shortfin_apps.llm.components.invocation import (
     LlmInvocationProcess,
+    LlmTaskResponder,
     PrefillTask,
     DecodeTask,
     _pad_list,
 )
-from shortfin_apps.llm.components.messages import (
-    LlmInferenceExecRequest,
-    InferencePhase,
+from shortfin_apps.llm.components.kvcache.base_attention_cache import (
+    BasePagedAttentionCacheAllocation,
 )
 from shortfin_apps.llm.components.kvcache.page_pool import (
     PageInfo,
+)
+from shortfin_apps.llm.components.messages import (
+    LlmInferenceExecRequest,
+    InferencePhase,
 )
 
 
@@ -276,16 +281,28 @@ def result_logits_w_indices_decode(decode_task, fiber):
 
 
 @pytest.fixture(scope="function")
+def decode_task_responder(staggered_exec_req_list):
+    return DecodeTaskResponder(staggered_exec_req_list)
+
+
+@pytest.fixture(scope="function")
+def prefill_task_responder(staggered_exec_req_list):
+    return PrefillTaskResponder(staggered_exec_req_list)
+
+
+@pytest.fixture(scope="function")
 def llm_invoker(prefill_task: PrefillTask, fiber, device_array_cache, page_pool):
     async def invocation_fn(*args, fiber=None):
         return tuple(args)
 
+    mock_responder = MagicMock(spec=LlmTaskResponder)
     return LlmInvocationProcess(
         name="test-invoker",
         fiber=fiber,
         llm_task=prefill_task,
         functions={},
         program_isolation=sf.ProgramIsolation.PER_CALL,
+        responder=mock_responder,
     )
 
 
@@ -345,6 +362,7 @@ class TestPrefillTask:
         fiber,
         lsys,
         prefill_task: PrefillTask,
+        prefill_task_responder: PrefillTaskResponder,
         result_logits_none_indices,
     ):
         async def _test():
@@ -355,11 +373,16 @@ class TestPrefillTask:
 
             logits, _ = result_logits_none_indices
             vocab_size = logits.shape[-1]
-            await prefill_task.process_results(
+            logits, indices = await prefill_task.process_results(
                 args=args,
                 logits=logits,
                 indices=None,
                 device0=device0,
+            )
+
+            prefill_task_responder.set_success(
+                logits,
+                indices,
             )
 
             # Verify that the logits were processed correctly
@@ -379,6 +402,7 @@ class TestPrefillTask:
         fiber,
         lsys,
         prefill_task: PrefillTask,
+        prefill_task_responder: PrefillTaskResponder,
         result_logits_w_indices,
     ):
         async def _test():
@@ -388,12 +412,14 @@ class TestPrefillTask:
             )
 
             logits, indices = result_logits_w_indices
-            await prefill_task.process_results(
+            logits, indices = await prefill_task.process_results(
                 args=args,
                 logits=logits,
                 indices=indices,
                 device0=device0,
             )
+
+            prefill_task_responder.set_success(logits, indices)
 
             # Verify that the logits were processed correctly
             for i, req in enumerate(prefill_task._exec_requests):
@@ -450,7 +476,12 @@ class TestDecodeTask:
         lsys.run(_test())
 
     def test_process_results(
-        self, fiber, lsys, decode_task, result_logits_none_indices_decode
+        self,
+        fiber,
+        lsys,
+        decode_task,
+        decode_task_responder,
+        result_logits_none_indices_decode,
     ):
         async def _test():
             device0 = fiber.device(0)
@@ -460,12 +491,14 @@ class TestDecodeTask:
                 batch_size=decode_task.req_count,
             )
 
-            await decode_task.process_results(
+            logits, indices = await decode_task.process_results(
                 args=args,
                 logits=logits,
                 indices=None,
                 device0=device0,
             )
+
+            decode_task_responder.set_success(logits, indices)
 
             for req in decode_task._exec_requests:
                 results = req.result_logits.items.tolist()
@@ -483,6 +516,7 @@ class TestDecodeTask:
         fiber,
         lsys,
         decode_task,
+        decode_task_responder,
         result_logits_w_indices_decode,
     ):
         async def _test():
@@ -492,12 +526,14 @@ class TestDecodeTask:
             )
 
             logits, indices = result_logits_w_indices_decode
-            await decode_task.process_results(
+            logits, indices = await decode_task.process_results(
                 args=args,
                 logits=logits,
                 indices=indices,
                 device0=device0,
             )
+
+            decode_task_responder.set_success(logits, indices)
 
             # Verify get_result picked the exact [i, sl, :] vectors
             for i, req in enumerate(decode_task._exec_requests):
@@ -518,6 +554,7 @@ class TestLlmInvocationProcess:
         lsys,
         llm_invoker: LlmInvocationProcess,
         prefill_task,
+        prefill_task_responder: PrefillTaskResponder,
         result_logits_none_indices,
     ):
         async def _test():
@@ -525,6 +562,7 @@ class TestLlmInvocationProcess:
                 return result_logits_none_indices
 
             llm_invoker.functions = {len(prefill_task._exec_requests): entrypoint}
+            llm_invoker.responder = prefill_task_responder
             await llm_invoker.run()
 
             logits, _ = result_logits_none_indices
