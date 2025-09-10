@@ -42,17 +42,18 @@ def main(cli_args: list[str] | None = None):
     device = torch.device(args.device) if args.device else None
     dataset = cli.get_input_dataset(args)
     tokenizer = cli.get_tokenizer(args)
+    dtype_flags = cli.get_dtype_flags(args)
 
-    config = LlamaModelConfig.from_properties(dataset.properties)
-    config.block_seq_stride = args.block_seq_stride
-    config.device = device
-    config.activation_dtype = args.activation_dtype
-    config.attention_dtype = args.attention_dtype
-    config.attention_kernel = args.attention_kernel
-    config.matmul_kernel = args.matmul_kernel
-    config.kv_cache_dtype = args.kv_cache_dtype
-    config.use_hf = args.use_hf
-    config.fake_quant = args.fake_quant
+    config = LlamaModelConfig.from_dataset(
+        dataset=dataset,
+        block_seq_stride=args.block_seq_stride,
+        device=device,
+        attention_kernel=args.attention_kernel,
+        matmul_kernel=args.matmul_kernel,
+        use_hf=args.use_hf,
+        fake_quant=args.fake_quant,
+        **dtype_flags,
+    )
 
     if args.tensor_parallelism_size != config.tensor_parallelism_size:
         assert (
