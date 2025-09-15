@@ -265,7 +265,7 @@ class DefaultPagedKVCache(PagedKVCache):
             page_index = (
                 start_positions.unsqueeze(1) // self.block_seq_stride
             ) + torch.arange(block_seq_len)
-            page_ids = torch.gather(page_ids, dim=1, index=page_index)
+            page_ids = ops.gather(page_ids, dim=1, index=page_index)
 
         _, block_seq_len, *_ = page_ids.shape
         for cache_partition_id, cache_partition in enumerate(cache_partitions):
