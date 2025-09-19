@@ -93,6 +93,7 @@ class LlamaHParams:
     # RoPE config
     rope_dimension_count: Optional[int] = None
     rope_freq_base: Optional[float] = None
+    rope_interleave_emb: bool = True
 
     # MoE config
     expert_count: Optional[int] = None
@@ -176,6 +177,9 @@ class LlamaHParams:
             rope_freq_base=_optional_float_prop(
                 p, f"{name_prefix}.rope.freq_base", default_rope_freq_base
             ),
+            rope_interleave_emb=_optional_bool_prop(
+                p, f"{name_prefix}.rope.interleave_emb", True
+            ),
             no_rope_layer_step=_optional_int_prop(
                 p, f"{name_prefix}.no_rope_layer_step", None
             ),
@@ -230,6 +234,8 @@ class LlamaHParams:
             res[f"{self.model_arch}.rope.dimension_count"] = self.rope_dimension_count
         if self.rope_freq_base is not None:
             res[f"{self.model_arch}.rope.freq_base"] = self.rope_freq_base
+        if self.rope_interleave_emb is not None:
+            res[f"{self.model_arch}.rope.interleave_emb"] = self.rope_interleave_emb
         if self.expert_feed_forward_length is not None:
             res[
                 f"{self.model_arch}.expert_feed_forward_length"
@@ -510,11 +516,6 @@ class LlamaModelConfig:
     # Whether to use shuffled kernels for quantized operations.
     use_shuffled_kernel: bool = False
 
-    # Indicates if running with HuggingFace implementation and ensures
-    # numerical equivalency to HuggingFace's LLaMa if true (by modifying
-    # rotary embedding).
-    use_hf: bool = False
-
     # A list of layer indices where chunked attention is applied instead of full attention.
     chunked_attention_layers: Optional[set[int]] = None
 
@@ -590,8 +591,6 @@ class LlamaModelConfig:
         res["block_to_pipeline_map"] = self.block_to_pipeline_map
         res["pipeline_to_device_map"] = self.pipeline_to_device_map
         res["attention_kernel"] = self.attention_kernel
-        res["use_shuffled_kernel"] = self.use_shuffled_kernel
-        res["use_hf"] = self.use_hf
         res["use_qk_norm"] = self.use_qk_norm
         res["attention_chunk_size"] = self.attention_chunk_size
         if self.chunked_attention_layers is not None:
@@ -689,7 +688,6 @@ class LlamaModelConfig:
             hp=hp,
             activation_dtype=activation_dtype,
             attention_dtype=attention_dtype,
-            use_hf=True,
             dtype=dtype,
         )
 
