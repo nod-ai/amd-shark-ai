@@ -28,6 +28,7 @@ import torch
 
 from datasets import load_dataset
 from iree.runtime import ParameterIndex
+from sharktank import ops
 from sharktank.layers.configs.llm_configs import LlamaModelConfig
 from sharktank.models.llm.config import ServiceConfig
 from sharktank.models.llm import PagedLlmModelV1
@@ -37,6 +38,8 @@ from sharktank.utils.attention import *
 np_dtype_to_torch_dtype = {
     # This torch-to-torch map is an abuse to circumvent that numpy does not have bf16.
     torch.bfloat16: torch.bfloat16,
+    torch.float8_e4m3fn: torch.float8_e4m3fn,
+    torch.float8_e4m3fnuz: torch.float8_e4m3fnuz,
     numpy.float16: torch.float16,
     numpy.float32: torch.float32,
 }
@@ -199,11 +202,11 @@ class TorchInstance:
         config = LlamaModelConfig.from_properties(dataset.properties)
         return TorchInstance(theta=dataset.root_theta, config=config)
 
-    def prefill(self, tokens, seq_lens, seq_block_ids, cache_state):
+    def prefill(self, tokens, seq_lens, seq_block_ids, *cache_state):
         tokens = torch.asarray(tokens, device=self._device)
         seq_lens = torch.asarray(seq_lens, device=self._device)
         seq_block_ids = torch.asarray(seq_block_ids, device=self._device)
-        cache_state = [torch.asarray(cache_state, device=self._device)]
+        cache_state = [torch.asarray(cs, device=self._device) for cs in cache_state]
 
         logits = self._model.prefill(
             tokens,
@@ -211,6 +214,8 @@ class TorchInstance:
             seq_block_ids=seq_block_ids,
             cache_state=cache_state,
         )
+
+        logits = ops.unshard(logits)
 
         # TODO: This should be handled by the model
         logits = torch.nn.functional.softmax(logits, dim=-1, dtype=torch.float32)
@@ -220,12 +225,12 @@ class TorchInstance:
 
         return logits
 
-    def decode(self, tokens, seq_lens, start_positions, seq_block_ids, cache_state):
+    def decode(self, tokens, seq_lens, start_positions, seq_block_ids, *cache_state):
         tokens = torch.asarray(tokens, device=self._device)
         seq_lens = torch.asarray(seq_lens, device=self._device)
         start_positions = torch.asarray(start_positions, device=self._device)
         seq_block_ids = torch.asarray(seq_block_ids, device=self._device)
-        cache_state = [torch.asarray(cache_state)]
+        cache_state = [torch.asarray(cs, device=self._device) for cs in cache_state]
 
         logits = self._model.decode(
             tokens,
@@ -235,6 +240,8 @@ class TorchInstance:
             cache_state=cache_state,
         )
 
+        logits = ops.unshard(logits)
+
         # TODO: This should be handled by the model
         logits = torch.nn.functional.softmax(logits, dim=-1, dtype=torch.float32)
         logits = torch.log(logits)
@@ -243,7 +250,6 @@ class TorchInstance:
         return logits
 
     def allocate(self, *shape, dtype, device_index: int):
-        assert device_index == 0, "Parallelism not supported for TorchInstance"
         dtype = np_dtype_to_torch_dtype[dtype]
         return torch.zeros(*shape, dtype=dtype, device=self._device)
 
@@ -264,8 +270,6 @@ class LlmBatch:
         self._prefill_bs = instance._prefill_bs
         self._decode_bs = instance._decode_bs
 
-        if isinstance(instance, TorchInstance):
-            assert len(page_sizes) == 1, "Parallelism not supported for TorchInstance"
         self._cache = [
             instance.allocate(
                 page_count,
