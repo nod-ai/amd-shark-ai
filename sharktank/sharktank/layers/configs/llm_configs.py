@@ -131,6 +131,18 @@ class LlamaHParams:
     # Scaling factor applied as a floor value in attention computations.
     floor_scale: Optional[int] = None
 
+    # gpt-oss configs
+    sliding_window: int = 0  # 0 = no sliding window, >0 = window size
+    swiglu_limit: Optional[float] = None  # Limit for swiglu activation function
+    use_base_frequency_scaling: bool = False  # Whether to use base^(i/d) frequency scaling for RoPE, applies base frequency YaRN variant
+    topk_then_softmax: bool = (
+        False  # Whether to use topk then softmax MoE routing without expert groups
+    )
+    use_residual_moe: bool = False  # Whether to use residual connection after MoE
+    # FFN processing configuration
+    moe_block_type: str = "DenseFFNMOE"  # DenseFFNMOE, PreGatherFFNMOE
+    use_fused_qkv: bool = False  # Whether to use fused QKV for attention
+
     @staticmethod
     def from_gguf_props(p: dict[str, Any]):
         name_prefix = p.get("general.architecture", "llama")
@@ -263,6 +275,11 @@ class LlamaHParams:
         if self.attention_scale is not None:
             res[f"{self.model_arch}.attn_scale"] = self.attention_scale
 
+        if self.sliding_window > 0:
+            res[f"{self.model_arch}.sliding_window"] = self.sliding_window
+        if self.swiglu_limit is not None:
+            res[f"{self.model_arch}.swiglu_limit"] = self.swiglu_limit
+
         return res
 
 
@@ -317,6 +334,20 @@ def get_custom_configs(p: dict[str, Any], name_prefix: str):
         res["expert_shared_feed_forward_length"] = _int_prop(
             p, f"{name_prefix}.expert_shared_feed_forward_length"
         )
+
+    if name_prefix == "gpt-oss":
+        res["sliding_window"] = _optional_int_prop(
+            p, f"{name_prefix}.sliding_window", 128
+        )  # Default for gpt-oss
+        res["swiglu_limit"] = _float_prop(p, f"{name_prefix}.swiglu_limit")
+
+        res["moe_block_type"] = "PreGatherFFNMOE"
+        res["use_residual_moe"] = True
+        res["use_base_frequency_scaling"] = True
+        res["use_fused_qkv"] = True
+        res["topk_then_softmax"] = True
+        res["use_decomposed_attention"] = True
+        res["rope_interleave_emb"] = False
 
     return res
 
