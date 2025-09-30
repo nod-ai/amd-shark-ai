@@ -119,8 +119,10 @@ def server(model_artifacts, request):
     )
     yield process, port, config
 
-    process.terminate()
-    process.wait()
+    # Teardown, if process is still running
+    if process.poll() is None:
+        process.terminate()
+        process.wait()
 
 
 @pytest.fixture(scope="module")

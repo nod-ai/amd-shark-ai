@@ -1,8 +1,10 @@
 import concurrent.futures
 import json
 import logging
+import numpy as np
 import pytest
 import requests
+from torch import Tensor
 
 pytest.importorskip("sentence_transformers")
 
@@ -91,8 +93,7 @@ ALL = DatasetRequest(
 ACCURACY_THRESHOLD = 0.99
 
 
-@pytest.fixture(scope="module")
-def comparison_model(model_name: str = "all-MiniLM-L6-v2"):
+def load_comparison_model(model_name: str = "all-MiniLM-L6-v2") -> SentenceTransformer:
     model = SentenceTransformer(model_name)
     return model
 
@@ -102,11 +103,13 @@ class TestLLMAccuracy:
         resp = requests.get(f"{base_url}/health")
         assert resp.status_code == 200
 
-    def _compute_similarity(
-        self, comparison_model: SentenceTransformer, sentence_1: str, sentence_2: str
-    ):
-        embeddings = comparison_model.encode([sentence_1, sentence_2])
-        return util.pytorch_cos_sim(embeddings[0], embeddings[1]).item()
+    def _get_embeddings(
+        self, comparison_model: SentenceTransformer, sentences: List[str]
+    ) -> np.ndarray:
+        return comparison_model.encode(sentences)
+
+    def _compute_similarity(self, embedding_1: Tensor, embedding_2: Tensor):
+        return util.pytorch_cos_sim(embedding_1, embedding_2).item()
 
     def _validate_response(
         self,
@@ -119,35 +122,53 @@ class TestLLMAccuracy:
         total_incorrect = 0
         incorrect_prompts = []
 
+        # Gather prompts and expected generations
+        expected_generations = []
+        prompts = []
+        actual_generations = []
         for result in results:
             responses = result["responses"]
             for response in responses:
                 prompt = response["prompt"]
-
-                expected_generation = dataset.get_expected_generation(prompt)
                 actual_generation = response["responses"][0]["text"]
+                actual_generations.append(actual_generation)
+                expected_generation = dataset.get_expected_generation(prompt)
+                prompts.append(prompt)
+                expected_generations.append(expected_generation)
 
-                accuracy = self._compute_similarity(
-                    comparison_model, expected_generation, actual_generation
+        # Get embeddings for expected generations
+        expected_embeddings = self._get_embeddings(
+            comparison_model, expected_generations
+        )
+        # Get embeddings for actual generations
+        actual_embeddings = self._get_embeddings(comparison_model, actual_generations)
+
+        for index, (actual_generation, expected_generation) in enumerate(
+            zip(actual_generations, expected_generations)
+        ):
+            prompt = prompts[index]
+            expected_embedding = expected_embeddings[index]
+            actual_embedding = actual_embeddings[index]
+
+            accuracy = self._compute_similarity(expected_embedding, actual_embedding)
+            if accuracy < ACCURACY_THRESHOLD:
+                logger.error(
+                    f"Mismatch for prompt: {prompt}\n, With Accuracy: {accuracy:.2f}\n"
+                    f"{'-' * 80} Expected {'-' * 80}\n{expected_generation}\n"
+                    f"{'-' * 80} Actual {'-' * 80}\n{actual_generation}\n"
                 )
-                if accuracy < ACCURACY_THRESHOLD:
-                    logger.error(
-                        f"Mismatch for prompt: {prompt}\n, With Accuracy: {accuracy:.2f}\n"
-                        f"{'-' * 80} Expected {'-' * 80}\n{expected_generation}\n"
-                        f"{'-' * 80} Actual {'-' * 80}\n{actual_generation}\n"
+                total_incorrect += 1
+                incorrect_prompts.append(
+                    IncorrectPrompt(
+                        prompt=prompt,
+                        expected=expected_generation,
+                        actual=actual_generation,
+                        accuracy=accuracy,
                     )
-                    total_incorrect += 1
-                    incorrect_prompts.append(
-                        IncorrectPrompt(
-                            prompt=prompt,
-                            expected=expected_generation,
-                            actual=actual_generation,
-                            accuracy=accuracy,
-                        )
-                    )
-                    continue
+                )
+                continue
 
-                total_correct += 1
+            total_correct += 1
 
         return AccuracyResults(
             total_prompts=total_prompts,
@@ -235,7 +256,6 @@ class TestLLMAccuracy:
         batch_size: int,
         num_workers: int,
         server,
-        comparison_model: SentenceTransformer,
     ):
         process, port, config = server
         assert process.poll() is None, "Server process terminated unexpectedly."
@@ -249,6 +269,12 @@ class TestLLMAccuracy:
         server_results = self._request_loop(
             base_url, dataset_instance, sampling_params, num_workers
         )
+
+        # Kill the server before loading the comparison model to free up resources
+        process.terminate()
+        process.wait()
+
+        comparison_model = load_comparison_model()
         accuracy_results = self._validate_response(
             comparison_model, dataset_instance, server_results
         )
