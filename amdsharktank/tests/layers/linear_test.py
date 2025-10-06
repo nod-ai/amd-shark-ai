@@ -13,6 +13,7 @@ from amdsharktank.layers import *
 from amdsharktank.types import *
 from amdsharktank.utils.logging import get_logger
 from amdsharktank.utils.random import make_rand_torch
+from amdsharktank.utils.testing import TempDirTestBase
 from amdsharktank.types.pipelining import parallelize_in_place
 import amdsharktank.ops as ops
 
@@ -56,8 +57,9 @@ _cases = [
 ]
 
 
-class LinearQuantTest(unittest.TestCase):
+class LinearQuantTest(TempDirTestBase):
     def setUp(self):
+        super().setUp()
         torch.manual_seed(12345)
 
     def testNativeQuant_SymPerTensor_AsymPerAxis0_Dynamic(self):
