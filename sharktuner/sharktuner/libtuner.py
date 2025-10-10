@@ -119,7 +119,7 @@ class TuningClient(ABC):
         pass
 
     @abstractmethod
-    def get_iree_compile_timeout_s(self) -> int:
+    def get_iree_compile_timeout_s(self) -> Optional[int]:
         pass
 
     @abstractmethod
@@ -127,21 +127,36 @@ class TuningClient(ABC):
         pass
 
     @abstractmethod
-    def get_benchmark_timeout_s(self) -> int:
+    def get_iree_benchmark_timeout_s(self) -> Optional[int]:
+        """
+        Returns benchmark timeout in seconds.
+        If None, no timeout is applied.
+
+        When auto timeout is enabled, this is used only for the baseline run.
+        Otherwise, it applies to both baseline and candidate runs.
+        """
+        pass
+
+    @abstractmethod
+    def is_auto_iree_benchmark_timeout(self) -> bool:
+        """
+        Return True if tuner should automatically derive candidate benchmark timeouts
+        from baseline results.
+        """
         pass
 
 
 @dataclass
 class CompilePack:
     iree_compile_flags: list[str]
-    iree_compile_timeout: int
+    iree_compile_timeout: Optional[int]
     candidate_tracker: CandidateTracker
 
 
 @dataclass
 class BenchmarkPack:
     iree_benchmark_module_flags: list[str]
-    benchmark_timeout: int
+    benchmark_timeout: Optional[int]
     candidate_tracker: CandidateTracker
 
 
@@ -861,6 +876,7 @@ def benchmark_candidates(
     candidate_indices: list[int],
     devices: list[str],
     tuning_client: TuningClient,
+    timeout_reference=float,
     benchmark_time: Optional[float] = None,
 ) -> list[BenchmarkResult]:
     """
@@ -868,10 +884,16 @@ def benchmark_candidates(
     """
     worker_context_queue = create_worker_context_queue(devices)
 
+    benchmark_timeout = (
+        timeout_reference
+        if tuning_client.is_auto_iree_benchmark_timeout()
+        else tuning_client.get_iree_benchmark_timeout_s()
+    )
+
     task_list = [
         BenchmarkPack(
             iree_benchmark_module_flags=tuning_client.get_iree_benchmark_module_flags(),
-            benchmark_timeout=tuning_client.get_benchmark_timeout_s(),
+            benchmark_timeout=benchmark_timeout,
             candidate_tracker=tuning_client.candidate_trackers[idx],
         )
         for idx in candidate_indices
@@ -907,7 +929,7 @@ def benchmark_baseline(
                 result = run_iree_benchmark_module_command(
                     BenchmarkPack(
                         iree_benchmark_module_flags=tuning_client.get_iree_benchmark_module_flags(),
-                        benchmark_timeout=tuning_client.get_benchmark_timeout_s(),
+                        benchmark_timeout=tuning_client.get_iree_benchmark_timeout_s(),
                         candidate_tracker=candidate_tracker,
                     )
                 )
@@ -988,6 +1010,40 @@ class BaselineResultHandler:
     def is_valid_for_device(self, device_id: str) -> bool:
         return len(self.get_valid_time_ms(device_id)) != 0
 
+    def get_fallback_baseline(self) -> Optional[float]:
+        if not self.is_valid():
+            logging.warning("No valid baseline times available.")
+            return None
+
+        # Calculate the fallback baseline as the average of all valid times across devices.
+        valid_baseline_times = [
+            result.time
+            for results in self.device_baseline_results.values()
+            for result in results
+            if result.is_valid()
+        ]
+        assert valid_baseline_times
+        return sum(valid_baseline_times) / len(valid_baseline_times)
+
+    def is_better_than_baseline(self, candidate_results: list[BenchmarkResult]) -> bool:
+        """
+        Returns True if any candidate runs faster than the baseline.
+
+        Uses the device-specific average baseline if available,
+        otherwise falls back to the overall average baseline time.
+        """
+        fallback_baseline = self.get_fallback_baseline()
+        if not fallback_baseline:
+            return False
+        for candidate in candidate_results:
+            baseline_avg_ms = self.get_average_result_ms(candidate.device_id)
+            if baseline_avg_ms is None:
+                baseline_avg_ms = fallback_baseline
+            assert baseline_avg_ms
+            if candidate.time < baseline_avg_ms:
+                return True
+        return False
+
     def get_candidates_ordered_by_speedup(
         self, candidate_results: list[BenchmarkResult]
     ) -> list[tuple[BenchmarkResult, float]]:
@@ -1014,21 +1070,13 @@ class BaselineResultHandler:
                 key=lambda x: x[0].time,
             )
 
-        # Calculate the fallback baseline as the average of all valid times across devices.
-        valid_baseline_times = [
-            result.time
-            for device_id in self.device_baseline_results
-            for result in self.device_baseline_results[device_id]
-            if result.is_valid()
-        ]
-
-        fallback_baseline = sum(valid_baseline_times) / len(valid_baseline_times)
-
+        fallback_baseline = self.get_fallback_baseline()
         candidates_with_speedup = []
         for candidate in candidate_results:
             baseline_avg_ms = self.get_average_result_ms(candidate.device_id)
             if baseline_avg_ms is None:
                 baseline_avg_ms = fallback_baseline
+                assert baseline_avg_ms
             speedup = candidate.time / baseline_avg_ms
             candidates_with_speedup.append((candidate, speedup))
         return sorted(candidates_with_speedup, key=lambda x: x[1])
@@ -1142,11 +1190,19 @@ def benchmark(
     if not baseline_handler.is_valid():
         logging.warning("Baseline run failed.")
 
+    baseline_time_max = (
+        max(b.time for b in first_baseline_result) / 1000
+    )  # Convert ms to s.
+    if tuning_client.is_auto_iree_benchmark_timeout():
+        logging.info(
+            f"Smart candidate benchmark timeout is set to {baseline_time_max:.2f}s"
+        )
     candidate_indices = [i for i in compiled_candidates if i != 0]
     candidate_results = benchmark_candidates(
         candidate_indices=candidate_indices,
         devices=args.devices,
         tuning_client=tuning_client,
+        timeout_reference=baseline_time_max,
         benchmark_time=benchmark_time,  # Only candidate benchmark has time limit.
     )
 
@@ -1166,11 +1222,17 @@ def benchmark(
     if not baseline_handler.is_valid():
         logging.warning("Baseline run failed.")
 
+    top_candidate_ids: list[int] = []
+
+    if not baseline_handler.is_better_than_baseline(candidate_results):
+        logging.warning("All candidates are slower than the baseline.")
+        return top_candidate_ids
+
     all_candidates_with_speedup = baseline_handler.get_candidates_ordered_by_speedup(
         candidate_results
     )
     top_candidates_with_speedup = all_candidates_with_speedup[:num_candidates]
-    top_candidate_ids = []
+
     if baseline_handler.is_valid():
         for candidate, speedup in top_candidates_with_speedup:
             time_ms = candidate.time
