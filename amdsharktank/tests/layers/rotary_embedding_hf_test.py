@@ -428,7 +428,6 @@ class RotaryWrapper(torch.nn.Module):
         return self.inner(q, k, pos)
 
 
-@pytest.mark.usefixtures("iree_flags", "device")
 class TestRotaryOpenWeightIree(TempDirTestBase):
     def setUp(self):
         super().setUp()
@@ -524,7 +523,6 @@ class TestRotaryOpenWeightIree(TempDirTestBase):
                 device=iree_devices[0],
                 function_name="rotary_openweight_fw",
             )
-            time.sleep(2)
             iree_result = iree_to_torch(*iree_result)
             return iree_result
 
