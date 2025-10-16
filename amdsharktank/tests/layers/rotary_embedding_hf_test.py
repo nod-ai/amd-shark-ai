@@ -26,7 +26,7 @@ from amdsharktank.utils.iree import (
 )
 from amdsharktank import ops
 from amdsharktank.utils.logging import get_logger
-from amdsharktank.utils.testing import TempDirTestBase, assert_tensor_close
+from amdsharktank.utils.testing import TempDirTestBase, assert_tensor_close, is_hip_condition
 import iree.compiler
 from iree.turbine.aot import (
     FxProgramsBuilder,
@@ -445,6 +445,7 @@ class TestRotaryOpenWeightIree(TempDirTestBase):
             for (bs, length, heads, dims) in _SHAPE_CASES
         ]
     )
+    @pytest.mark.skipif(f"not ({is_hip_condition})", reason="Test requires HIP device")
     def test_rotary_openweight_interweaved_iree(
         self,
         dtype: torch.dtype,
@@ -526,7 +527,6 @@ class TestRotaryOpenWeightIree(TempDirTestBase):
             )
             iree_result_torch = iree_to_torch(*iree_result)
             iree_result_torch = tuple(t.clone() for t in iree_result_torch)
-            del iree_result
             return iree_result_torch
 
         iree_results = with_iree_device_context(run_iree_module, iree_devices)
