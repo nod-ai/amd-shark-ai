@@ -41,6 +41,55 @@ from sharktank.utils.iree import (
 )
 
 
+class ArangeTest(unittest.TestCase):
+    def testEndOnly(self):
+        expected = torch.arange(5)
+        actual = ops.arange(5)
+        assert ops.equal(expected, actual)
+
+    def testStartEnd(self):
+        expected = torch.arange(2, 7)
+        actual = ops.arange(2, 7)
+        assert ops.equal(expected, actual)
+
+    def testStartEndStep(self):
+        expected = torch.arange(1, 10, 2)
+        actual = ops.arange(1, 10, 2)
+        assert ops.equal(expected, actual)
+
+    @parameterized.expand([torch.float32, torch.int64])
+    def testDtype(self, dtype):
+        expected = torch.arange(0, 6, dtype=dtype)
+        actual = ops.arange(0, 6, dtype=dtype)
+        assert expected.dtype == actual.dtype
+        assert ops.equal(expected, actual)
+
+    def testFloatStep(self):
+        expected = torch.arange(0.0, 1.0, 0.1, dtype=torch.float32)
+        actual = ops.arange(0.0, 1.0, 0.1, dtype=torch.float32)
+        assert ops.equal(expected, actual)
+
+    def testEmptyRange(self):
+        expected = torch.arange(5, 5)
+        actual = ops.arange(5, 5)
+        assert ops.equal(expected, actual)
+
+    @parameterized.expand(
+        [
+            ((3,),),
+            ((3, 2),),
+            ((3, 2, 1),),
+        ]
+    )
+    def testDevicesReplicated(self, devices: tuple[int, ...]):
+        expected = torch.arange(0, 6, dtype=torch.float32)
+        actual = ops.arange(0, 6, devices=devices, dtype=torch.float32)
+        assert isinstance(actual, ReplicatedTensor)
+        assert tuple(devices) == actual.devices
+        assert actual.shard_count == len(devices)
+        assert all(ops.equal(shard, expected) for shard in actual.shards)
+
+
 class ArgmaxTest(unittest.TestCase):
     @parameterized.expand([torch.float16, torch.float32])
     def testArgmax(self, dtype):
