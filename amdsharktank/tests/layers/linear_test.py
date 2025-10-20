@@ -57,9 +57,8 @@ _cases = [
 ]
 
 
-class LinearQuantTest(TempDirTestBase):
+class LinearQuantTest(unittest.TestCase):
     def setUp(self):
-        super().setUp()
         torch.manual_seed(12345)
 
     def testNativeQuant_SymPerTensor_AsymPerAxis0_Dynamic(self):
