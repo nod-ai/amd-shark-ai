@@ -863,7 +863,7 @@ def swiglu_default(
         x_glu = x_glu.clamp(min=None, max=limit)
         x_lin = x_lin.clamp(min=-limit, max=limit)
     # SwiGLU: swish(alpha * a) * (b + 1)
-    alpha = torch.tensor(alpha, dtype=x.dtype)
+    alpha = tensor(alpha, dtype=x.dtype)
     out_glu = x_glu * sigmoid(alpha * x_glu)
     return out_glu * (x_lin + 1)
 
@@ -1016,6 +1016,25 @@ def squeeze_default(tensor, dim: Optional[int] = None) -> AnyTensor:
         return torch.squeeze(unbox_tensor(tensor))
     else:
         return torch.squeeze(unbox_tensor(tensor), dim)
+
+
+def tensor_default(
+    data: AnyTensor | Number,
+    *,
+    dtype: torch.dtype | None = None,
+    device: torch.device | None = None,
+    devices: Sequence[int] | None = None,
+) -> AnyTensor:
+    if devices is not None:
+        return NotImplemented
+
+    if isinstance(data, AnyTensor):
+        data = unbox_tensor(data)
+    return torch.tensor(data, dtype=dtype, device=device)
+
+
+tensor.override()(tensor_default)
+tensor.override(Tensor)(tensor_default)
 
 
 @topk.override(AllOfType(Tensor, PrimitiveTensor))
