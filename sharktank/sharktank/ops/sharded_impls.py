@@ -19,7 +19,6 @@ from sharktank.types import (
     BlockScaledLayout,
     DefaultPrimitiveTensor,
     InferenceTensor,
-    is_any_tensor,
     PrimitiveTensor,
     QuantizedLayout,
     ReplicatedTensor,
@@ -30,8 +29,9 @@ from sharktank.types import (
     Theta,
     UnnamedTensorName,
     UnreducedTensor,
+    is_any_tensor,
+    unbox_tensor,
 )
-from sharktank.types.tensors import unbox_tensor, is_any_tensor
 from ._registry import (
     AllOfExprs,
     AllOfType,
@@ -86,7 +86,7 @@ def sharded_wrap_override():
                     value,
                     (
                         InferenceTensor,
-                        torch.Tensor,
+                        Tensor,
                     ),
                 ):
                     continue
@@ -169,7 +169,7 @@ def _register_trivially_replicable():
     def replicated_if_tensor(t: type) -> bool:
         if issubclass(t, ReplicatedTensor):
             return True
-        if not issubclass(t, (torch.Tensor, InferenceTensor)):
+        if not issubclass(t, (Tensor, InferenceTensor)):
             return True
         return False
 
@@ -1260,7 +1260,7 @@ def reshard_theta_sharding(input: Theta, spec: sharding.ThetaSharding) -> Theta:
         result = reshard(input, spec)
         if isinstance(result, Theta):
             result = result.tree
-        elif isinstance(result, torch.Tensor):
+        elif isinstance(result, Tensor):
             result = DefaultPrimitiveTensor(data=result, name=input.name)
         else:
             assert isinstance(result, InferenceTensor)
