@@ -405,6 +405,157 @@ public:
   }
 };
 
+class ConvDGradNode : public NodeCRTP<ConvDGradNode> {
+public:
+  ConvDGradAttr convDGradAttr;
+
+  ConvDGradNode(ConvDGradAttr &&attr, const Context &ctx)
+      : NodeCRTP(ctx), convDGradAttr(std::move(attr)) {}
+
+  // MLIR assembly emitter helper methods.
+  std::string emitNodePreAsm() const override final;
+  std::string getOperandNamesAsm() const;
+  std::string getOperandTypesAsm() const;
+  std::string getResultNamesAsm() const;
+  std::string getResultTypesAsm() const;
+  std::string getStrideOpsAsm() const;
+  std::string getPaddingOpsAsm() const;
+  std::string getDilationOpsAsm() const;
+  std::string getPermuteDYOpsAsm() const;
+  std::string getPermuteWOpsAsm() const;
+  std::string getPermuteDXOpsAsm() const;
+  std::string getPermuteEmptyXOpsAsm() const;
+
+  const std::string &getName() const override final {
+    return convDGradAttr.getName();
+  }
+  Type getType() const override final { return Type::DGrad; }
+
+  ErrorObject preValidateNode() const override final {
+    FUSILLI_LOG_LABEL_ENDL("INFO: Pre-Validating ConvDGradNode '"
+                           << convDGradAttr.getName() << "'");
+
+    const std::vector<int64_t> &padding = convDGradAttr.getPadding();
+    const std::vector<int64_t> &stride = convDGradAttr.getStride();
+    const std::vector<int64_t> &dilation = convDGradAttr.getDilation();
+    FUSILLI_RETURN_ERROR_IF(padding.empty(), ErrorCode::AttributeNotSet,
+                            "ConvDGrad padding not set");
+    FUSILLI_RETURN_ERROR_IF(stride.empty(), ErrorCode::AttributeNotSet,
+                            "ConvDGrad stride not set");
+    FUSILLI_RETURN_ERROR_IF(dilation.empty(), ErrorCode::AttributeNotSet,
+                            "ConvDGrad dilation not set");
+
+    std::shared_ptr<TensorAttr> dyT = convDGradAttr.getDY();
+    std::shared_ptr<TensorAttr> wT = convDGradAttr.getW();
+    std::shared_ptr<TensorAttr> dxT = convDGradAttr.getDX();
+
+    // Ensure input and weight tensors are set.
+    FUSILLI_RETURN_ERROR_IF(!dyT, ErrorCode::AttributeNotSet,
+                            "ConvDGrad gradient tensor DY not set");
+    FUSILLI_RETURN_ERROR_IF(!wT, ErrorCode::AttributeNotSet,
+                            "ConvDGrad input tensor W not set");
+    FUSILLI_RETURN_ERROR_IF(!dxT, ErrorCode::AttributeNotSet,
+                            "ConvDGrad output tensor DX not set");
+
+    size_t dyRank = dyT->getDim().size();
+    size_t wRank = wT->getDim().size();
+
+    FUSILLI_RETURN_ERROR_IF(
+        dyRank < 3 || wRank < 3, ErrorCode::InvalidAttribute,
+        "ConvDGrad input tensors DY/W must have a rank of at least 3");
+
+    // Check padding, stride and dilation match rank of conv
+    // All dims except batch and channel (feature) are spatial dims
+    size_t numSpatialDims = dyRank - 2;
+    FUSILLI_RETURN_ERROR_IF(
+        padding.size() != numSpatialDims, ErrorCode::InvalidAttribute,
+        "ConvDGrad padding size does not match number of spatial dimensions");
+    FUSILLI_RETURN_ERROR_IF(
+        stride.size() != numSpatialDims, ErrorCode::InvalidAttribute,
+        "ConvDGrad stride size does not match number of spatial dimensions");
+    FUSILLI_RETURN_ERROR_IF(
+        dilation.size() != numSpatialDims, ErrorCode::InvalidAttribute,
+        "ConvDGrad dilation size does not match number of spatial dimensions");
+
+    // Layout checks on input tensors.
+    FUSILLI_RETURN_ERROR_IF(!dyT->isContiguous() && !dyT->isChannelsLast(),
+                            ErrorCode::NotImplemented,
+                            "Tensor '" + dyT->getName() +
+                                "' is neither contiguous nor channels-last as "
+                                "defined by its stride");
+    FUSILLI_RETURN_ERROR_IF(!wT->isContiguous() && !wT->isChannelsLast(),
+                            ErrorCode::NotImplemented,
+                            "Tensor '" + wT->getName() +
+                                "' is neither contiguous nor channels-last as "
+                                "defined by its stride");
+    return ok();
+  }
+
+  ErrorObject inferPropertiesNode() override final {
+    FUSILLI_LOG_LABEL_ENDL("INFO: Inferring properties for ConvDGradNode '"
+                           << convDGradAttr.getName() << "'");
+
+    convDGradAttr.fillFromContext(context);
+
+    std::shared_ptr<TensorAttr> dyT = convDGradAttr.getDY();
+    std::shared_ptr<TensorAttr> dxT = convDGradAttr.getDX();
+    const std::vector<int64_t> &dxDim = dxT->getDim();
+    const std::vector<int64_t> &dxStride = dxT->getStride();
+
+    // Can't infer the output dims because we don't know the number of groups
+    // and `input_channels = output_channels * groups`.
+    // TODO: hipdnn allows inferring the dims by assuming that the group count
+    // is one but cudnn doesn't allow this to be inferred. Only infer stride of
+    // the DX tensor.
+    if (dxStride.empty()) {
+      // When unspecified, preserve the stride order of dyT.
+      dxT->setStride(
+          dyT->isContiguous()
+              ? generateStrideFromDim(dxDim,
+                                      getContiguousStrideOrder(dxDim.size()))
+              : generateStrideFromDim(
+                    dxDim, getChannelsLastStrideOrder(dxDim.size())));
+    }
+
+    return ok();
+  }
+
+  ErrorObject postValidateNode() const override final {
+    FUSILLI_LOG_LABEL_ENDL("INFO: Post-Validating ConvDGradNode '"
+                           << convDGradAttr.getName() << "'");
+
+    std::shared_ptr<TensorAttr> dyT = convDGradAttr.getDY();
+    std::shared_ptr<TensorAttr> wT = convDGradAttr.getW();
+    std::shared_ptr<TensorAttr> dxT = convDGradAttr.getDX();
+    size_t dyRank = dyT->getDim().size();
+    size_t dxRank = dxT->getDim().size();
+
+    FUSILLI_RETURN_ERROR_IF(
+        dxRank < 3, ErrorCode::InvalidAttribute,
+        "ConvDGrad input gradient DX must have a rank of at least 3");
+    FUSILLI_RETURN_ERROR_IF(dyRank != dxRank, ErrorCode::InvalidAttribute,
+                            "ConvDGrad tensors DY and DX have different ranks");
+
+    FUSILLI_RETURN_ERROR_IF(
+        dyT->getDim() != getConvInferredOutputShape(dxT->getDim(), wT->getDim(),
+                                                    convDGradAttr.getDilation(),
+                                                    convDGradAttr.getPadding(),
+                                                    convDGradAttr.getStride()),
+        ErrorCode::InvalidAttribute,
+        "ConvDGrad DY dimensions do not match the expected shapes inferred "
+        "based on DX and W");
+
+    // Contiguity check for output tensor.
+    FUSILLI_RETURN_ERROR_IF(!dxT->isContiguous() && !dxT->isChannelsLast(),
+                            ErrorCode::NotImplemented,
+                            "Tensor '" + dxT->getName() +
+                                "' is neither contiguous nor channels-last as "
+                                "defined by its stride");
+
+    return ok();
+  }
+};
+
 } // namespace fusilli
 
 #endif // FUSILLI_NODE_CONV_NODE_H
