@@ -268,6 +268,7 @@ public:
   std::string getOperandTypesAsm() const;
   std::string getResultNamesAsm() const;
   std::string getResultTypesAsm() const;
+  std::string getGroupOpsAsm() const;
   std::string getStrideOpsAsm() const;
   std::string getPaddingOpsAsm() const;
   std::string getDilationOpsAsm() const;
@@ -341,6 +342,28 @@ public:
                             "Tensor '" + xT->getName() +
                                 "' is neither contiguous nor channels-last as "
                                 "defined by its stride");
+
+    // Group count checks
+    constexpr size_t channelsIdx = 1;
+    int64_t inChannels = xT->getDim()[channelsIdx];
+    int64_t outChannels = dyT->getDim()[channelsIdx];
+    int64_t filterChannels = dwT->getDim()[channelsIdx];
+    FUSILLI_RETURN_ERROR_IF(inChannels % filterChannels != 0,
+                            ErrorCode::InvalidAttribute,
+                            "ConvWGrad input (X) channels must be divisible by "
+                            "the filter (W) channels");
+
+    int64_t groupCount = inChannels / filterChannels;
+    FUSILLI_RETURN_ERROR_IF(groupCount <= 0 || groupCount > inChannels ||
+                                groupCount > outChannels,
+                            ErrorCode::InvalidAttribute,
+                            "ConvWGrad group count must be greater than 0 and "
+                            "less than or equal to the "
+                            "numbers of input and outputs channels");
+    FUSILLI_RETURN_ERROR_IF(
+        outChannels % groupCount != 0, ErrorCode::InvalidAttribute,
+        "ConvWGrad output (DY) channels must be divisible by the group count");
+
     return ok();
   }
 
