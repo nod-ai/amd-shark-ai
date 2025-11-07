@@ -154,10 +154,12 @@ def run_stage(
             logging.info(
                 "===================================================================================================================================================================================="
             )
+            start = time.time()
             run_cmd(export_cmd, OUTPUT_DIR, append=True)
             logging.info(
                 "============================================================================================== Export Done =============================================================================================="
             )
+            logging.info(f"Time taken by Export: {int(time.time()-start)} seconds")
 
     # === Compile Stage ===
     if stage in ["compile", "validate_vmfb", "benchmark", "online_serving", "all"]:
@@ -574,6 +576,8 @@ def main():
             text=True,
         )
         data = json.loads(result.stdout)
+        if "gpu_data" in data.keys():
+            data = data["gpu_data"]
         product_names = [
             gpu["board"]["product_name"]
             for gpu in data
@@ -605,8 +609,9 @@ def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     if args.model not in MODELS:
+        print(MODELS)
         print(
-            f" Model '{args.model}' not found in config. Models Available are llama-70b-fp16, llama-70b-fp8, llama-8b-fp16, llama-8b-fp8, mistral."
+            f" Model '{args.model}' not found in config. Models Available are {MODELS}."
         )
         sys.exit(1)
 
