@@ -27,6 +27,7 @@ import pathlib
 import time
 import torch
 
+from collections.abc import Sequence
 from copy import deepcopy
 from datasets import load_dataset
 from iree.runtime import ParameterIndex
@@ -711,19 +712,19 @@ class LlmPerplexityEval:
         self._logits_normalization = logits_normalization
 
     def compute_cross_entropy(
-        self, logits, indices, requests, min_context=0
+        self,
+        logits: Sequence[numpy.ndarray],
+        indices: Sequence[numpy.ndarray],
+        requests: list[list[int]],
+        min_context: int = 0,
     ) -> list["LlmPerplexityEval.Result"]:
         results = []
         for i, req in enumerate(requests):
             req_len = len(req)
             ctx_len = req_len - 1
             in_indices = numpy.asarray(req[1:])
-            req_logits = logits[i, :ctx_len]
-
-            if indices is None:
-                req_indices = numpy.arange(req_logits.shape[-1])[None, :]
-            else:
-                req_indices = indices[i, : req_len - 1]
+            req_logits = logits[i][:ctx_len]
+            req_indices = indices[i][: req_len - 1]
 
             if self._logits_normalization == "none":
                 req_logits = numpy.asarray(req_logits, dtype=numpy.float32)
@@ -759,7 +760,9 @@ class LlmPerplexityEval:
     def decode_bs(self):
         return self._batch._decode_bs
 
-    def prefill_cross_entropy(self, requests: list[list[int]], **kwargs):
+    def prefill_cross_entropy(
+        self, requests: list[list[int]], **kwargs
+    ) -> list["LlmPerplexityEval.Result"]:
         page_ids = [self._batch.allocate(token_count=len(req)) for req in requests]
         logits, indices = self._batch.prefill(requests, page_ids=page_ids)
         flat_page_ids = list(itertools.chain.from_iterable(page_ids))
