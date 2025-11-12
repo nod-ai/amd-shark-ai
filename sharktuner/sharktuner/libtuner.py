@@ -288,6 +288,7 @@ class CodegenPipelines(str, Enum):
 
 def parse_arguments(
     initial_parser: Optional[argparse.ArgumentParser] = None,
+    allow_unknown: bool = False,
 ) -> argparse.Namespace:
     parser = initial_parser
     if parser is None:
@@ -301,8 +302,9 @@ def parse_arguments(
 
     # General options.
     general_args = parser.add_argument_group("General Options")
+    # Note: No -v shorthand to avoid conflicts with MIOpen driver arguments (e.g., -v for vertical stride/dilation).
     general_args.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable verbose output to stdout"
+        "--verbose", action="store_true", help="Enable verbose output to stdout"
     )
     general_args.add_argument(
         "--devices",
@@ -404,6 +406,9 @@ def parse_arguments(
         ),
     )
 
+    if allow_unknown:
+        args, _ = parser.parse_known_args()
+        return args
     return parser.parse_args()
 
 
