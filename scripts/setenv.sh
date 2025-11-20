@@ -106,7 +106,8 @@ elif [[ $BUILD_TYPE = "source" ]]; then
     git checkout ${amdshark_AI_COMMIT_HASH}
 
     pip install -r requirements.txt
-    # Install amdsharktank and shortfin
+    # Install sharktank and shortfin
+    echo "installing sharktank and shortfin pwd: $(pwd)  ll: $(ls -la )"
     pip install -v amdsharktank/ shortfin/
 
     ## Install wave
@@ -141,6 +142,8 @@ elif [[ $BUILD_TYPE = "source" ]]; then
     git submodule update --init
     export IREE_HAL_DRIVER_HIP=ON
     export IREE_TARGET_BACKEND_ROCM=ON
+    export CMAKE_ARGS="-DIREE_HAL_DRIVER_HIP=ON -DIREE_TARGET_BACKEND_ROCM=ON -DIREE_HIP_TEST_TARGET_CHIP=gfx950"
+    echo "CMAKE_ARGS: $CMAKE_ARGS"
     pip install -v compiler/ runtime/
     echo -n "IREE (${IREE_REMOTE_REPO}) :" >> ${SCRIPT_DIR}/../output_artifacts/version.txt
     git log -1 --pretty=%H >> ${SCRIPT_DIR}/../output_artifacts/version.txt
