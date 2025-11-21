@@ -57,7 +57,11 @@ jobs:
       - name: Install pip deps
         run: |
           bash scripts/setenv.sh --nightly
+          python -c "import site; open(site.getsitepackages()[0] + '/amdsharktank.pth', 'w').write('import sharktank, sys; sys.modules[\"amdsharktank\"] = sharktank')"
+          pip install azure-cli
           mkdir -p output_artifacts
+          find /amdshark-dev /shark-dev -name "tokenizer.json" -o -name "tokenizer_config.json"
+
 
       # Llama 8B FP16 irpa export, compile and validate
       - name: Export 8B-FP16 instruct model
@@ -94,8 +98,8 @@ jobs:
             --irpa-filename "instruct_8b_fp8_e4m3fnuz.irpa" \
             --dtype "fp8" \
             --kv-cache-dtype "float8_e4m3fnuz" \
-            --tokenizer-path "/shark-dev/8b/instruct/tokenizer.json" \
-            --tokenizer-config-path "/shark-dev/8b/instruct/tokenizer_config.json" \
+            --tokenizer-path "/amdshark-dev/8b/instruct/tokenizer.json" \
+            --tokenizer-config-path "/amdshark-dev/8b/instruct/tokenizer_config.json" \
             --azure-blob-path "ossci-models/llama_3_1" \
             --azure-sas-token "$AZURE_WRITE_ACCESS_OSSCI" \
             --date-suffix "$DATE" \
@@ -116,8 +120,8 @@ jobs:
             --irpa-path "/shark-dev/70b/instruct/weights/llama3.1_70b_instruct_fp16.irpa" \
             --irpa-filename "instruct_70b_fp16.irpa" \
             --kv-cache-dtype "float16" \
-            --tokenizer-path "/shark-dev/70b/instruct/tokenizer.json" \
-            --tokenizer-config-path "/shark-dev/70b/instruct/tokenizer_config.json" \
+            --tokenizer-path "/amdshark-dev/70b/instruct/tokenizer.json" \
+            --tokenizer-config-path "/amdshark-dev/70b/instruct/tokenizer_config.json" \
             --azure-blob-path "ossci-models/llama_3_1/70b" \
             --azure-sas-token "$AZURE_WRITE_ACCESS_OSSCI" \
             --date-suffix "$DATE" \
@@ -139,8 +143,8 @@ jobs:
             --irpa-filename "instruct_70b_fp8_e4m3fnuz.irpa" \
             --dtype "fp8" \
             --kv-cache-dtype "float8_e4m3fnuz" \
-            --tokenizer-path "/shark-dev/70b/instruct/tokenizer.json" \
-            --tokenizer-config-path "/shark-dev/70b/instruct/tokenizer_config.json" \
+            --tokenizer-path "/amdshark-dev/70b/instruct/tokenizer.json" \
+            --tokenizer-config-path "/amdshark-dev/70b/instruct/tokenizer_config.json" \
             --azure-blob-path "ossci-models/llama_3_1/70b" \
             --azure-sas-token "$AZURE_WRITE_ACCESS_OSSCI" \
             --date-suffix "$DATE" \
@@ -162,8 +166,8 @@ jobs:
             --irpa-filename "mistral_nemo_2407_fp8_e4m3fnuz.irpa" \
             --dtype "mistral_fp8" \
             --kv-cache-dtype "float8_e4m3fnuz" \
-            --tokenizer-path "/shark-dev/mistral/tokenizer.json" \
-            --tokenizer-config-path "/shark-dev/mistral/tokenizer_config.json" \
+            --tokenizer-path "/amdshark-dev/mistral/tokenizer.json" \
+            --tokenizer-config-path "/amdshark-dev/mistral/tokenizer_config.json" \
             --azure-blob-path "ossci-models/mistral_nemo_instruct" \
             --azure-sas-token "$AZURE_WRITE_ACCESS_OSSCI" \
             --date-suffix "$DATE" \
@@ -228,6 +232,7 @@ jobs:
           echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
           bash scripts/setenv.sh --source
+          pip install azure-cli
           mkdir -p output_artifacts
 
       - name: Check runner health
@@ -240,6 +245,7 @@ jobs:
           iree-run-module --list_devices
           echo "ROCM_PATH=$ROCM_PATH"
           echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+          find /amdshark-dev /shark-dev -name "tokenizer.json" -o -name "tokenizer_config.json"
 
       # Llama 405B FP4 irpa export, compile and validate
       - name: Export 405B-FP4 instruct model
