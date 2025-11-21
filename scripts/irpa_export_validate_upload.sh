@@ -155,6 +155,7 @@ $COMPILE_CMD 2>&1 | tee "$(pwd)/output_artifacts/${MODEL_TAG}_export_and_compila
 
 # Validate VMFB Responses
 echo "=== Validating VMFB Responses ==="
+set +e  # Temporarily disable exit on error to capture validation result
 bash scripts/validate_numerics.sh \
   --irpa "$IRPA_PATH" \
   --vmfb "$(pwd)/output_artifacts/output.vmfb" \
@@ -162,7 +163,15 @@ bash scripts/validate_numerics.sh \
   --tokenizer "$TOKENIZER_PATH" \
   --tokenizer_config "$TOKENIZER_CONFIG_PATH" \
   --steps "$STEPS" \
-  --kv-cache-dtype "$KV_CACHE_DTYPE" | tee "$(pwd)/output_artifacts/${MODEL_TAG}_run_llm_vmfb.log" || { echo "Validation failed"; }
+  --kv-cache-dtype "$KV_CACHE_DTYPE" 2>&1 | tee "$(pwd)/output_artifacts/${MODEL_TAG}_run_llm_vmfb.log"
+VALIDATION_EXIT_CODE=${PIPESTATUS[0]}
+set -e  # Re-enable exit on error
+
+if [ $VALIDATION_EXIT_CODE -ne 0 ]; then
+  echo "Validation failed with exit code $VALIDATION_EXIT_CODE"
+  exit 1
+fi
+echo "Validation completed successfully"
 
 # Check for IRPA changes
 echo "=== Checking for IRPA changes ==="
