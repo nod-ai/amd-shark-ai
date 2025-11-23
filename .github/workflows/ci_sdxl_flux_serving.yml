@@ -109,7 +109,7 @@ jobs:
           rm -rf output_artifacts
           test ! -d output_artifacts && echo "Output artifacts are removed"
 
-  # New job to push logs to amdshark-ai-reports repository
+  # New job to push logs to amd-shark-ai-reports repository
   push_images:
     if: always()
     name: "Push sdxl/flux generated images"
@@ -125,18 +125,18 @@ jobs:
       - name: Checkout Target Repo
         uses: actions/checkout@v4
         with:
-          repository: nod-ai/amdshark-ai-reports
-          token: ${{ secrets.amdshark_AI_REPORTS_GITHUB_TOKEN }}
-          path: amdshark-ai-reports
+          repository: nod-ai/amd-shark-ai-reports
+          token: ${{ secrets.SHARK_AI_REPORTS_GITHUB_TOKEN }}
+          path: amd-shark-ai-reports
 
       - name: Push artifacts
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email ""
           date=$(date -u +'%Y-%m-%d')
-          mkdir -p "amdshark-ai-reports/$date/generated-images"
-          cp -vr gen_images/* "amdshark-ai-reports/$date/generated-images/"
-          cd amdshark-ai-reports
+          mkdir -p "amd-shark-ai-reports/$date/generated-images"
+          cp -vr gen_images/* "amd-shark-ai-reports/$date/generated-images/"
+          cd amd-shark-ai-reports
           git pull
           git add $date
           git commit -m "Add sdxl/flux images on $(date -u +'%Y-%m-%d')"
