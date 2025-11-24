@@ -23,7 +23,7 @@ class QuarkParityTest(TempDirTestBase):
 
     @with_quark_data
     @pytest.mark.xfail(
-        reason="Marking xfail as it failing accuracy due to recent change . Issue: https://github.com/nod-ai/amdshark-ai/issues/1455",
+        reason="Marking xfail as it failing accuracy due to recent change . Issue: https://github.com/nod-ai/amd-shark-ai/issues/1455",
     )
     def test_compare_against_quark(self):
         amdsharktank_dir = str(

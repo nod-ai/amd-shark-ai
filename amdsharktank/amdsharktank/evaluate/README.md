@@ -9,7 +9,7 @@ pip install -r amdsharktank/requirements-tests.txt
 
 ## Project Status
 
-[![CI - amdsharktank nightly](https://github.com/nod-ai/amdshark-ai/actions/workflows/ci-amdsharktank-nightly.yml/badge.svg?branch=main)](https://github.com/nod-ai/amdshark-ai/actions/workflows/ci-amdsharktank-nightly.yml)
+[![CI - amdsharktank nightly](https://github.com/nod-ai/amd-shark-ai/actions/workflows/ci-amdsharktank-nightly.yml/badge.svg?branch=main)](https://github.com/nod-ai/amd-shark-ai/actions/workflows/ci-amdsharktank-nightly.yml)
 
 ### Perplexity
 

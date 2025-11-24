@@ -43,7 +43,7 @@ from ._registry import AllNotOfType
 
 
 # Fused FP matmul.
-# Disabled: See https://github.com/nod-ai/amdshark-ai/issues/44
+# Disabled: See https://github.com/nod-ai/amd-shark-ai/issues/44
 # @matmul.override(Tensor, Tensor)
 # def matmul_mmtfp_tensor_tensor(lhs, rhs, *, transpose_rhs: bool):
 #     lhs = unbox_tensor(lhs)

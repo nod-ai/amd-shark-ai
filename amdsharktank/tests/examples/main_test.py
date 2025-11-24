@@ -12,7 +12,7 @@ from amdsharktank.utils.testing import MainRunnerTestBase
 
 
 @pytest.mark.skipif(
-    sys.platform == "win32", reason="https://github.com/nod-ai/amdshark-ai/issues/698"
+    sys.platform == "win32", reason="https://github.com/nod-ai/amd-shark-ai/issues/698"
 )
 class ShardingTests(MainRunnerTestBase):
     def testExportFfnNet(self):
@@ -27,7 +27,7 @@ class ShardingTests(MainRunnerTestBase):
 
 
 @pytest.mark.skipif(
-    sys.platform == "win32", reason="https://github.com/nod-ai/amdshark-ai/issues/698"
+    sys.platform == "win32", reason="https://github.com/nod-ai/amd-shark-ai/issues/698"
 )
 class PipelineTests(MainRunnerTestBase):
     def testExportPFfnNet(self):

@@ -1,13 +1,13 @@
 # Nightly releases
 
 Nightly releases are uploaded to
-https://github.com/nod-ai/amdshark-ai/releases/tag/dev-wheels.
+https://github.com/nod-ai/amd-shark-ai/releases/tag/dev-wheels.
 
 * The "expanded_assets" version of a release page is compatible with the
   `-f, --find-links <url>` options of `pip install`
   ([docs here](https://pip.pypa.io/en/stable/cli/pip_install/#cmdoption-f)).
   For the "dev-wheels" release above, that page is:
-  <https://github.com/nod-ai/amdshark-ai/releases/expanded_assets/dev-wheels>
+  <https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels>
 * These releases are generated using
   [`.github/workflows/build_package.yml`](../.github/workflows/build_packages.yml)
 * That workflow runs the
@@ -16,7 +16,7 @@ https://github.com/nod-ai/amdshark-ai/releases/tag/dev-wheels.
 [`shortfin/build_tools/build_linux_package.sh`](../shortfin/build_tools/build_linux_package.sh)
   scripts
 * Workflow history can be viewed at
-  <https://github.com/nod-ai/amdshark-ai/actions/workflows/build_packages.yml>
+  <https://github.com/nod-ai/amd-shark-ai/actions/workflows/build_packages.yml>
 
 ## Prerequisites
 
@@ -31,7 +31,7 @@ source builds.
 You will need a recent version of Python.
 
 * As of Nov 1, 2024, amdsharktank is compatible with Python 3.11. See
-  https://github.com/nod-ai/amdshark-ai/issues/349 for Python 3.12 support.
+  https://github.com/nod-ai/amd-shark-ai/issues/349 for Python 3.12 support.
 * As of Nov 4, 2024, shortfin publishes packages for Python 3.11, 3.12, 3.13,
   and 3.13t
 
@@ -58,7 +58,7 @@ python3.11 -m venv 3.11.venv
 source 3.11.venv/bin/activate
 
 # Install 'amdsharktank' package from nightly releases.
-pip install amdsharktank -f https://github.com/nod-ai/amdshark-ai/releases/expanded_assets/dev-wheels --pre
+pip install amdsharktank -f https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels --pre
 
 # Test the installation.
 python -c "from amdsharktank import ops; print('Sanity check passed')"
@@ -75,7 +75,7 @@ python3.11 -m venv 3.11.venv
 source 3.11.venv/bin/activate
 
 # Install 'amdsharktuner' package from nightly releases.
-pip install amdsharktuner -f https://github.com/nod-ai/amdshark-ai/releases/expanded_assets/dev-wheels --pre
+pip install amdsharktuner -f https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels --pre
 
 # Test the installation.
 python -c "import amdsharktuner; print('Sanity check passed')"
@@ -92,7 +92,7 @@ python3.11 -m venv 3.11.venv
 source 3.11.venv/bin/activate
 
 # Install 'shortfin' package from nightly releases, optionally with [apps] extra requirements.
-pip install shortfin[apps] -f https://github.com/nod-ai/amdshark-ai/releases/expanded_assets/dev-wheels --pre
+pip install shortfin[apps] -f https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels --pre
 
 # Test the installation.
 python -c "import shortfin as sf; print('Sanity check passed')"
@@ -144,12 +144,12 @@ versions, pip will log an error but continue anyway:
 
 ```bash
 pip install --upgrade --pre \
-  -f https://github.com/nod-ai/amdshark-ai/releases/expanded_assets/dev-wheels \
+  -f https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels \
   shortfin==3.0.0rc20241118
 
-# Looking in links: https://github.com/nod-ai/amdshark-ai/releases/expanded_assets/dev-wheels
+# Looking in links: https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels
 # Collecting shortfin==3.0.0rc20241118
-#   Downloading https://github.com/nod-ai/amdshark-ai/releases/download/dev-wheels/shortfin-3.0.0rc20241118-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.5 MB)
+#   Downloading https://github.com/nod-ai/amd-shark-ai/releases/download/dev-wheels/shortfin-3.0.0rc20241118-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.5 MB)
 #      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.5/2.5 MB 24.3 MB/s eta 0:00:00
 # Installing collected packages: shortfin
 #   Attempting uninstall: shortfin
@@ -199,12 +199,12 @@ pip freeze
 # ...
 
 pip install --upgrade --pre \
-  -f https://github.com/nod-ai/amdshark-ai/releases/expanded_assets/dev-wheels \
+  -f https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels \
   shortfin==3.0.0rc20241118
 
-# Looking in links: https://github.com/nod-ai/amdshark-ai/releases/expanded_assets/dev-wheels
+# Looking in links: https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels
 # Collecting shortfin==3.0.0rc20241118
-#   Using cached https://github.com/nod-ai/amdshark-ai/releases/download/dev-wheels/shortfin-3.0.0rc20241118-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.5 MB)
+#   Using cached https://github.com/nod-ai/amd-shark-ai/releases/download/dev-wheels/shortfin-3.0.0rc20241118-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.5 MB)
 # Installing collected packages: shortfin
 #   Attempting uninstall: shortfin
 #     Found existing installation: shortfin 2.9.1

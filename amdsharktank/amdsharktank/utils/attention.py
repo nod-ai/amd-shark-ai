@@ -168,8 +168,8 @@ def create_chunked_attention_mask(
     device = attention_mask.device
 
     # TODO: Handle decode step addressed in:
-    # https://github.com/nod-ai/amdshark-ai/pull/2293
-    # https://github.com/nod-ai/amdshark-ai/pull/2430
+    # https://github.com/nod-ai/amd-shark-ai/pull/2293
+    # https://github.com/nod-ai/amd-shark-ai/pull/2430
     start_index = 0
     end_index = batch_seq_len
     chunked_boolean_attention_mask = create_boolean_chunked_attention_mask(

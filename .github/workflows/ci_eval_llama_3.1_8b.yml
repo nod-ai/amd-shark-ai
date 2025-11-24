@@ -87,7 +87,7 @@ jobs:
           export TOKENIZER=/amdshark-dev/ossci-models/llama_3_1/tokenizer
           export DATASET=${{ matrix.model.torch_dataset }}
 
-          # See https://github.com/nod-ai/amdshark-ai/issues/2494
+          # See https://github.com/nod-ai/amd-shark-ai/issues/2494
           # for more information why we choose a larger expected error due to different
           # tiling for some ops compared to the baseline.
           python3 -m amdsharktank.tools.eval_llm_model \

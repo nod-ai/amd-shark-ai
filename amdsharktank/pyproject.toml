@@ -22,7 +22,7 @@ classifiers = [
 dynamic = ["version", "dependencies", "optional-dependencies"]
 
 [project.urls]
-Repository = "https://github.com/nod-ai/amdshark-ai"
+Repository = "https://github.com/nod-ai/amd-shark-ai"
 
 [project.scripts]
 amdshark = "amdsharktank.tools.amdsharktank:main"

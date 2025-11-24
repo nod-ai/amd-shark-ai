@@ -104,7 +104,7 @@ def minimum_required_kv_cache_page_count_for_batch(
     # A possible bug with IREE execution causes
     # tests/models/llama/toy_llama_test.py::TestToyLlamaIree::testDecodePerplexity
     # to return inf logits if we start the page indices from 0.
-    # See https://github.com/nod-ai/amdshark-ai/issues/2355
+    # See https://github.com/nod-ai/amd-shark-ai/issues/2355
     res += 1
 
     return res

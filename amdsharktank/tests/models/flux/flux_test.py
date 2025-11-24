@@ -108,7 +108,7 @@ xfail_wrong_mlir_from_torch = pytest.mark.xfail(
     condition=torch.__version__ >= "2.6.0",
     raises=iree.compiler.tools.binaries.CompilerToolError,
     reason=(
-        "compiler error in converting flux transformer model. See https://github.com/nod-ai/amdshark-ai/issues/2652"
+        "compiler error in converting flux transformer model. See https://github.com/nod-ai/amd-shark-ai/issues/2652"
     ),
     strict=True,
     match=re.escape(

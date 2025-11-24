@@ -7,7 +7,7 @@ and serving engine. Shortfin consists of these major components:
   [IREE](https://github.com/iree-org/iree)
 * Python bindings for the underlying inference library
 * Example applications in
-  ['shortfin_apps'](https://github.com/nod-ai/amdshark-ai/tree/main/shortfin/python/shortfin_apps)
+  ['shortfin_apps'](https://github.com/nod-ai/amd-shark-ai/tree/main/shortfin/python/shortfin_apps)
   built using the python bindings
 
 ## Prerequisites

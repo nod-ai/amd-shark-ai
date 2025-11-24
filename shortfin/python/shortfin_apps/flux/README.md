@@ -4,7 +4,7 @@ This directory contains a [Flux](https://blackforestlabs.ai/#get-flux) inference
 
 ## Install
 
-To get your environment ready, follow the [developer guide](https://github.com/nod-ai/amdshark-ai/blob/main/docs/developer_guide.md)
+To get your environment ready, follow the [developer guide](https://github.com/nod-ai/amd-shark-ai/blob/main/docs/developer_guide.md)
 
 ## Prepare artifacts
 

@@ -361,7 +361,7 @@ class BenchmarkLlama3_1_70B(BaseBenchmarkTest):
 
     @parameterized.expand(tuple(itertools.product((128, 2048), (1, 8))))
     @pytest.mark.xfail(
-        reason="https://github.com/nod-ai/amdshark-ai/issues/1355",
+        reason="https://github.com/nod-ai/amd-shark-ai/issues/1355",
         raises=IreeBenchmarkException,
     )
     def test_benchmark70B_f16(self, input_size: int, tp: int):
