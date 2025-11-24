@@ -202,7 +202,7 @@ jobs:
       if: always()
       uses: actions/checkout@v4
       with:
-        repository: nod-ai/amdshark-ai-reports
+        repository: nod-ai/amd-shark-ai-reports
         token: ${{ secrets.amdshark_AI_REPORTS_GITHUB_TOKEN }}
         path: amdshark-ai-reports
 

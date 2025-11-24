@@ -69,10 +69,10 @@ Above, `rocm-smi` lists two GPUs: a Radeon RX 9070 and a Radeon Pro W7900.
     source .venv/bin/activate
     ```
 
-1. Clone the amdshark-ai repository:
+1. Clone the amd-shark-ai repository:
 
     ```shell
-    git clone https://github.com/nod-ai/amdshark-ai && cd amdshark-ai
+    git clone https://github.com/nod-ai/amd-shark-ai && cd amd-shark-ai
     ```
 
 1. Install dependencies:

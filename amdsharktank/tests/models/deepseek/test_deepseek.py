@@ -66,7 +66,7 @@ class DeepseekCrossEntropyTest(unittest.TestCase):
 class DeepseekIreeVsEagerTest(TempDirTestBase):
     @pytest.mark.xfail(
         raises=AssertionError,
-        reason="https://github.com/nod-ai/amdshark-ai/issues/1758",
+        reason="https://github.com/nod-ai/amd-shark-ai/issues/1758",
         match="Outputs do not match for prefill batch index 0",
     )
     def testUnshardedToyIreeVsEager(self):

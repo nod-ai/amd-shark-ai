@@ -122,7 +122,7 @@ def get_latest_workflow_run_id_for_ref(ref: str) -> int:
     )
 
     print(f"Fetching artifacts for normalized ref: {normalized_ref}")
-    base_path = f"/repos/nod-ai/amdshark-ai"
+    base_path = f"/repos/nod-ai/amd-shark-ai"
     workflow_run_args = [
         "gh",
         "api",
@@ -146,7 +146,7 @@ def get_latest_workflow_run_id_for_ref(ref: str) -> int:
 @functools.lru_cache
 def list_gh_artifacts(run_id: str) -> Dict[str, str]:
     print(f"Fetching artifacts for workflow run {run_id}")
-    base_path = f"/repos/nod-ai/amdshark-ai"
+    base_path = f"/repos/nod-ai/amd-shark-ai"
     output = subprocess.check_output(
         [
             "gh",
