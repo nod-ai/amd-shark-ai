@@ -39,7 +39,6 @@ from sharktank.kernels.mlir_kernel import *
 from sharktank.kernels.wave.utils import (
     get_prefix_page_ids,
     create_kv_indices,
-    compute_write_page_ids,
 )
 
 __all__ = ["PagedAttention", "PagedKVCache", "attn_type_map"]
@@ -1396,14 +1395,6 @@ class PagedExtendAttention(PagedAttention):
         sliding_window: Optional[int] = None,
         sink: Optional[torch.Tensor] = None,
     ) -> torch.Tensor | ReplicatedTensor:
-        block_seq_len = k.shape[1] // self.block_seq_stride
-        write_page_ids = compute_write_page_ids(
-            seq_block_ids,
-            start_positions,
-            seq_lens,
-            self.block_seq_stride,
-            block_seq_len,
-        )
         self.write(
             cache_state,
             cache_partitions=[k, v],

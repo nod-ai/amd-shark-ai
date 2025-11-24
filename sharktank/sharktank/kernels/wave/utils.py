@@ -373,32 +373,3 @@ def get_prefix_page_ids(
         padded_prefixes.append(prefix)
 
     return torch.stack(padded_prefixes, dim=0)
-
-
-def compute_write_page_ids(
-    seq_block_ids: torch.Tensor,
-    start_positions: torch.Tensor,
-    seq_lens: torch.Tensor,
-    block_seq_stride: int,
-    block_seq_len: int,
-) -> torch.Tensor:
-
-    bs = seq_block_ids.shape[0]
-    device = seq_block_ids.device
-    dtype = seq_block_ids.dtype
-    write_page_ids = []
-
-    for b in range(bs):
-        # Always start at 0 because start_positions determines the offset later
-        start_page = 0
-        end_page = start_page + block_seq_len
-        # Get only the first block_seq_len page IDs
-        pages = seq_block_ids[b, start_page:end_page]
-        write_page_ids.append(pages)
-
-    # Pad to max length in batch for consistency
-    max_len = max(len(p) for p in write_page_ids)
-    padded = torch.zeros((bs, max_len), dtype=dtype, device=device)
-    for b, pages in enumerate(write_page_ids):
-        padded[b, : len(pages)] = pages
-    return padded

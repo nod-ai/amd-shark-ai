@@ -1053,7 +1053,6 @@ def batch_tasks_by_chunk(
     to the nearest multiple of block_seq_stride.
     """
     tasks_by_rid = group_tasks_by_rid(tasks)
-    breakpoint()
     max_chunks = max(len(chunks) for chunks in tasks_by_rid.values())
 
     batched_inputs = []

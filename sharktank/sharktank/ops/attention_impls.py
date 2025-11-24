@@ -274,18 +274,15 @@ def extend_attention_wave(
     else:
         k_cache = kv_cache.to(device)
         v_cache = kv_cache.to(device)
-    extend_len = seq_lens
-    extend_len = extend_len.squeeze().to(dtype=torch.int32)
-    b_seq_len_extend = torch.full(
-        (B,), extend_len.item(), dtype=torch.int32, device=device
-    )
+    extend_len = max(seq_lens)
+    seq_lens = seq_lens.to(dtype=torch.int32, device=device).view(-1)
+    start_positions = start_positions.to(dtype=torch.int32, device=device).view(-1)
+
     qo_indptr = torch.zeros((B + 1,), dtype=torch.int32, device=device)
-    qo_indptr[1:] = torch.cumsum(b_seq_len_extend, dim=0)
-    b_seq_len_prefix = torch.full(
-        (B,), start_positions.item(), dtype=torch.int32, device=device
-    )
-    kv_indptr = torch.zeros(B + 1, dtype=torch.int32)
-    kv_indptr[1:] = torch.cumsum(b_seq_len_prefix, dim=0)
+    qo_indptr[1:] = torch.cumsum(seq_lens, dim=0)
+
+    kv_indptr = torch.zeros((B + 1,), dtype=torch.int32, device=device)
+    kv_indptr[1:] = torch.cumsum(start_positions, dim=0)
     N_q = q_flat.shape[0]
     output_buffer = torch.zeros((N_q, H_q, D_kv), dtype=torch.float16, device=device)
 
