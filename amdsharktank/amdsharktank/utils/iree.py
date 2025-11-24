@@ -35,9 +35,6 @@ from .tree import Tree
 from iree.runtime import FileHandle
 import iree.runtime
 
-from iree.turbine import aot
-from iree.turbine.aot import export
-
 
 if TYPE_CHECKING:
     from ..layers import ModelConfig

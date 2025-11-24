@@ -6,6 +6,7 @@
 
 from typing import Callable, Optional, Any
 from os import PathLike
+from pathlib import Path
 import functools
 
 import torch
@@ -16,7 +17,13 @@ from iree.turbine.aot import DeviceAffinity, FxProgramsBuilder
 from torch.utils._pytree import tree_structure, tree_unflatten, tree_flatten
 from amdsharktank.types.tensors import ShardedTensor
 from amdsharktank.types.theta import mark_export_external_theta
-from amdsharktank.layers import BaseLayer, ThetaLayer
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from amdsharktank.layers import BaseLayer, ThetaLayer
+
+# from amdsharktank.layers import BaseLayer, ThetaLayer
 
 
 def flatten_signature(
@@ -180,7 +187,7 @@ def export(
 
 
 def export_model_mlir(
-    model: BaseLayer,
+    model: "BaseLayer",
     output_path: PathLike,
     *,
     function_batch_sizes_map: Optional[dict[Optional[str], list[int]]] = None,
@@ -202,7 +209,7 @@ def export_model_mlir(
 
     assert not (function_batch_sizes_map is not None and batch_sizes is not None)
 
-    if isinstance(model, ThetaLayer):
+    if isinstance(model, "ThetaLayer"):
         mark_export_external_theta(model.theta)
 
     if batch_sizes is not None:
@@ -317,7 +324,7 @@ def export_torch_module_to_mlir_file(
     def _(module, *fn_args):
         return module.forward(*fn_args)
 
-    export_output = export(fxb, import_symbolic_shape_expressions=True)
+    export_output = aot.export(fxb, import_symbolic_shape_expressions=True)
     export_output.save_mlir(mlir_path)
 
     return export_output

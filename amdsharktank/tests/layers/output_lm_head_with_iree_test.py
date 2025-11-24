@@ -7,14 +7,14 @@
 import torch
 import pytest
 from pathlib import Path
-from sharktank.utils.iree import (
+from amdsharktank.utils.iree import (
     run_iree_vs_torch_eager,
 )
-from sharktank.layers import LinearLayer, RMSNormLayer
-from sharktank.types import Dataset, Theta
-from sharktank.layers.configs import LlamaModelConfig
-from sharktank.utils._iree_compile_flags_config import LLM_HIP_COMPILE_FLAGS
-from sharktank.utils.testing import is_hip_condition, validate_and_get_irpa_path
+from amdsharktank.layers import LinearLayer, RMSNormLayer
+from amdsharktank.types import Dataset, Theta
+from amdsharktank.layers.configs import LlamaModelConfig
+from amdsharktank.utils._iree_compile_flags_config import LLM_HIP_COMPILE_FLAGS
+from amdsharktank.utils.testing import is_hip_condition, validate_and_get_irpa_path
 
 
 class OutputLMHead(torch.nn.Module):
@@ -136,7 +136,7 @@ def test_output_lm_head_mock():
     torch.manual_seed(42)
 
     # Mock configuration - provide all required parameters
-    from sharktank.layers.configs import LlamaHParams
+    from amdsharktank.layers.configs import LlamaHParams
 
     # Create LlamaHParams with all required parameters
     hp = LlamaHParams(
@@ -160,7 +160,7 @@ def test_output_lm_head_mock():
     )
 
     # Create mock theta with synthetic weights
-    from sharktank.types import DefaultPrimitiveTensor
+    from amdsharktank.types import DefaultPrimitiveTensor
 
     # Mock output_norm weights
     output_norm_weight = torch.randn(hp.embedding_length, dtype=torch.float32)

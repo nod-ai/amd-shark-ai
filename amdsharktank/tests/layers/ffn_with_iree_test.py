@@ -5,9 +5,9 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 import torch
 import pytest
-from sharktank.utils.iree import run_iree_vs_torch_eager
-from sharktank.utils._iree_compile_flags_config import LLM_HIP_COMPILE_FLAGS
-from sharktank.utils.testing import is_hip_condition
+from amdsharktank.utils.iree import run_iree_vs_torch_eager
+from amdsharktank.utils._iree_compile_flags_config import LLM_HIP_COMPILE_FLAGS
+from amdsharktank.utils.testing import is_hip_condition
 
 
 class FFN(torch.nn.Module):

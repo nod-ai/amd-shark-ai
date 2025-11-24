@@ -7,13 +7,13 @@
 import torch
 import pytest
 from pathlib import Path
-from sharktank.layers.token_embedding import TokenEmbeddingLayer
-from sharktank.types.theta import Dataset
-from sharktank.utils.iree import (
+from amdsharktank.layers.token_embedding import TokenEmbeddingLayer
+from amdsharktank.types.theta import Dataset
+from amdsharktank.utils.iree import (
     run_iree_vs_torch_eager,
 )
-from sharktank.utils._iree_compile_flags_config import LLM_HIP_COMPILE_FLAGS
-from sharktank.utils.testing import is_hip_condition, validate_and_get_irpa_path
+from amdsharktank.utils._iree_compile_flags_config import LLM_HIP_COMPILE_FLAGS
+from amdsharktank.utils.testing import is_hip_condition, validate_and_get_irpa_path
 
 
 class TokenEmbeddingSmall(torch.nn.Module):
