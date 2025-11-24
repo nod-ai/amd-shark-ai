@@ -30,6 +30,7 @@ from amdsharktank.types.tensors import (
     torch_tree_flatten,
 )
 from amdsharktank.utils import verify_exactly_one_is_not_none
+from amdsharktank.utils.export import export_torch_module_to_mlir_file, get_torch_eager_output, _as_tuple
 from .tree import Tree
 from iree.runtime import FileHandle
 import iree.runtime
@@ -767,72 +768,6 @@ def run_model_with_iree_run_module(
     subprocess.check_call(cmd, **subprocess_run_kwargs)
 
 
-def _as_tuple(x):
-    if isinstance(x, tuple):
-        return x
-    if isinstance(x, list):
-        return tuple(x)
-    return (x,)
-
-
-def export_torch_module_to_mlir(
-    module: torch.nn.Module,
-    input_args=(),
-    kwargs=None,
-    *,
-    mlir_path: Path,
-    target_fn="forward",
-):
-    """
-    Export torch module to MLIR and get torch eager reference output.
-
-    Args:
-        module: torch.nn.Module under test
-        input_args: example positional inputs (tuple required)
-        kwargs: example kwargs
-        mlir_path: Path where to save the MLIR file
-        target_fn: name of the exported function
-
-    Returns:
-        Tuple of (torch_eager_output, export_output)
-    """
-    kwargs = kwargs or {}
-    input_args = _as_tuple(input_args)
-
-    # ---- Torch eager reference ----
-    module.eval()
-    with torch.no_grad():
-        expected = module(*input_args, **kwargs)
-
-    from iree.turbine import aot
-    from iree.turbine.aot import FxProgramsBuilder
-
-    fxb = FxProgramsBuilder(module)
-
-    # empty tensors for export input
-    # there needs to be one corresponding to each arg
-    # NOTE: assuming args are not nested.
-    empty_args = tuple([torch.empty(arg.shape, dtype=arg.dtype) for arg in input_args])
-
-    # need to get this info from the test, currently only for static shapes
-    # one corresponding to each arg
-    dynamic_shapes = tuple([dict() for _ in input_args])
-
-    @fxb.export_program(
-        name=target_fn,
-        args=empty_args,
-        dynamic_shapes=(dynamic_shapes,),
-        strict=False,
-    )
-    def _(module, *fn_args):
-        return module.forward(*fn_args)
-
-    export_output = export(fxb, import_symbolic_shape_expressions=True)
-    export_output.save_mlir(mlir_path)
-
-    return expected, export_output
-
-
 def run_iree_module_from_vmfb(
     vmfb_path: Path,
     devices: list[iree.runtime.HalDevice] | None = None,
@@ -944,8 +879,15 @@ def run_iree_vs_torch_eager(
         mlir_path = td / "module.mlir"
         vmfb_path = td / "module.vmfb"
 
-        # Export to MLIR and get torch reference
-        torch_output, _ = export_torch_module_to_mlir(
+        # Get torch reference output
+        torch_output = get_torch_eager_output(
+            module=module,
+            input_args=input_args,
+            kwargs=kwargs,
+        )
+
+        # Export to MLIR
+        export_torch_module_to_mlir_file(
             module=module,
             input_args=input_args,
             kwargs=kwargs,

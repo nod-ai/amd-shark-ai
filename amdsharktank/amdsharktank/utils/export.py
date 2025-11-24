@@ -232,3 +232,92 @@ def export_model_mlir(
 
     output = aot.export(fxb)
     output.save_mlir(output_path)
+
+
+def _as_tuple(x):
+    if isinstance(x, tuple):
+        return x
+    if isinstance(x, list):
+        return tuple(x)
+    return (x,)
+
+
+def get_torch_eager_output(
+    module: torch.nn.Module,
+    input_args=(),
+    kwargs=None,
+):
+    """
+    Get torch eager reference output from a module.
+
+    Args:
+        module: torch.nn.Module to execute
+        input_args: example positional inputs (tuple required)
+        kwargs: example kwargs
+
+    Returns:
+        Output from torch eager execution
+    """
+    kwargs = kwargs or {}
+    input_args = _as_tuple(input_args)
+
+    module.eval()
+    with torch.no_grad():
+        output = module(*input_args, **kwargs)
+
+    return output
+
+
+def export_torch_module_to_mlir_file(
+    module: torch.nn.Module,
+    input_args=(),
+    kwargs=None,
+    *,
+    mlir_path: Path,
+    target_fn="forward",
+):
+    """
+    Export torch module to MLIR and save to file.
+
+    Uses iree-turbine's aot.export functionality to export a torch module
+    to MLIR format and saves it to disk.
+
+    Args:
+        module: torch.nn.Module to export
+        input_args: example positional inputs (tuple required)
+        kwargs: example kwargs
+        mlir_path: Path where to save the MLIR file
+        target_fn: name of the exported function
+
+    Returns:
+        ExportOutput from iree-turbine containing the exported program
+    """
+    kwargs = kwargs or {}
+    input_args = _as_tuple(input_args)
+
+    from iree.turbine.aot import FxProgramsBuilder
+
+    fxb = FxProgramsBuilder(module)
+
+    # empty tensors for export input
+    # there needs to be one corresponding to each arg
+    # NOTE: assuming args are not nested.
+    empty_args = tuple([torch.empty(arg.shape, dtype=arg.dtype) for arg in input_args])
+
+    # need to get this info from the test, currently only for static shapes
+    # one corresponding to each arg
+    dynamic_shapes = tuple([dict() for _ in input_args])
+
+    @fxb.export_program(
+        name=target_fn,
+        args=empty_args,
+        dynamic_shapes=(dynamic_shapes,),
+        strict=False,
+    )
+    def _(module, *fn_args):
+        return module.forward(*fn_args)
+
+    export_output = export(fxb, import_symbolic_shape_expressions=True)
+    export_output.save_mlir(mlir_path)
+
+    return export_output
