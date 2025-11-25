@@ -26,7 +26,11 @@ from amdsharktank.utils.iree import (
 )
 from amdsharktank import ops
 from amdsharktank.utils.logging import get_logger
-from amdsharktank.utils.testing import TempDirTestBase, assert_tensor_close, is_hip_condition
+from amdsharktank.utils.testing import (
+    TempDirTestBase,
+    assert_tensor_close,
+    is_hip_condition,
+)
 import iree.compiler
 from iree.turbine.aot import (
     FxProgramsBuilder,

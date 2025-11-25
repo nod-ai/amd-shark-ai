@@ -30,7 +30,11 @@ from amdsharktank.types.tensors import (
     torch_tree_flatten,
 )
 from amdsharktank.utils import verify_exactly_one_is_not_none
-from amdsharktank.utils.export import export_torch_module_to_mlir_file, get_torch_eager_output, _as_tuple
+from amdsharktank.utils.export import (
+    export_torch_module_to_mlir_file,
+    get_torch_eager_output,
+    _as_tuple,
+)
 from .tree import Tree
 from iree.runtime import FileHandle
 import iree.runtime
