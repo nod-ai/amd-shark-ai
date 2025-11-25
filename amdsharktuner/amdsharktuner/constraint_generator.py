@@ -9,6 +9,7 @@ import math
 from abc import ABC, abstractmethod
 from typing import Iterator, Optional
 
+from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_codegen, iree_gpu, linalg  # type: ignore
 
 from . import common, dispatch_constraints, dispatch_parser
@@ -57,7 +58,6 @@ def adjust_problem_size_for_pipeline(
         matmul_size.N = [bounds[i] for i in contraction_dims.n]
         matmul_size.K = [bounds[i] for i in contraction_dims.k]
         matmul_size.B = [bounds[i] for i in contraction_dims.batch]
-
         return
 
     # Fallback: Manual flattening for legacy path when IGEMM details are unavailable.
@@ -76,6 +76,7 @@ def generate_generic_contraction_solutions(
     rhs_type: common.ShapedType,
     res_type: common.ShapedType,
     dispatch_kind: common.DispatchKind,
+    indexing_maps: list[ir.AffineMap],
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
     num_subgroups: int = 4,
     allowed_waves_per_eu: list[int] = [2],
@@ -93,6 +94,23 @@ def generate_generic_contraction_solutions(
 
     M, N, K = matmul_size.M, matmul_size.N, matmul_size.K
     tuner_ctx.logger.debug(f"{M},{N},{K}")
+
+    # Apply padding for TileAndFuse pipeline to get better tile sizes.
+    padding_applied = False
+    if codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
+        # Use IGEMM maps if available (dimensions were restructured), otherwise use original indexing maps.
+        padding_maps = indexing_maps
+        if igemm_details:
+            padding_maps = [
+                map_attr.value for map_attr in igemm_details.igemm_contraction_maps
+            ]
+
+        M_padded, N_padded, padding_applied = common.calculate_padded_dimensions(
+            M, N, contraction_dims, padding_maps
+        )
+        M, N = M_padded, N_padded
+        matmul_size.M = M
+        matmul_size.N = N
 
     m_vars = [z3.Int(f"m{i}") for i in range(len(M))]
     n_vars = [z3.Int(f"n{i}") for i in range(len(N))]
@@ -238,12 +256,9 @@ def generate_generic_contraction_solutions(
             [lookup(v) for v in k_vars],
         )
 
-        required_padding = any(
-            p[-1] % i != 0 for p, i in zip((M, N, K), intrinsic_mnk_shape, strict=True)
-        )
         promote_operands = [0, 1]
         padding = None
-        if required_padding:
+        if padding_applied:
             mma_intrinsic_k = mma_attr.mnk_shape[2]
             padding = [
                 *(workgroup_tile_sizes[d] for d in contraction_dims.m),
@@ -560,6 +575,7 @@ class ContractionOpInterfaceConstraintGenerator(ConstraintGenerator):
             rhs_type=self.op_info.rhs_type,
             res_type=self.op_info.res_type,
             dispatch_kind=common.DispatchKind.contraction,
+            indexing_maps=self.op_info.indexing_maps,
             codegen_pipeline=codegen_pipeline,
             **pipeline_constraint_options,
         )
@@ -585,6 +601,7 @@ class ConvolutionOpInterfaceConstraintGenerator(ConstraintGenerator):
             rhs_type=self.op_info.rhs_type,
             res_type=self.op_info.res_type,
             dispatch_kind=common.DispatchKind.conv,
+            indexing_maps=self.op_info.indexing_maps,
             codegen_pipeline=codegen_pipeline,
             igemm_details=self.op_info.igemm_details,
             **pipeline_constraint_options,

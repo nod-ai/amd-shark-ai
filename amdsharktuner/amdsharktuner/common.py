@@ -523,3 +523,60 @@ def get_target_info(input_module: ir.Module) -> iree_gpu.TargetInfo:
     target = executable_variant_op.target
 
     return iree_gpu.TargetInfo.get_gpu_target_info(target)
+
+
+# The following two functions are from IREE side for padding utility:
+# https://github.com/iree-org/iree/blob/8ae91ebb0e555e660b8a6898f6071476f7a1f20b/compiler/src/iree/compiler/Codegen/Dialect/GPU/TargetUtils/ConfigUtils.cpp#L631-L671
+def maybe_padded_bounds(original_bound: int, alignment: int) -> tuple[int, bool]:
+    remainder = original_bound % alignment
+    if remainder == 0:
+        return original_bound, False
+    return original_bound + alignment - remainder, True
+
+
+def get_dim_bounds(
+    dims: list[int],
+    padding_can_be_expensive: bool,
+) -> tuple[list[int], bool]:
+    result = []
+    any_padding_applied = False
+
+    for dim in dims:
+        if padding_can_be_expensive:
+            result.append(dim)
+            continue
+
+        if dim > 128:
+            padded, was_padded = maybe_padded_bounds(dim, 128)
+            result.append(padded)
+            any_padding_applied = any_padding_applied or was_padded
+        elif dim > 32:
+            padded, was_padded = maybe_padded_bounds(dim, 32)
+            result.append(padded)
+            any_padding_applied = any_padding_applied or was_padded
+        else:
+            result.append(dim)
+
+    return result, any_padding_applied
+
+
+# Use padding logic from IREE side:
+# https://github.com/iree-org/iree/blob/8ae91ebb0e555e660b8a6898f6071476f7a1f20b/compiler/src/iree/compiler/Codegen/Dialect/GPU/TargetUtils/ConfigUtils.cpp#L691-L703
+def calculate_padded_dimensions(
+    M: list[int],
+    N: list[int],
+    contraction_dims: ContractionDimensions,
+    contraction_maps: list[ir.AffineMap],
+) -> tuple[list[int], list[int], bool]:
+    # Detect LHS transposition. Padding is disabled only when LHS is transposed.
+    k_dim_inner = contraction_dims.k[-1]
+    lhs_map = contraction_maps[0]
+    lhs_last_expr = lhs_map.results[-1]
+    lhs_dim_expr = ir.AffineDimExpr(lhs_last_expr)
+
+    transposed_lhs = k_dim_inner != lhs_dim_expr.position
+
+    M_padded, m_padding_applied = get_dim_bounds(M, transposed_lhs)
+    N_padded, n_padding_applied = get_dim_bounds(N, transposed_lhs)
+
+    return M_padded, N_padded, m_padding_applied or n_padding_applied
