@@ -45,4 +45,5 @@ jobs:
 
     - name: Checking content
       run: |
-        sudo du -sh `find /amdshark-dev/ -name "*.*"`
+        sudo mkdir -p /data/e2eamdshark/amdshark-test-suite-models-cache
+        touch /data/e2eamdshark/amdshark-test-suite-models-cache/test.txt
