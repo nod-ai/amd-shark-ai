@@ -60,11 +60,8 @@ jobs:
       - name: Install pip deps
         run: |
           bash scripts/setenv.sh --nightly
-          # python -c "import site; open(site.getsitepackages()[0] + '/amdsharktank.pth', 'w').write('import sharktank, sys; sys.modules[\"amdsharktank\"] = sharktank')"
           pip install azure-cli
           mkdir -p output_artifacts
-          find /amdshark-dev -name "tokenizer.json" -o -name "tokenizer_config.json"
-
 
       # Llama 8B FP16 irpa export, compile and validate
       - name: Export 8B-FP16 instruct model
@@ -244,14 +241,9 @@ jobs:
       - name: Check runner health
         run: |
           echo "disk space" && df -h
-          echo "working directory" && pwd
-          echo "Sanity checks"
-          rocm-smi
-          rocminfo
-          iree-run-module --list_devices
-          echo "ROCM_PATH=$ROCM_PATH"
-          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-          find /shark-dev -name "tokenizer.json" -o -name "tokenizer_config.json"
+          echo "Sanity check rocm-smi" && rocm-smi
+          echo "Sanity check rocminfo" && rocminfo
+          echo "Sanity check iree-run-module --list_devices" && iree-run-module --list_devices
 
       # Llama 405B FP4 irpa export, compile and validate
       - name: Export 405B-FP4 instruct model
