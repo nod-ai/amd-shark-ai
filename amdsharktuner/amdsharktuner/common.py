@@ -546,6 +546,8 @@ def get_dim_bounds(
             result.append(dim)
             continue
 
+        # TODO: Make over-padding a tunable parameter. This logic allows over-padding to get larger
+        # tile sizes, which may result in better performance despite doing more padded computation.
         if dim > 128:
             padded, was_padded = maybe_padded_bounds(dim, 128)
             result.append(padded)
