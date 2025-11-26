@@ -33,7 +33,7 @@ jobs:
       matrix:
         version: [ 3.11 ]
       fail-fast: false
-    runs-on: linux-mi325-8gpu-ossci-nod-ai
+    runs-on: nodai-amdgpu-mi250-x86-64
     defaults:
       run:
         shell: bash
@@ -45,4 +45,4 @@ jobs:
 
     - name: Checking content
       run: |
-        sudo touch /data/e2eamdshark/amdshark-test-suite-models-cache/test.txt
+        sudo touch /groups/aig_amdsharks/test-suite-ci-cache/test.txt
