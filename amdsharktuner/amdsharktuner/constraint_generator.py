@@ -244,9 +244,7 @@ def generate_generic_contraction_solutions(
         promote_operands = [0, 1]
         padding = None
         if required_padding:
-            # TODO: Remove promotion of operand 2 once codegen supports handling padded outputs without promotion.
-            promote_operands = [0, 1, 2]
-            _, _, mma_intrinsic_k = mma_attr.mnk_shape
+            mma_intrinsic_k = mma_attr.mnk_shape[2]
             padding = [
                 *(workgroup_tile_sizes[d] for d in contraction_dims.m),
                 *(workgroup_tile_sizes[d] for d in contraction_dims.n),

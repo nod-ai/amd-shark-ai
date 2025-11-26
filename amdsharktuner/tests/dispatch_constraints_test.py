@@ -43,9 +43,10 @@ def gpu_target_info(tuner_ctx: common.TunerContext) -> iree_gpu.TargetInfo:
 def test_calculate_shared_memory_usage_in_bytes(tuner_ctx: common.TunerContext) -> None:
     lhs_type = common.ShapedType([1024, 1024], tuner_ctx.type.f16)
     rhs_type = common.ShapedType([1024, 1024], tuner_ctx.type.f16)
+    res_type = common.ShapedType([1024, 1024], tuner_ctx.type.f32)
     assert (
         dispatch_constraints.calculate_shared_memory_usage_in_bytes(
-            rhs_type, rhs_type, [512], [64], [128]
+            lhs_type, rhs_type, res_type, [512], [64], [128]
         )
         == 147456
     )
@@ -53,7 +54,7 @@ def test_calculate_shared_memory_usage_in_bytes(tuner_ctx: common.TunerContext) 
     lhs_type = common.ShapedType([1024, 1024], tuner_ctx.type.i8)
     assert (
         dispatch_constraints.calculate_shared_memory_usage_in_bytes(
-            lhs_type, rhs_type, [512], [64], [128]
+            lhs_type, rhs_type, res_type, [512], [64], [128]
         )
         == 81920
     )
@@ -61,17 +62,37 @@ def test_calculate_shared_memory_usage_in_bytes(tuner_ctx: common.TunerContext) 
     rhs_type = common.ShapedType([1024, 1024], tuner_ctx.type.i32)
     assert (
         dispatch_constraints.calculate_shared_memory_usage_in_bytes(
-            lhs_type, rhs_type, [128], [64], [32]
+            lhs_type, rhs_type, res_type, [128], [64], [32]
         )
         == 12288
     )
 
     assert (
         dispatch_constraints.calculate_shared_memory_usage_in_bytes(
-            lhs_type, rhs_type, [2, 64], [4, 16], [8, 4]
+            lhs_type, rhs_type, res_type, [2, 64], [4, 16], [8, 4]
         )
         == 12288
     )
+
+    lhs_type = common.ShapedType([1024, 1024], tuner_ctx.type.f16)
+    rhs_type = common.ShapedType([1024, 1024], tuner_ctx.type.f16)
+    res_type = common.ShapedType([1024, 1024], tuner_ctx.type.f32)
+    assert (
+        dispatch_constraints.calculate_shared_memory_usage_in_bytes(
+            lhs_type, rhs_type, res_type, [512], [64], [128], promote_operands=[0, 1, 2]
+        )
+        == 278528
+    )
+
+    with pytest.raises(AssertionError):
+        dispatch_constraints.calculate_shared_memory_usage_in_bytes(
+            lhs_type, rhs_type, res_type, [512], [64], [128], promote_operands=[0]
+        )
+
+    with pytest.raises(AssertionError):
+        dispatch_constraints.calculate_shared_memory_usage_in_bytes(
+            lhs_type, rhs_type, res_type, [512], [64], [128], promote_operands=[1, 2]
+        )
 
 
 def test_generate_tile_and_fuse_constraints_valid_input(
