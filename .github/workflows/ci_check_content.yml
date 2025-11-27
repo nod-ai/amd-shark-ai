@@ -33,7 +33,7 @@ jobs:
       matrix:
         version: [ 3.11 ]
       fail-fast: false
-    runs-on: nodai-amdgpu-mi250-x86-64
+    runs-on: linux-mi325-1gpu-ossci-nod-ai
     defaults:
       run:
         shell: bash
@@ -45,4 +45,4 @@ jobs:
 
     - name: Checking content
       run: |
-        sudo touch /groups/aig_amdsharks/test-suite-ci-cache/test.txt
+        find /amdshark-dev/ -name "*.irpa"
