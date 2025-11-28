@@ -696,6 +696,7 @@ def generate_compilation_infos(
     pipeline_options_search_space: PipelineOptionsSearchSpace,
     allowed_waves_per_eu: list[int],
     padding: Optional[list[int]] = None,
+    padding_conv: Optional[list[int]] = None,
 ) -> list[iree_codegen.CompilationInfoAttr]:
     subgroup_basis = [subgroup_basis_counts, subgroup_basis_mapping]
     # Create the LoweringConfigAttr.
@@ -711,6 +712,9 @@ def generate_compilation_infos(
 
     if padding is not None:
         lowering_config_args["padding"] = padding
+
+    if padding_conv is not None:
+        lowering_config_args["padding_conv"] = padding_conv
 
     if codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
         lowering_config_args["subgroup"] = subgroup_tile_sizes

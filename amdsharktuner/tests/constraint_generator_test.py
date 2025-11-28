@@ -295,6 +295,10 @@ def test_generate_solutions_tile_and_fuse_contraction_padding(
             assert "padding =" in str(
                 lowering_config
             ), f"Missing padding in lowering config: {lowering_config}"
+            # padding_conv only for convolutions, not contractions.
+            assert "padding_conv =" not in str(
+                lowering_config
+            ), f"Unexpected padding_conv in non-convolution lowering config: {lowering_config}"
             promote = [int(x) for x in lowering_config.attributes["promote_operands"]]
             assert promote == [0, 1]
 
@@ -372,6 +376,9 @@ def test_generate_solutions_tile_and_fuse_conv_padding(
             assert "padding =" in str(
                 lowering_config
             ), f"Missing padding in lowering config: {lowering_config}"
+            assert "padding_conv =" in str(
+                lowering_config
+            ), f"Missing padding_conv in convolution lowering config: {lowering_config}"
             promote = [int(x) for x in lowering_config.attributes["promote_operands"]]
             assert promote == [0, 1]
 
