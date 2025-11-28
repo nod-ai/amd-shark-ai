@@ -30,7 +30,7 @@ requires-python = ">= 3.10"
 dynamic = ["version"]
 
 [project.urls]
-Repository = "https://github.com/nod-ai/amdshark-ai"
+Repository = "https://github.com/nod-ai/amd-shark-ai"
 Documentation = "https://shortfin.readthedocs.io/en/latest/"
 
 [project.optional-dependencies]

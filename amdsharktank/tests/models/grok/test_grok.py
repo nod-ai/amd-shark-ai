@@ -13,7 +13,7 @@ import pytest
 
 @pytest.mark.xfail(
     raises=AssertionError,
-    reason="https://github.com/nod-ai/amdshark-ai/issues/1270",
+    reason="https://github.com/nod-ai/amd-shark-ai/issues/1270",
 )
 def test_grok():
     theta, config = generate(12345)

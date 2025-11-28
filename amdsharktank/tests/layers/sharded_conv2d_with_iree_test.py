@@ -177,14 +177,14 @@ def run_test_sharded_conv2d_with_iree(
 
 @pytest.mark.xfail(
     torch.__version__ < (2, 6),
-    reason="Node type mismatch; expected <class 'tuple'>, but got <class 'list'>. See https://github.com/nod-ai/amdshark-ai/issues/682",
+    reason="Node type mismatch; expected <class 'tuple'>, but got <class 'list'>. See https://github.com/nod-ai/amd-shark-ai/issues/682",
     raises=ValueError,
     match=re.escape(
         "Node type mismatch; expected <class 'tuple'>, but got <class 'list'>"
     ),
 )
 @pytest.mark.skipif(
-    sys.platform == "win32", reason="https://github.com/nod-ai/amdshark-ai/issues/698"
+    sys.platform == "win32", reason="https://github.com/nod-ai/amd-shark-ai/issues/698"
 )
 def test_sharded_conv2d_with_iree(
     mlir_path: Optional[Path],

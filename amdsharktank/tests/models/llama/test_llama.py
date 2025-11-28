@@ -181,7 +181,7 @@ class CrossEntropyTest(unittest.TestCase):
 class LlamaIreeVsEagerTest(TempDirTestBase):
     @pytest.mark.xfail(
         raises=IreeCompileException,
-        reason="https://github.com/iree-org/iree/issues/21462, https://github.com/nod-ai/amdshark-ai/issues/1758",
+        reason="https://github.com/iree-org/iree/issues/21462, https://github.com/nod-ai/amd-shark-ai/issues/1758",
     )
     def testUnshardedToyIreeVsEager(self):
         theta, config = generate(12345)

@@ -60,7 +60,7 @@ jobs:
         with:
           repository: nod-ai/2024q2-sdxl-mlperf-sprint
           ref: mi355_llama_working_harness_v1
-          token: ${{ secrets.amdshark_AI_REPORTS_GITHUB_TOKEN }}
+          token: ${{ secrets.SHARK_AI_REPORTS_GITHUB_TOKEN }}
           path: 2024q2-sdxl-mlperf-sprint
 
       - name: Build docker image
@@ -130,7 +130,7 @@ jobs:
             rm -rf output_artifacts
             test ! -d output_artifacts && echo "Output artifacts are removed"
 
-  # New job to push logs to amdshark-ai-reports repository
+  # New job to push logs to amd-shark-ai-reports repository
   push_logs:
     name: "Push log llama 8B FP16"
     needs: [ mlperf_llama_benchmark ]
@@ -145,20 +145,20 @@ jobs:
     - name: Checkout Target Repo
       uses: actions/checkout@v4
       with:
-        repository: nod-ai/amdshark-ai-reports
-        token: ${{ secrets.amdshark_AI_REPORTS_GITHUB_TOKEN }}
-        path: amdshark-ai-reports
+        repository: nod-ai/amd-shark-ai-reports
+        token: ${{ secrets.SHARK_AI_REPORTS_GITHUB_TOKEN }}
+        path: amd-shark-ai-reports
 
     - name: Push artifacts
       run: |
         git config --global user.name "GitHub Actions Bot"
         git config --global user.email ""
         date=$(date -u +'%Y-%m-%d')
-        log_dir="amdshark-ai-reports/$date/llama-8b-fp16-harness-logs"
+        log_dir="amd-shark-ai-reports/$date/llama-8b-fp16-harness-logs"
         mkdir -p $log_dir
         #cp -v logs/*.json $log_dir
         cp -v logs/*.log $log_dir
-        cd amdshark-ai-reports
+        cd amd-shark-ai-reports
         git pull
         git add $date
         git commit -m "Add CI Llama 8B FP16 harness logs on $(date -u +'%Y-%m-%d')"

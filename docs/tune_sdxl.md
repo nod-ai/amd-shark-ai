@@ -154,7 +154,7 @@ This will generate benchmark dispatch IR inside `dispatchOutput` directory
 ## Run amdsharktuner
 
 ### Setting up
-Clone [amdshark-ai](https://github.com/nod-ai/amdshark-ai/)
+Clone [amdshark-ai](https://github.com/nod-ai/amd-shark-ai/)
 
 Run commands:
 

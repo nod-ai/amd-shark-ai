@@ -120,7 +120,7 @@ python -m amdsharktank.utils.hf_datasets llama3_8B_fp16 --local-dir $EXPORT_DIR
 >
 > If you would like to convert the model from a [`.gguf`](https://iree.dev/guides/parameters/#gguf)
 > file to a [`.irpa`](https://iree.dev/guides/parameters/#irpa) file, you can
-> use our [`amdsharktank.tools.dump_gguf`](https://github.com/nod-ai/amdshark-ai/blob/main/amdsharktank/amdsharktank/tools/dump_gguf.py)
+> use our [`amdsharktank.tools.dump_gguf`](https://github.com/nod-ai/amd-shark-ai/blob/main/amdsharktank/amdsharktank/tools/dump_gguf.py)
 > script:
 > ```bash
 > python -m amdsharktank.tools.dump_gguf --gguf-file $EXPORT_DIR/<output_gguf_name>.gguf --output-irpa $EXPORT_DIR/<output_irpa_name>.irpa
@@ -155,7 +155,7 @@ export EXPORT_BATCH_SIZES=4
 ### Export to MLIR using amdsharktank
 
 We will now use the
-[`amdsharktank.examples.export_paged_llm_v1`](https://github.com/nod-ai/amdshark-ai/blob/main/amdsharktank/amdsharktank/examples/export_paged_llm_v1.py)
+[`amdsharktank.examples.export_paged_llm_v1`](https://github.com/nod-ai/amd-shark-ai/blob/main/amdsharktank/amdsharktank/examples/export_paged_llm_v1.py)
 script to export an optimized implementation of the LLM from PyTorch to the
 `.mlir` format that our compiler can work with:
 

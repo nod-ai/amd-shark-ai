@@ -4,7 +4,7 @@ set -e
 export BUILD_TYPE="stable"
 export IREE_COMMIT_HASH="main"
 export IREE_REMOTE_REPO="iree-org/iree"
-export amdshark_AI_REMOTE_REPO="nod-ai/amdshark-ai"
+export amdshark_AI_REMOTE_REPO="nod-ai/amd-shark-ai"
 export amdshark_AI_COMMIT_HASH="main"
 SCRIPT_DIR=$(dirname $(realpath "$0"))
 amdshark_AI_ROOT_DIR=${SCRIPT_DIR}/../
@@ -52,7 +52,7 @@ while [[ "$1" != "" ]]; do
             echo "--iree-commit-hash <hash> : To install IREE with specified commit"
             echo "--iree-remote-repo <org/repo> To install with specified IREE fork. Defaults to iree-org/iree"
             echo "--amdshark-ai-commit-hash <hash> : To install amdshark-ai with specified commit"
-            echo "--amdshark-ai-remote-repo <org/repo> : To install with specified amdshark-ai fork. Defaults to nod-ai/amdshark-ai"
+            echo "--amdshark-ai-remote-repo <org/repo> : To install with specified amdshark-ai fork. Defaults to nod-ai/amd-shark-ai"
             exit 0
             ;;
         *)
@@ -67,8 +67,8 @@ mkdir -p ${SCRIPT_DIR}/../output_artifacts
 
 if [[ $BUILD_TYPE = "nightly" ]]; then
     pip install -r pytorch-rocm-requirements.txt
-    pip install amdsharktank -f https://github.com/nod-ai/amdshark-ai/releases/expanded_assets/dev-wheels --pre
-    pip install shortfin[apps] -f https://github.com/nod-ai/amdshark-ai/releases/expanded_assets/dev-wheels --pre
+    pip install amdsharktank -f https://github.com/nod-ai/shark-ai/releases/expanded_assets/dev-wheels --pre
+    pip install shortfin[apps] -f https://github.com/nod-ai/shark-ai/releases/expanded_assets/dev-wheels --pre
     pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime iree-turbine
     pip uninstall --y wave-lang
     pip install -f https://github.com/iree-org/wave/releases/expanded_assets/dev-wheels wave-lang --no-index
@@ -81,8 +81,8 @@ elif [[ $BUILD_TYPE = "stable" ]]; then
 
 elif [[ $BUILD_TYPE = "nightly-cpu" ]]; then
     pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
-    pip install amdsharktank -f https://github.com/nod-ai/amdshark-ai/releases/expanded_assets/dev-wheels --pre
-    pip install shortfin[apps] -f https://github.com/nod-ai/amdshark-ai/releases/expanded_assets/dev-wheels --pre
+    pip install amdsharktank -f https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels --pre
+    pip install shortfin[apps] -f https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels --pre
     pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime iree-turbine
     pip uninstall --y wave-lang
     pip install -f https://github.com/iree-org/wave/releases/expanded_assets/dev-wheels wave-lang --no-index
@@ -95,7 +95,7 @@ elif [[ $BUILD_TYPE = "source" ]]; then
 
     # Create and install amdsharktank and shortfin wheels
     if [ ! -d "amdshark_ai_source" ]; then
-        git clone https://github.com/nod-ai/amdshark-ai.git amdshark_ai_source
+        git clone https://github.com/nod-ai/amd-shark-ai.git amdshark_ai_source
     fi
     cd amdshark_ai_source
     if git config remote.fork_user.url > /dev/null; then
