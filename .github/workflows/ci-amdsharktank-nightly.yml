@@ -148,16 +148,16 @@ jobs:
             --iree-device=hip://0 \
             --iree-hip-target=gfx942 \
             --iree-hal-target-device=hip \
-            --llama3-8b-f16-model-path=/amdshark-dev/data/llama3.1/weights/8b/fp16/llama3.1_8b_fp16_instruct.irpa \
-            --llama3-8b-f8-model-path=/amdshark-dev/8b/fp8/attnf8/native_fp8_e4m3fnuz_llama3_8b.irpa \
-            --llama3-8b-tokenizer-path=/amdshark-dev/data/llama3.1/weights/8b/fp16/tokenizer_config.json \
+            --llama3-8b-f16-model-path=/amdshark-dev/ossci-models/llama_3_1/instruct_8b_fp16.irpa \
+            --llama3-8b-f8-model-path=/amdshark-dev/ossci-models/llama_3_1/instruct_8b_fp8_e4m3fnuz.irpa \
+            --llama3-8b-tokenizer-path=/amdshark-dev/ossci-models/llama_3_1/tokenizer/tokenizer_config.json \
             --html=out/llm/llama/perplexity/index.html \
             --log-cli-level=INFO
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e # v4.0.0
         with:
-          github_token: ${{ secrets.SHARK_PLATFORM_GH_TOKEN }}
+          github_token: ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}
           publish_dir: ./out/llm/llama/perplexity
           destination_dir: ./llm/llama/perplexity
           keep_files: true

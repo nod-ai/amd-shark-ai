@@ -66,7 +66,7 @@ jobs:
 
     - name: Run all proxy config
       run: |
-       git clone --filter=blob:none --no-checkout https://x-access-token:${{ secrets.SHARK_AI_REPORTS_GITHUB_TOKEN }}@github.com/nod-ai/amd-shark-ai-reports.git
+       git clone --filter=blob:none --no-checkout https://x-access-token:${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}@github.com/nod-ai/amd-shark-ai-reports.git
        cd amd-shark-ai-reports
        git sparse-checkout init --cone
        git sparse-checkout set boo/all_proxy_config.txt boo/prod_conv_config.txt
@@ -75,17 +75,15 @@ jobs:
        cd iree-turbine
        export ROCR_VISIBLE_DEVICES="0,1,2,3,4,5,6,7"
        echo "Running all proxy config without tuning"
-       export BOO_TUNING_SPEC_PATH=""
-       python iree/turbine/kernel/boo/driver/driver.py --gpu-id=-1 --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_run_without_tuning.csv || true
+       python iree/turbine/kernel/boo/driver/driver.py  --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_run_without_tuning.csv || true
+       echo "Running prod conv config without tuning"
+       python iree/turbine/kernel/boo/driver/driver.py  --commands-file ../amd-shark-ai-reports/boo/prod_conv_config.txt --csv ../output_artifacts/prod_conv_config_without_tuning.csv || true
        echo "Running all proxy config with tuning"
        export BOO_TUNING_SPEC_PATH="iree/turbine/kernel/boo/runtime/tuning_specs.mlir"
-       python iree/turbine/kernel/boo/driver/driver.py --gpu-id=-1 --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_run_with_tuning.csv || true
-       export BOO_TUNING_SPEC_PATH=""
-       echo "Running prod conv config without tuning"
-       python iree/turbine/kernel/boo/driver/driver.py --gpu-id=-1 --commands-file ../amd-shark-ai-reports/boo/prod_conv_config.txt --csv ../output_artifacts/prod_conv_config_without_tuning.csv || true
+       python iree/turbine/kernel/boo/driver/driver.py  --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_run_with_tuning.csv || true
        export BOO_TUNING_SPEC_PATH="iree/turbine/kernel/boo/runtime/tuning_specs.mlir"
        echo "Running prod conv config with tuning"
-       python iree/turbine/kernel/boo/driver/driver.py --gpu-id=-1 --commands-file ../amd-shark-ai-reports/boo/prod_conv_config.txt --csv ../output_artifacts/prod_conv_config_with_tuning.csv || true
+       python iree/turbine/kernel/boo/driver/driver.py  --commands-file ../amd-shark-ai-reports/boo/prod_conv_config.txt --csv ../output_artifacts/prod_conv_config_with_tuning.csv || true
 
     - name: Upload log files
       if: always()
@@ -115,7 +113,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: nod-ai/amd-shark-ai-reports
-        token: ${{ secrets.SHARK_AI_REPORTS_GITHUB_TOKEN }}
+        token: ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}
         path: amd-shark-ai-reports
 
     - name: Push artifacts
