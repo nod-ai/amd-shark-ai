@@ -96,7 +96,7 @@ def get_vae_model_and_inputs(
     # TODO: Switch to amdsharktank implementation.
     dtype = torch_dtypes[precision]
     if dtype == torch.float16:
-        custom_vae = "amd-amdshark/sdxl-quant-models"
+        custom_vae = "amd-shark/sdxl-quant-models"
     else:
         custom_vae = custom_vae_path
     vae_model = VaeModel(hf_model_name, custom_vae=custom_vae).to(dtype=dtype)

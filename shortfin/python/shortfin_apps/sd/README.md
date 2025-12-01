@@ -7,6 +7,12 @@ This directory contains a [SDXL](https://stablediffusionxl.com/) inference serve
 For [nightly releases](../../../../docs/nightly_releases.md)
 For our [stable release](../../../../docs/user_guide.md)
 
+### Other requirements to run SDXL server
+```
+pip install certifi
+pip install diffusers
+```
+
 ## Start SDXL Server
 The server will prepare runtime artifacts for you.
 
@@ -15,7 +21,7 @@ By default, the port is set to 8000. If you would like to change this, use `--po
 You can check if this (or any) port is in use on Linux with `ss -ntl | grep 8000`.
 
 ```
-python -m shortfin_apps.sd.server --device=amdgpu --device_ids=0 --build_preference=precompiled
+python -m shortfin_apps.sd.server --device=hip --device_ids=0 --build_preference=precompiled
 ```
  - Wait until your server outputs:
 ```
@@ -46,7 +52,7 @@ Please see --help for both the server and client for usage instructions. Here's 
 |--port PORT | server port |
 |--root-path ROOT_PATH |
 |--timeout-keep-alive |
-|--device | local-task,hip,amdgpu | amdgpu only supported in this release
+|--device | local-task,hip,amdgpu |
 |--target | gfx942, gfx1100, gfx1201 | gfx942 only supported in this release
 |--device_ids |
 |--tokenizers |

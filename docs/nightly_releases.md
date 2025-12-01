@@ -67,6 +67,14 @@ python -c "from amdsharktank import ops; print('Sanity check passed')"
 deactivate
 ```
 
+> [!NOTE]
+> To test the installation, torch and wave-lang needs to be installed
+> ```
+> pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6.4
+> pip install wave-lang==3.8.0
+> ```
+
+
 ## Quickstart - amdsharktuner
 
 ```bash
