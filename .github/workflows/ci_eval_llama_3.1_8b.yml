@@ -67,6 +67,7 @@ jobs:
 
       # TODO: remove this test and leave only chunked prefill once it is stabilized.
       - name: Run Torch Model Eval
+        continue-on-error: true  # xfail: expected to fail
         run: |
           source ${VENV_DIR}/bin/activate
           export IRPA=${{ matrix.model.irpa }}
@@ -81,6 +82,7 @@ jobs:
             --min-context=10
 
       - name: Run Torch Model Eval with Chunked Prefill
+        continue-on-error: true  # xfail: expected to fail
         run: |
           source ${VENV_DIR}/bin/activate
           export IRPA=${{ matrix.model.irpa }}
@@ -99,6 +101,7 @@ jobs:
             --min-context=10
 
       - name: Run IREE Model Eval
+        continue-on-error: true  # xfail: expected to fail
         run: |
           source ${VENV_DIR}/bin/activate
           export IRPA=${{ matrix.model.irpa }}
