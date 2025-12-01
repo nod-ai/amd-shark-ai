@@ -167,11 +167,8 @@ def calculate_shared_memory_usage_in_bytes(
     k: list[int] | list[z3.ArithRef],
     promote_operands: list[int] = [0, 1],
 ) -> int | z3.ArithRef:
-    assert promote_operands == [0, 1] or promote_operands == [
-        0,
-        1,
-        2,
-    ], f"Got {promote_operands}"
+    supported_promotions = ([0, 1], [0, 1, 2])
+    assert promote_operands in supported_promotions, f"Got {promote_operands}"
 
     lhs_memory = lhs_type.bitwidth // 8
     for size in m + k:
@@ -185,11 +182,13 @@ def calculate_shared_memory_usage_in_bytes(
     for size in m + n:
         output_memory *= size
 
-    total_memory = (
-        int(0 in promote_operands) * lhs_memory
-        + int(1 in promote_operands) * rhs_memory
-        + int(2 in promote_operands) * output_memory
-    )
+    total_memory = 0
+    if 0 in promote_operands:
+        total_memory += lhs_memory
+    if 1 in promote_operands:
+        total_memory += rhs_memory
+    if 2 in promote_operands:
+        total_memory += output_memory
 
     return total_memory
 
