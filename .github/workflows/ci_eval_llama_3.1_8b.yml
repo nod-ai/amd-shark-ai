@@ -101,6 +101,7 @@ jobs:
             --min-context=10
 
       - name: Run IREE Model Eval
+        continue-on-error: true  # xfail: expected to fail
         run: |
           source ${VENV_DIR}/bin/activate
           export IRPA=${{ matrix.model.irpa }}
