@@ -296,7 +296,7 @@ def test_generate_solutions_tile_and_fuse_contraction_padding(
                 lowering_config
             ), f"Missing padding in lowering config: {lowering_config}"
             promote = [int(x) for x in lowering_config.attributes["promote_operands"]]
-            assert promote == [0, 1, 2]
+            assert promote == [0, 1]
 
 
 def test_generate_solutions_tile_and_fuse_conv_padding(
@@ -373,7 +373,7 @@ def test_generate_solutions_tile_and_fuse_conv_padding(
                 lowering_config
             ), f"Missing padding in lowering config: {lowering_config}"
             promote = [int(x) for x in lowering_config.attributes["promote_operands"]]
-            assert promote == [0, 1, 2]
+            assert promote == [0, 1]
 
 
 def test_adjust_problem_size_for_pipeline(

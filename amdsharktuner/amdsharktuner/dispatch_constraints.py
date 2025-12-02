@@ -161,17 +161,36 @@ def get_dispatch_constraints(
 def calculate_shared_memory_usage_in_bytes(
     lhs_type: common.ShapedType,
     rhs_type: common.ShapedType,
+    res_type: common.ShapedType,
     m: list[int] | list[z3.ArithRef],
     n: list[int] | list[z3.ArithRef],
     k: list[int] | list[z3.ArithRef],
+    promote_operands: list[int] = [0, 1],
 ) -> int | z3.ArithRef:
+    supported_promotions = ([0, 1], [0, 1, 2])
+    assert promote_operands in supported_promotions, f"Got {promote_operands}"
+
     lhs_memory = lhs_type.bitwidth // 8
     for size in m + k:
         lhs_memory *= size
+
     rhs_memory = rhs_type.bitwidth // 8
     for size in n + k:
         rhs_memory *= size
-    return lhs_memory + rhs_memory
+
+    output_memory = res_type.bitwidth // 8
+    for size in m + n:
+        output_memory *= size
+
+    total_memory = 0
+    if 0 in promote_operands:
+        total_memory += lhs_memory
+    if 1 in promote_operands:
+        total_memory += rhs_memory
+    if 2 in promote_operands:
+        total_memory += output_memory
+
+    return total_memory
 
 
 def generate_vector_distribute_constraints(
@@ -258,7 +277,7 @@ def generate_vector_distribute_constraints(
         constraints += [subgroups >= 1, subgroups <= 10]
 
     shared_memory = calculate_shared_memory_usage_in_bytes(
-        lhs_type, rhs_type, [m], [n], [k]
+        lhs_type, rhs_type, res_type, [m], [n], [k]
     )
     constraints += [shared_memory <= gpu_target_info.max_workgroup_memory_bytes]
 
@@ -360,7 +379,7 @@ def generate_tile_and_fuse_constraints(
     constraints += [wg_threads == subgroups * subgroup_size]
 
     shared_memory = calculate_shared_memory_usage_in_bytes(
-        lhs_type, rhs_type, m_tiles, n_tiles, k_tiles
+        lhs_type, rhs_type, res_type, m_tiles, n_tiles, k_tiles
     )
     constraints += [
         shared_memory * intrinsic_k <= gpu_target_info.max_workgroup_memory_bytes
