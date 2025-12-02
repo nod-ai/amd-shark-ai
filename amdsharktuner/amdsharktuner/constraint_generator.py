@@ -93,7 +93,7 @@ def generate_generic_contraction_solutions(
     )
 
     # Apply padding for TileAndFuse pipeline to get better tile sizes.
-    padding_applied = False
+    overpadding_applied = False
     if codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
         # Use IGEMM maps if available (dimensions were restructured), otherwise use original indexing maps.
         padding_maps = indexing_maps
@@ -105,13 +105,15 @@ def generate_generic_contraction_solutions(
         (
             matmul_size.M,
             matmul_size.N,
-            padding_applied,
+            overpadding_applied,
         ) = common.calculate_padded_dimensions(
             matmul_size.M, matmul_size.N, contraction_dims, padding_maps
         )
 
     M, N, K = matmul_size.M, matmul_size.N, matmul_size.K
-    tuner_ctx.logger.debug(f"M={M}, N={N}, K={K}, padding_applied={padding_applied}")
+    tuner_ctx.logger.debug(
+        f"M={M}, N={N}, K={K}, overpadding_applied={overpadding_applied}"
+    )
 
     m_vars = [z3.Int(f"m{i}") for i in range(len(M))]
     n_vars = [z3.Int(f"n{i}") for i in range(len(N))]
@@ -203,6 +205,15 @@ def generate_generic_contraction_solutions(
             gpu_target_info.mma_intrinsics,
         )
 
+        # Check if any dimension requires padding to align with intrinsic sizes.
+        required_padding = any(
+            p[-1] % i != 0 for p, i in zip((M, N, K), intrinsic_mnk_shape, strict=True)
+        )
+        if required_padding:
+            tuner_ctx.logger.debug(
+                f"Required padding detected: M={M}, N={N}, K={K}, intrinsic_shape={intrinsic_mnk_shape}"
+            )
+
         def set_cdim_tile_sizes(tile_sizes, contraction_dims, csizes):
             for dim, size in zip(contraction_dims, csizes):
                 tile_sizes[dim] = size
@@ -259,7 +270,11 @@ def generate_generic_contraction_solutions(
 
         promote_operands = [0, 1]
         padding = None
-        if padding_applied:
+        if required_padding or overpadding_applied:
+            padding_tile_sizes = list(workgroup_tile_sizes)
+            for k_dim in contraction_dims.k:
+                padding_tile_sizes[k_dim] = reduction_tile_sizes[k_dim]
+
             mma_intrinsic_k = mma_attr.mnk_shape[2]
             padding = [
                 *(workgroup_tile_sizes[d] for d in contraction_dims.m),
