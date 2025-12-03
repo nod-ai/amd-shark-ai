@@ -393,15 +393,12 @@ def test_get_attention_operation(tuner_ctx: common.TunerContext) -> None:
 def test_build_conv_to_igemm_info(tuner_ctx: common.TunerContext) -> None:
     context = tuner_ctx.mlir_ctx
     module_str = """
-        builtin.module{
-            func.func @test(%arg0: tensor<2x34x34x16xf16>, %arg1: tensor<3x3x16x32xf16>) -> tensor<2x32x32x32xf32> {
-                %cst = arith.constant 0.000000e+00 : f32
-                %0 = tensor.empty() : tensor<2x32x32x32xf32>
-                %1 = linalg.fill ins(%cst : f32) outs(%0 : tensor<2x32x32x32xf32>) -> tensor<2x32x32x32xf32>
-                %2 = linalg.conv_2d_nhwc_hwcf {root_op}
+        builtin.module {
+            func.func @test(%arg0: tensor<2x34x34x16xf16>, %arg1: tensor<3x3x16x32xf16>, %arg2: tensor<2x32x32x32xf32>) -> tensor<2x32x32x32xf32> {
+                %0 = linalg.conv_2d_nhwc_hwcf {root_op}
                     ins(%arg0, %arg1 : tensor<2x34x34x16xf16>, tensor<3x3x16x32xf16>)
-                    outs(%1 : tensor<2x32x32x32xf32>) -> tensor<2x32x32x32xf32>
-                return %2 : tensor<2x32x32x32xf32>
+                    outs(%arg2 : tensor<2x32x32x32xf32>) -> tensor<2x32x32x32xf32>
+                return %0 : tensor<2x32x32x32xf32>
             }
         }"""
 

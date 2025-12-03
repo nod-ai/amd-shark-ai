@@ -254,7 +254,9 @@ class ConvolutionOpInterfaceParser(DispatchParser):
     def __init__(self, root_op: ir.Operation, tuner_ctx: common.TunerContext):
         super().__init__(root_op, tuner_ctx)
         root_op = self.get_root_op()
-        convolution_dims = linalg.infer_convolution_dimensions(root_op)
+        convolution_dims: linalg.ConvolutionDimensions = (
+            linalg.infer_convolution_dimensions(root_op)
+        )
         assert convolution_dims, "no convolution dimensions"
 
         batch_indices = list(convolution_dims.batch)

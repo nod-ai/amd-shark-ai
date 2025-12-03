@@ -253,6 +253,12 @@ class AttentionKnobs(KnobAssignment):
 def is_affine_expr_function_of_dim(expr: ir.AffineExpr, position: int) -> bool:
     """
     Return True if the expression depends on the dimension at the given position.
+
+    Examples:
+        d0 -> True for position 0, False for position 1.
+        d0 + d1 -> True for both position 0 and position 1.
+        d1 * 2 -> False for position 0, True for position 1.
+        42 (constant) -> False for any position.
     """
     if ir.AffineDimExpr.isinstance(expr):
         dim_expr = ir.AffineDimExpr(expr)

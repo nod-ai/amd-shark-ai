@@ -11,6 +11,7 @@ Usage: python -m pytest common_test.py
 import pytest
 from amdsharktuner import common
 from dataclasses import dataclass
+from types import SimpleNamespace
 
 from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import _builtin_ops_gen, iree_codegen, iree_gpu, transform  # type: ignore
@@ -574,28 +575,30 @@ def test_is_affine_expr_function_of_dim(tuner_ctx: common.TunerContext) -> None:
         d0 = ir.AffineDimExpr.get(0)
         d1 = ir.AffineDimExpr.get(1)
 
-        assert common.is_affine_expr_function_of_dim(d0, 0) == True
-        assert common.is_affine_expr_function_of_dim(d0, 1) == False
+        assert common.is_affine_expr_function_of_dim(d0, 0)
+        assert not common.is_affine_expr_function_of_dim(d0, 1)
 
         c42 = ir.AffineConstantExpr.get(42)
-        assert common.is_affine_expr_function_of_dim(c42, 0) == False
-        assert common.is_affine_expr_function_of_dim(c42, 1) == False
+        assert not common.is_affine_expr_function_of_dim(c42, 0)
+        assert not common.is_affine_expr_function_of_dim(c42, 1)
 
         add_expr = d0 + d1
-        assert common.is_affine_expr_function_of_dim(add_expr, 0) == True
-        assert common.is_affine_expr_function_of_dim(add_expr, 1) == True
+        assert common.is_affine_expr_function_of_dim(add_expr, 0)
+        assert common.is_affine_expr_function_of_dim(add_expr, 1)
 
         mul_expr = d1 * 2
-        assert common.is_affine_expr_function_of_dim(mul_expr, 0) == False
-        assert common.is_affine_expr_function_of_dim(mul_expr, 1) == True
+        assert not common.is_affine_expr_function_of_dim(mul_expr, 0)
+        assert common.is_affine_expr_function_of_dim(mul_expr, 1)
 
         complex_expr = (d0 + d1) * 2
-        assert common.is_affine_expr_function_of_dim(complex_expr, 0) == True
-        assert common.is_affine_expr_function_of_dim(complex_expr, 1) == True
+        assert common.is_affine_expr_function_of_dim(complex_expr, 0)
+        assert common.is_affine_expr_function_of_dim(complex_expr, 1)
 
 
 def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
-    from types import SimpleNamespace
+    # Note: Using SimpleNamespace to create lightweight mock objects for conv_dims.
+    # The actual linalg.ConvolutionDimensions is a C++-backed type from IREE's
+    # Python bindings, so we mock it with SimpleNamespace for testing convenience.
 
     # Spatial dimension last (NCHW layout).
     conv_to_igemm_info = common.ConvToIgemmInfo(
