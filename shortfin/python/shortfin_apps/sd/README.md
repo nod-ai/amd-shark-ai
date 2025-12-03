@@ -28,6 +28,23 @@ python -m shortfin_apps.sd.server --device=hip --device_ids=0 --build_preference
 INFO - Application startup complete.
 INFO - Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 ```
+
+> [!NOTE]
+> - Server command mentioned above will use the pre-compiled version of artifacts and start the server. To export the MLIR and compile the new MLIR, user can use option `--build_preference=export --force_update=True`
+> - MLIR and IRPA files gets exported in `.cache` directory in user's home directory e.g. `/home/<username>/.cache/amdshark/genfiles/sdxl/`
+> - VMFB gets compiled at  `/home/<username>/.cache/amdshark/bin/sdxl/`
+
+To export and compile MLIR for individual components, one can refer following commands
+```
+python -m iree.build /home/<username>/scratch/mlperf/sdxl/sanity_test/3.12.venv/lib/python3.12/site-packages/shortfin_apps/sd/components/builders.py --model-json=/home/<username>/.cache/amdshark/genfiles/sdxlconfig/sdxl_config_i8.json --target=gfx942 --splat=False --build-preference=export --output-dir=/home/<username>/.cache/amdshark --model=clip --force-update=False --iree-hal-target-device=hip --iree-hip-target=gfx942 --iree-compile-extra-args= --force-update=True
+
+python -m iree.build /home/<username>/scratch/mlperf/sdxl/sanity_test/3.12.venv/lib/python3.12/site-packages/shortfin_apps/sd/components/builders.py --model-json=/home/<username>/.cache/amdshark/genfiles/sdxlconfig/sdxl_config_i8.json --target=gfx942 --splat=False --build-preference=export --output-dir=/home/<username>/.cache/amdshark --model=unet --force-update=False --iree-hal-target-device=hip --iree-hip-target=gfx942 --iree-compile-extra-args= --force-update=True
+
+python -m iree.build /home/<username>/scratch/mlperf/sdxl/sanity_test/3.12.venv/lib/python3.12/site-packages/shortfin_apps/sd/components/builders.py --model-json=/home/<username>/.cache/amdshark/genfiles/sdxlconfig/sdxl_config_i8.json --target=gfx942 --splat=False --build-preference=export --output-dir=/home/<username>/.cache/amdshark --model=vae --force-update=False --iree-hal-target-device=hip --iree-hip-target=gfx942 --iree-compile-extra-args= --force-update=True
+
+python -m iree.build /home/<username>/scratch/mlperf/sdxl/sanity_test/3.12.venv/lib/python3.12/site-packages/shortfin_apps/sd/components/builders.py --model-json=/home/<username>/.cache/amdshark/genfiles/sdxlconfig/sdxl_config_i8.json --target=gfx942 --splat=False --build-preference=export --output-dir=/home/<username>/.cache/amdshark --model=scheduler --force-update=False --iree-hal-target-device=hip --iree-hip-target=gfx942 --iree-compile-extra-args= --force-update=True
+```
+
 ### Run the SDXL Client
 
 ```
