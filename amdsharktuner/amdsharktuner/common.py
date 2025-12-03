@@ -523,3 +523,74 @@ def get_target_info(input_module: ir.Module) -> iree_gpu.TargetInfo:
     target = executable_variant_op.target
 
     return iree_gpu.TargetInfo.get_gpu_target_info(target)
+
+
+# The following two functions are from IREE side for padding utility:
+# https://github.com/iree-org/iree/blob/8ae91ebb0e555e660b8a6898f6071476f7a1f20b/compiler/src/iree/compiler/Codegen/Dialect/GPU/TargetUtils/ConfigUtils.cpp#L631-L671
+def compute_next_aligned_bound(original_bound: int, alignment: int) -> int:
+    """Pads a bound up to the next multiple of alignment if needed.
+
+    Returns:
+        The original bound if already aligned, or the next multiple of alignment.
+    """
+    remainder = original_bound % alignment
+    if remainder == 0:
+        return original_bound
+    return original_bound + alignment - remainder
+
+
+def get_dim_bounds(
+    dims: list[int],
+    padding_can_be_expensive: bool,
+) -> list[int]:
+    """Computes padded dimension bounds for better tile alignment.
+
+    Returns:
+        List of dimensions, potentially padded to alignment boundaries.
+    """
+    if padding_can_be_expensive:
+        return dims
+
+    # TODO(Bangtian): Make over-padding a tunable parameter. This logic allows over-padding to get larger
+    # tile sizes, which may result in better performance despite doing more padded computation.
+    result = []
+    for dim in dims:
+        if dim > 128:
+            result.append(compute_next_aligned_bound(dim, 128))
+        elif dim > 32:
+            result.append(compute_next_aligned_bound(dim, 32))
+        else:
+            result.append(dim)
+
+    return result
+
+
+# Use padding logic from IREE side:
+# https://github.com/iree-org/iree/blob/8ae91ebb0e555e660b8a6898f6071476f7a1f20b/compiler/src/iree/compiler/Codegen/Dialect/GPU/TargetUtils/ConfigUtils.cpp#L691-L703
+def calculate_padded_dimensions(
+    M: list[int],
+    N: list[int],
+    contraction_dims: ContractionDimensions,
+    contraction_maps: list[ir.AffineMap],
+) -> tuple[list[int], list[int], bool]:
+    """Calculates padded M and N dimensions for matmul operations.
+
+    Returns:
+        A tuple of (M_padded, N_padded, any_padding_applied) where:
+        - M_padded: Padded M dimensions.
+        - N_padded: Padded N dimensions.
+        - any_padding_applied: True if any padding was applied to M or N, False otherwise.
+    """
+    # Detect LHS transposition. Padding is disabled only when LHS is transposed.
+    k_dim_inner = contraction_dims.k[-1]
+    lhs_map = contraction_maps[0]
+    lhs_last_expr = lhs_map.results[-1]
+    lhs_dim_expr = ir.AffineDimExpr(lhs_last_expr)
+
+    transposed_lhs = k_dim_inner != lhs_dim_expr.position
+
+    M_padded = get_dim_bounds(M, transposed_lhs)
+    N_padded = get_dim_bounds(N, transposed_lhs)
+
+    any_padding_applied = M_padded != M or N_padded != N
+    return M_padded, N_padded, any_padding_applied

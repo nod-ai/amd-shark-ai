@@ -505,3 +505,65 @@ def test_get_target_info(tuner_ctx: common.TunerContext) -> None:
         iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16,
         iree_gpu.VirtualMMAIntrinsic.VMFMA_F32_16x16x32_F16,
     ]
+
+
+def test_compute_next_aligned_bound() -> None:
+    # Already aligned: no padding.
+    assert common.compute_next_aligned_bound(128, 128) == 128
+    assert common.compute_next_aligned_bound(64, 32) == 64
+
+    # Not aligned: padding needed.
+    assert common.compute_next_aligned_bound(100, 128) == 128
+    assert common.compute_next_aligned_bound(50, 32) == 64
+    assert common.compute_next_aligned_bound(200, 128) == 256
+
+
+def test_get_dim_bounds() -> None:
+    # Padding not expensive: apply padding.
+    assert common.get_dim_bounds([200, 300], False) == [256, 384]
+    assert common.get_dim_bounds([128, 256], False) == [128, 256]
+    assert common.get_dim_bounds([200, 50, 20], False) == [256, 64, 20]
+
+    # Padding expensive: no padding applied.
+    assert common.get_dim_bounds([100, 200], True) == [100, 200]
+
+
+def test_calculate_padded_dimensions(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    with ir.Location.unknown(tuner_ctx.mlir_ctx):
+        dim0 = ir.AffineExpr.get_dim(0)
+        dim1 = ir.AffineExpr.get_dim(1)
+        dim2 = ir.AffineExpr.get_dim(2)
+
+        lhs_map = ir.AffineMap.get(3, 0, [dim0, dim2])
+        rhs_map = ir.AffineMap.get(3, 0, [dim2, dim1])
+        res_map = ir.AffineMap.get(3, 0, [dim0, dim1])
+
+        contraction_dims = common.ContractionDimensions(m=[0], n=[1], k=[2], batch=[])
+
+        # Test with non-transposed LHS: (m, k) x (k, n) -> (m, n).
+        # LHS map: (d0, d1, d2) -> (d0, d2)  # M=d0, K=d2 (non-transposed).
+        (M_padded, N_padded, padding_applied,) = common.calculate_padded_dimensions(
+            M=[200],
+            N=[300],
+            contraction_dims=contraction_dims,
+            contraction_maps=[lhs_map, rhs_map, res_map],
+        )
+        assert M_padded == [256], f"Expected M padded to 256, got {M_padded}"
+        assert N_padded == [384], f"Expected N padded to 384, got {N_padded}"
+        assert padding_applied == True
+
+        # Test with transposed LHS: (k, m) x (k, n) -> (m, n).
+        # LHS map: (d0, d1, d2) -> (d2, d0)  # K=d2, M=d0 (transposed).
+        lhs_transposed_map = ir.AffineMap.get(3, 0, [dim2, dim0])
+
+        (M_padded, N_padded, padding_applied,) = common.calculate_padded_dimensions(
+            M=[200],
+            N=[300],
+            contraction_dims=contraction_dims,
+            contraction_maps=[lhs_transposed_map, rhs_map, res_map],
+        )
+        assert M_padded == [200], f"Expected M not padded, got {M_padded}"
+        assert N_padded == [300], f"Expected N not padded, got {N_padded}"
+        assert padding_applied == False

@@ -303,6 +303,8 @@ def generate_tile_and_fuse_constraints(
     M, N, K = list(matmul_size.M), list(matmul_size.N), list(matmul_size.K)
     m_tiles, n_tiles, k_tiles, subgroup_m_tiles, subgroup_n_tiles = tile_sizes
     intrinsic_mn, intrinsic_k = intrinsic_size
+    # Align innermost M, N, K to intrinsic sizes. This is separate from overpadding
+    # and handles small dims (e.g., 30x30x30) that need intrinsic alignment.
     M[-1] = ((M[-1] + intrinsic_mn - 1) / intrinsic_mn) * intrinsic_mn
     N[-1] = ((N[-1] + intrinsic_mn - 1) / intrinsic_mn) * intrinsic_mn
     K[-1] = ((K[-1] + intrinsic_k - 1) / intrinsic_k) * intrinsic_k

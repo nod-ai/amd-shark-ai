@@ -306,6 +306,84 @@ def test_generate_solutions_tile_and_fuse_conv_padding(
     f16 = tuner_ctx.type.f16
     f32 = tuner_ctx.type.f32
 
+    input_shape = (2, 64, 64, 128)
+    kernel_shape = (3, 3, 128, 256)
+    output_shape = (2, 62, 62, 256)
+
+    with ir.Location.unknown(context):
+        module = ir.Module.create()
+        build_func_with_conv2d_nhwc_hwcf(
+            module=module,
+            input_shape=input_shape,
+            kernel_shape=kernel_shape,
+            output_shape=output_shape,
+            input_type=f16,
+            kernel_type=f16,
+            output_type=f32,
+        )
+
+        root_ops = iree_codegen.get_tuner_root_ops(module)
+        assert len(root_ops) == 1
+        root_op = root_ops[0]
+
+        parser = dispatch_parser.ConvolutionOpInterfaceParser(root_op, tuner_ctx)
+        op_info = parser.get_op_info()
+        gen = constraint_generator.ConvolutionOpInterfaceConstraintGenerator(op_info)
+
+        assert gen.op_info.dims.batch == []
+        assert gen.op_info.dims.m == [0, 1, 2]
+        assert gen.op_info.dims.n == [3]
+        assert gen.op_info.dims.k == [4, 5, 6]
+
+        assert gen.op_info.matmul_size.B == []
+        assert gen.op_info.matmul_size.M == [2, 62, 62]
+        assert gen.op_info.matmul_size.N == [256]
+        assert gen.op_info.matmul_size.K == [3, 3, 128]
+
+        assert gen.op_info.lhs_type.shape == [2, 64, 64, 128]
+        assert gen.op_info.rhs_type.shape == [3, 3, 128, 256]
+        assert gen.op_info.res_type.shape == [2, 62, 62, 256]
+
+        solutions = list(
+            gen.generate_solutions(
+                tuner_context=tuner_ctx,
+                gpu_target_info=gpu_target_info,
+                codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
+                num_subgroups=4,
+            )
+        )
+
+        assert len(solutions) > 0, "No solutions generated with TileAndFuse pipeline."
+        for solution in solutions:
+            assert len(solution) == 1, f"Expected a single-item list, got: {solution}"
+            config = solution[0]
+            assert isinstance(
+                config, common.TuningConfiguration
+            ), f"Expected TuningConfiguration, got: {type(config)}"
+
+            assert (
+                config.name == "compilation_info"
+            ), f"Expected key 'compilation_info', got: {config.name}"
+            assert isinstance(
+                config.configuration, iree_codegen.CompilationInfoAttr
+            ), f"Expected CompilationInfoAttr, got: {type(config.configuration)}"
+
+            lowering_config = config.configuration.lowering_config
+            assert "padding =" in str(
+                lowering_config
+            ), f"Missing padding in lowering config: {lowering_config}"
+            promote = [int(x) for x in lowering_config.attributes["promote_operands"]]
+            assert promote == [0, 1]
+
+
+def test_generate_solutions_tile_and_fuse_conv_small_unaligned(
+    tuner_ctx: common.TunerContext, gpu_target_info: iree_gpu.TargetInfo
+) -> None:
+    """Test TileAndFuse with small dimensions (< 32) unaligned to intrinsics."""
+    context = tuner_ctx.mlir_ctx
+    f16 = tuner_ctx.type.f16
+    f32 = tuner_ctx.type.f32
+
     input_shape = (2, 7, 7, 32)
     kernel_shape = (3, 3, 32, 64)
     output_shape = (2, 5, 5, 64)
@@ -353,8 +431,80 @@ def test_generate_solutions_tile_and_fuse_conv_padding(
             )
         )
 
-        assert len(solutions) > 0, "No solutions generated with TileAndFuse pipeline."
+        assert len(solutions) > 0, "No solutions generated for small unaligned case."
+
         for solution in solutions:
+            assert len(solution) == 1, f"Expected a single-item list, got: {solution}"
+            config = solution[0]
+            assert isinstance(
+                config, common.TuningConfiguration
+            ), f"Expected TuningConfiguration, got: {type(config)}"
+
+            assert (
+                config.name == "compilation_info"
+            ), f"Expected key 'compilation_info', got: {config.name}"
+            assert isinstance(
+                config.configuration, iree_codegen.CompilationInfoAttr
+            ), f"Expected CompilationInfoAttr, got: {type(config.configuration)}"
+
+            lowering_config = config.configuration.lowering_config
+            assert "padding =" in str(
+                lowering_config
+            ), f"Missing padding in lowering config: {lowering_config}"
+            promote = [int(x) for x in lowering_config.attributes["promote_operands"]]
+            assert promote == [0, 1]
+
+
+def test_generate_solutions_tile_and_fuse_matmul_small_unaligned(
+    tuner_ctx: common.TunerContext, gpu_target_info: iree_gpu.TargetInfo
+) -> None:
+    """Test TileAndFuse with small matmul dimensions (< 32) unaligned to intrinsics."""
+    context = tuner_ctx.mlir_ctx
+    f16 = tuner_ctx.type.f16
+    f32 = tuner_ctx.type.f32
+
+    m, n, k = 30, 30, 30
+
+    with ir.Location.unknown(context):
+        module = ir.Module.create()
+        build_func_with_matmul(module, m, n, k, f16, f16, f32)
+
+        root_ops = iree_codegen.get_tuner_root_ops(module)
+        assert len(root_ops) == 1
+        root_op = root_ops[0]
+
+        parser = dispatch_parser.ContractionOpInterfaceParser(root_op, tuner_ctx)
+        op_info = parser.get_op_info()
+        gen = constraint_generator.ContractionOpInterfaceConstraintGenerator(op_info)
+
+        assert gen.op_info.dims.batch == []
+        assert gen.op_info.dims.m == [0]
+        assert gen.op_info.dims.n == [1]
+        assert gen.op_info.dims.k == [2]
+
+        assert gen.op_info.matmul_size.M == [30]
+        assert gen.op_info.matmul_size.N == [30]
+        assert gen.op_info.matmul_size.K == [30]
+
+        assert gen.op_info.lhs_type.shape == [30, 30]
+        assert gen.op_info.rhs_type.shape == [30, 30]
+        assert gen.op_info.res_type.shape == [30, 30]
+
+        solutions = list(
+            gen.generate_solutions(
+                tuner_context=tuner_ctx,
+                gpu_target_info=gpu_target_info,
+                codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
+                num_subgroups=4,
+            )
+        )
+
+        assert (
+            len(solutions) > 0
+        ), "No solutions generated for small unaligned matmul case."
+
+        for solution in solutions:
+            print(solution)
             assert len(solution) == 1, f"Expected a single-item list, got: {solution}"
             config = solution[0]
             assert isinstance(
