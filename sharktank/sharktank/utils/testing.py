@@ -1010,14 +1010,11 @@ def group_tasks_by_rid(tasks: List["LlmTaskInput"]) -> Dict[str, List["LlmTaskIn
 def make_batch_from_tasks(
     tasks: List[LlmTaskInput], block_seq_stride: int
 ) -> BatchInput:
-    """Create one BatchInput from tasks belonging to the same chunk index."""
-    token_batches, seq_lens, start_positions, page_batches, batch_rids = (
-        [],
-        [],
-        [],
-        [],
-        [],
-    )
+    batch_rids = []
+    token_batches = []
+    seq_lens = []
+    start_positions = []
+    page_batches = []
 
     for t in tasks:
         batch_rids.append(t.rid)
@@ -1054,7 +1051,6 @@ def batch_tasks_by_chunk(
     """
     tasks_by_rid = group_tasks_by_rid(tasks)
     max_chunks = max(len(chunks) for chunks in tasks_by_rid.values())
-
     batched_inputs = []
 
     for chunk_idx in range(max_chunks):

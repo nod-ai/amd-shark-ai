@@ -349,18 +349,10 @@ class TestPrefillExtendAttention:
         self,
         token_ids: torch.Tensor,
         seq_lens: torch.Tensor,
-        seq_block_ids: torch.Tensor,
         block_seq_stride: int,
     ) -> tuple[list[torch.Tensor], torch.Tensor]:
         batch_size = token_ids.shape[0]
-        device = token_ids.device
-        dtype = seq_block_ids.dtype
-        max_blocks = seq_block_ids.shape[1]
-
         per_request_token_ids = []
-        updated_seq_block_ids = torch.zeros_like(
-            seq_block_ids, dtype=dtype, device=device
-        )
         for b in range(batch_size):
             seq_len = seq_lens[b].item()
             padded_seq_len = (
@@ -369,10 +361,8 @@ class TestPrefillExtendAttention:
             num_blocks = (seq_len + block_seq_stride - 1) // block_seq_stride
             trimmed_tokens = token_ids[b, :padded_seq_len]
             per_request_token_ids.append(trimmed_tokens)
-            valid_blocks = seq_block_ids[b, :num_blocks]
-            updated_seq_block_ids[b, :num_blocks] = valid_blocks
 
-        return per_request_token_ids, updated_seq_block_ids
+        return per_request_token_ids
 
     def get_sdpa_prefill_logits(
         self,
@@ -484,11 +474,8 @@ class TestPrefillExtendAttention:
         config.device = torch.device(device)
         extend_attn_model = PagedLlmModelV1(theta, config)
         chunk_size = 16
-        (
-            extend_attn_token_ids,
-            extend_attn_seq_block_ids,
-        ) = self.setup_extend_attn_inputs(
-            r1_token_ids, r1_seq_lens, r1_seq_block_ids, config.block_seq_stride
+        extend_attn_token_ids = self.setup_extend_attn_inputs(
+            r1_token_ids, r1_seq_lens, config.block_seq_stride
         )
         all_task_inputs = []
         batch_size = len(extend_attn_token_ids)
@@ -497,7 +484,7 @@ class TestPrefillExtendAttention:
                 f"R{b}",
                 extend_attn_token_ids[b].unsqueeze(0),
                 r1_seq_lens,
-                extend_attn_seq_block_ids[b].unsqueeze(0),
+                r1_seq_block_ids[b].unsqueeze(0),
                 chunk_size,
                 config.block_seq_stride,
                 device,
@@ -572,21 +559,18 @@ class TestPrefillExtendAttention:
         config.device = torch.device(device)
         extend_attn_model = PagedLlmModelV1(theta, config)
         chunk_size = 128
-        (
-            extend_attn_token_ids,
-            extend_attn_seq_block_ids,
-        ) = self.setup_extend_attn_inputs(
-            token_ids, seq_lens, seq_block_ids, config.block_seq_stride
+        extend_attn_token_ids = self.setup_extend_attn_inputs(
+            token_ids, seq_lens, config.block_seq_stride
         )
-        seq_lens = torch.tensor([256, 320], dtype=torch.int32)
+        extend_attn_seq_lens = padded_seq_lens
         all_task_inputs = []
         batch_size = len(extend_attn_token_ids)
         for b in range(batch_size):
             task_inputs = make_task_inputs_per_request(
                 f"R{b}",
                 extend_attn_token_ids[b].unsqueeze(0),
-                seq_lens[b].item(),
-                extend_attn_seq_block_ids[b].unsqueeze(0),
+                padded_seq_lens[b].item(),
+                seq_block_ids[b].unsqueeze(0),
                 chunk_size,
                 config.block_seq_stride,
                 device,
@@ -615,6 +599,7 @@ class TestPrefillExtendAttention:
                 seq_block_ids,
                 extend_attn_cache_state,
             )
+            breakpoint()
             prefill_extend_logits.append(extend_attn_logits.cpu())
 
         # all_prefill_extend_logits = torch.cat(prefill_extend_logits, dim=1)
