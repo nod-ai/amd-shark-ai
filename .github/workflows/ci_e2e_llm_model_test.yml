@@ -91,7 +91,7 @@ jobs:
             mkdir output_artifacts/output_llama-8b-fp8/
             python3 -m amdsharktank.tools.e2e_model_test --model llama-8b-fp8 2>&1 | tee output_artifacts/output_llama-8b-fp8/e2e_llama_3.1-8b-fp8.log
 
-      - name: Mistral Nemo Instruce 2407 FP8
+      - name: Mistral Nemo Instruct 2407 FP8
         id: Mistral_Nemo_Instruct_2407_FP8_test
         if: always()
         run: |
