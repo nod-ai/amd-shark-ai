@@ -1,9 +1,9 @@
 {
   "llama-8b-fp8": {
-    "irpa": "/amdshark-dev/8b/fp8/attnf8/native_fp8_e4m3fnuz_llama3_8b.irpa",
+    "irpa": "/amdshark-dev/ossci-models/llama_3_1/instruct_8b_fp8_e4m3fnuz.irpa",
     "dtype": "fp8",
-    "tokenizer": "/amdshark-dev/8b/instruct/tokenizer.json",
-    "tokenizer_config": "/amdshark-dev/8b/instruct/tokenizer_config.json",
+    "tokenizer": "/amdshark-dev/ossci-models/llama_3_1/tokenizer/tokenizer.json",
+    "tokenizer_config": "/amdshark-dev/ossci-models/llama_3_1/tokenizer/tokenizer_config.json",
     "kv_dtype": "float8_e4m3fnuz",
     "benchmark_model": "llama-8B-FP8",
     "benchmarks": [
@@ -67,10 +67,10 @@
     "port_for_serving": 8900
   },
   "llama-8b-fp16": {
-    "irpa": "/amdshark-dev/8b/instruct/weights/llama3.1_8b_instruct_fp16.irpa",
+    "irpa": "/amdshark-dev/ossci-models/llama_3_1/instruct_8b_fp16.irpa",
     "dtype": "fp16",
-    "tokenizer": "/amdshark-dev/8b/instruct/tokenizer.json",
-    "tokenizer_config": "/amdshark-dev/8b/instruct/tokenizer_config.json",
+    "tokenizer": "/amdshark-dev/ossci-models/llama_3_1/tokenizer/tokenizer.json",
+    "tokenizer_config": "/amdshark-dev/ossci-models/llama_3_1/tokenizer/tokenizer_config.json",
     "benchmark_model": "llama-8B-FP16",
     "benchmarks": [
       {
@@ -129,10 +129,10 @@
     "port_for_serving": 8900
   },
   "llama-70b-fp16": {
-    "irpa": "/amdshark-dev/70b/instruct/weights/llama3.1_70b_instruct_fp16.irpa",
+    "irpa": "/amdshark-dev/ossci-models/llama_3_1/70b/instruct_70b_fp16.irpa",
     "dtype": "fp16",
-    "tokenizer": "/amdshark-dev/70b/instruct/tokenizer.json",
-    "tokenizer_config": "/amdshark-dev/70b/instruct/tokenizer_config.json",
+    "tokenizer": "/amdshark-dev/ossci-models/llama_3_1/70b/tokenizer.json",
+    "tokenizer_config": "/amdshark-dev/ossci-models/llama_3_1/70b/tokenizer_config.json",
     "kv_dtype": "float16",
     "benchmark_model": "llama-70B-FP16",
     "benchmarks": [
@@ -194,10 +194,10 @@
     "port_for_serving": 8900
   },
   "llama-70b-fp8": {
-    "irpa": "/amdshark-dev/70b/fp8/attnf8/native_fp8_e4m3fnuz_llama3_70b.irpa",
+    "irpa": "/amdshark-dev/ossci-models/llama_3_1/70b/native_fp8_e4m3fnuz_llama3_70b.irpa",
     "dtype": "llama-70B-FP8",
-    "tokenizer": "/amdshark-dev/70b/instruct/tokenizer.json",
-    "tokenizer_config": "/amdshark-dev/70b/instruct/tokenizer_config.json",
+    "tokenizer": "/amdshark-dev/ossci-models/llama_3_1/70b/tokenizer.json",
+    "tokenizer_config": "/amdshark-dev/ossci-models/llama_3_1/70b/tokenizer_config.json",
     "kv_dtype": "float8_e4m3fnuz",
     "benchmark_model": "llama-70B-FP8",
     "benchmarks": [
@@ -264,10 +264,10 @@
     "port_for_serving": 8900
   },
   "mistral": {
-    "irpa": "/amdshark-dev/mistral_instruct/instruct.irpa",
+    "irpa": "/amdshark-dev/ossci-models/mistral_nemo_instruct/mistral_nemo_2407_fp8_e4m3fnuz.irpa",
     "dtype": "mistral_fp8",
-    "tokenizer": "/amdshark-dev/mistral_instruct/tokenizer.json",
-    "tokenizer_config": "/amdshark-dev/mistral_instruct/tokenizer_config.json",
+    "tokenizer": "/amdshark-dev/ossci-models/mistral_nemo_instruct/tokenizer.json",
+    "tokenizer_config": "/amdshark-dev/ossci-models/mistral_nemo_instruct/tokenizer_config.json",
     "kv_dtype": "float8_e4m3fnuz",
     "benchmark_model": "Mistral-Nemo-Instruct-2407-FP8",
     "benchmarks": [
