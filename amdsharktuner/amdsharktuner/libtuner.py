@@ -17,7 +17,6 @@ and implement a complete tuning loop for a specific model.
 
 
 import math
-import signal
 import sys
 import shutil
 import logging
@@ -26,8 +25,6 @@ from collections import defaultdict
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-import multiprocessing
-import queue
 from tqdm import tqdm
 import hashlib
 from dataclasses import dataclass, field
@@ -45,10 +42,11 @@ from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_gpu, iree_codegen  # type: ignore
 from . import (
     candidate_gen,
+    candidate_ordering,
     common,
     dispatch_constraints,
     dispatch_parser,
-    candidate_ordering,
+    process_utils,
 )
 
 
@@ -65,12 +63,12 @@ DEFAULT_DEVICE_LIST = ["hip://0"]
 
 # Default values for max number of workers.
 DEFAULT_MAX_CPU_WORKERS = (
-    multiprocessing.cpu_count() // 2
+    process_utils.multiprocessing.cpu_count() // 2
 )  # the actual amount of worker that will be generated = min(max_cpu_workers, len(task_list)).
 
-# Declare global variables at the module level for multiprocessing.
-worker_id = None
-device_id = None
+# # Declare global variables at the module level for multiprocessing.
+# worker_id = None
+# device_id = None
 
 # Declare special symbols for libtuner to search and locate.
 DEVICE_ID_PLACEHOLDER = "!DEVICE_ID!"
@@ -459,9 +457,13 @@ def setup_logging(args: argparse.Namespace, path_config: PathConfig) -> logging.
         verbose_console_handler.setFormatter(file_formatter)
         logging.getLogger().addHandler(verbose_console_handler)
 
-    # config logger in candidate_gen.py.
-    tune_logger = logging.getLogger("tune")
-    tune_logger.setLevel(logging.DEBUG)
+    # Config logger in candidate_gen.py.
+    candidate_gen_logger = logging.getLogger("candidate_gen")
+    candidate_gen_logger.setLevel(logging.DEBUG)
+
+    # Config logger in process_utils.py
+    process_utils_logger = logging.getLogger("process_utils")
+    process_utils_logger.setLevel(logging.DEBUG)
 
     # Log all arguments.
     logging.debug(f"Input Arguments:")
@@ -504,20 +506,20 @@ def handle_error(
         sys.exit(1)
 
 
-def init_worker_context(queue: multiprocessing.Queue) -> None:
-    """Assign a static index to current process as the worker ordinal, and specify the device indices to be used"""
-    global worker_id, device_id
+# def init_worker_context(queue: multiprocessing.Queue) -> None:
+#     """Assign a static index to current process as the worker ordinal, and specify the device indices to be used"""
+#     global worker_id, device_id
 
-    worker_id, device_id = queue.get()
+#     worker_id, device_id = queue.get()
 
 
-def create_worker_context_queue(device_ids: list[str]) -> queue.Queue[tuple[int, int]]:
-    """Create queue contains Worker ID and Device ID for worker initialization"""
-    worker_contexts_queue = multiprocessing.Manager().Queue()
-    for worker_id, device_id in enumerate(device_ids):
-        worker_contexts_queue.put((worker_id, device_id))
+# def create_worker_context_queue(device_ids: list[str]) -> queue.Queue[tuple[int, int]]:
+#     """Create queue contains Worker ID and Device ID for worker initialization"""
+#     worker_contexts_queue = multiprocessing.Manager().Queue()
+#     for worker_id, device_id in enumerate(device_ids):
+#         worker_contexts_queue.put((worker_id, device_id))
 
-    return worker_contexts_queue
+#     return worker_contexts_queue
 
 
 def flatten_nested_td_spec(td_spec_str: str, output_path: Path) -> None:
@@ -574,8 +576,8 @@ def run_iree_compile_command(compile_pack: CompilePack) -> Optional[int]:
         f"--iree-codegen-tuning-spec-path={td_spec_path}",
     ]
     compile_command += compile_pack.iree_compile_flags
-    result = candidate_gen.run_command(
-        candidate_gen.RunPack(
+    result = process_utils.run_command(
+        process_utils.RunPack(
             command=compile_command,
             check=False,
             timeout_seconds=compile_pack.iree_compile_timeout,
@@ -628,6 +630,7 @@ def run_iree_benchmark_module_command(benchmark_pack: BenchmarkPack):
         extra_flags[key] = value
 
     # Benchmark the module.
+    device_id = process_utils.get_global_device_id()
     try:
         timeout = benchmark_pack.benchmark_timeout
         benchmark_results = ireert.benchmark.benchmark_module(
@@ -686,48 +689,6 @@ def run_iree_benchmark_module_command(benchmark_pack: BenchmarkPack):
     )
 
 
-def multiprocess_progress_wrapper(
-    num_worker: int,
-    task_list: list,
-    function: Callable,
-    initializer: Optional[Callable] = None,
-    initializer_inputs: Optional[Iterable[Any]] = None,
-    time_budget: Optional[common.TimeBudget] = None,
-) -> list[Any]:
-    """Wrapper of multiprocessing pool and progress bar"""
-    results = []
-    initializer_inputs = initializer_inputs or ()
-
-    # Create a multiprocessing pool.
-    sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
-    with multiprocessing.Pool(
-        num_worker, initializer, initializer_inputs
-    ) as worker_pool:
-        signal.signal(signal.SIGINT, sigint_handler)
-        # Use tqdm to create a progress bar.
-        with tqdm(total=len(task_list)) as pbar:
-            try:
-                # Use imap_unordered to asynchronously execute the worker function on each task.
-                for result in worker_pool.imap_unordered(function, task_list):
-                    results.append(result)
-                    pbar.update(1)  # Update progress bar.
-                    # If time limit is reached, stop progress wrapper.
-                    if time_budget is not None and time_budget.expired():
-                        logging.warning(
-                            f"Time limit reached, total {len(results)} results collected"
-                        )
-                        worker_pool.terminate()
-                        worker_pool.join()
-                        return results
-            except KeyboardInterrupt:
-                # If Ctrl+C is pressed, terminate all child processes.
-                worker_pool.terminate()
-                worker_pool.join()
-                sys.exit(1)  # Exit the script.
-
-    return results
-
-
 def calculate_md5(file_path: Path) -> str:
     md5 = hashlib.md5()
     with open(file_path, "rb") as f:
@@ -782,7 +743,7 @@ def generate_candidate_specs(
 
     path_config.specs_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy(args.input_file, path_config.template_mlir)
-    tune_logger = logging.getLogger("tune")
+    candidate_gen_logger = logging.getLogger("candidate_gen")
 
     # Generate transform dialect specs.
     try:
@@ -805,7 +766,7 @@ def generate_candidate_specs(
             input_module=mlir_module, tuner_ctx=tuning_client.tuner_context
         )
         if not dispatch_tuner:
-            tune_logger.warning(
+            candidate_gen_logger.warning(
                 "Failed to set up dispatch tuner. No candidates will be generated."
             )
             return []
@@ -904,11 +865,11 @@ def generate_candidate_specs(
     except Exception as e:
         logging.error("An error occurred during candidates generation: %s", str(e))
         # Capture and log debug messages from candidate_gen.py.
-        tune_logger = logging.getLogger("tune_with_td")
+        candidate_gen_logger = logging.getLogger("candidate_gen")
         for handler in logging.getLogger().handlers:
             if isinstance(handler, logging.FileHandler):
-                tune_logger.handlers.append(handler)
-        tune_logger.exception("Error in candidate_gen.py:")
+                candidate_gen_logger.handlers.append(handler)
+        candidate_gen_logger.exception("Error in candidate_gen.py:")
         raise
 
     logging.debug(f"Generated [{len(candidates) - 1}] candidates")
@@ -951,7 +912,7 @@ def benchmark_candidates(
     """
     Runs the benchmarking for a given list of candidate indices.
     """
-    worker_context_queue = create_worker_context_queue(devices)
+    worker_context_queue = process_utils.create_worker_context_queue(devices)
 
     benchmark_timeout = (
         timeout_reference
@@ -969,11 +930,11 @@ def benchmark_candidates(
     ]
 
     # Perform benchmarking.
-    return multiprocess_progress_wrapper(
+    return process_utils.multiprocess_progress_wrapper(
         num_worker=len(devices),
         task_list=task_list,
         function=run_iree_benchmark_module_command,
-        initializer=init_worker_context,
+        initializer=process_utils.init_worker_context,
         initializer_inputs=(worker_context_queue,),
         time_budget=common.TimeBudget.for_minutes(benchmark_time),
     )
@@ -984,18 +945,17 @@ def benchmark_baseline(
     tuning_client: TuningClient,
     candidate_tracker: CandidateTracker,
 ) -> tuple[list[BenchmarkResult], float]:
-
-    global worker_id, device_id
-
     baseline_results = list()
 
     running_time_s: list[float] = []
     # Use tqdm to create a progress bar.
     with tqdm(total=len(devices)) as pbar:
         try:
-            worker_id = 0
-            for device_id_ in devices:
-                device_id = device_id_
+            # Run the baseline on each target device sequentially.
+            process_utils.set_global_worker_id(0)  # Only one process.
+            for device_id in devices:
+                # Store device_id in the process, run_iree_benchmark_module_command() reads it later.
+                process_utils.set_global_device_id(device_id)
                 benchmark_start_timestamp = time.perf_counter()
                 result = run_iree_benchmark_module_command(
                     BenchmarkPack(
@@ -1228,7 +1188,7 @@ def compile(
             )
         )
     num_worker = min(args.max_cpu_workers, len(task_list))
-    compiled_candidates = multiprocess_progress_wrapper(
+    compiled_candidates = process_utils.multiprocess_progress_wrapper(
         num_worker=num_worker, task_list=task_list, function=run_iree_compile_command
     )
     success_rate = get_compilation_success_rate(compiled_candidates)
