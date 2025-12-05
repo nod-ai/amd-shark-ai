@@ -388,3 +388,60 @@ def test_get_attention_operation(tuner_ctx: common.TunerContext) -> None:
     assert result.k1_dims == [2]
     assert result.k2_dims == [3]
     assert result.n_dims == [4]
+
+
+def test_build_conv_to_igemm_info(tuner_ctx: common.TunerContext) -> None:
+    context = tuner_ctx.mlir_ctx
+    module_str = """
+        builtin.module {
+            func.func @test(%arg0: tensor<2x34x34x16xf16>, %arg1: tensor<3x3x16x32xf16>, %arg2: tensor<2x32x32x32xf32>) -> tensor<2x32x32x32xf32> {
+                %0 = linalg.conv_2d_nhwc_hwcf {root_op}
+                    ins(%arg0, %arg1 : tensor<2x34x34x16xf16>, tensor<3x3x16x32xf16>)
+                    outs(%arg2 : tensor<2x32x32x32xf32>) -> tensor<2x32x32x32xf32>
+                return %0 : tensor<2x32x32x32xf32>
+            }
+        }"""
+
+    module = ir.Module.parse(module_str, context)
+    root_op_list = iree_codegen.get_tuner_root_ops(module)
+    assert len(root_op_list) == 1
+    root_op = root_op_list[0]
+
+    convolution_dims = linalg.infer_convolution_dimensions(root_op)
+    assert convolution_dims is not None
+
+    igemm_details = iree_codegen.get_igemm_generic_conv_details(root_op)
+    assert igemm_details is not None
+
+    input_type = root_op.operands[0].type
+    res_maps = linalg.get_indexing_maps(root_op)
+    indexing_maps = [map_attr.value for map_attr in res_maps]
+    input_map = indexing_maps[0]
+
+    conv_to_igemm_info = dispatch_parser.build_conv_to_igemm_info(
+        convolution_dims, input_type, input_map, igemm_details
+    )
+
+    assert conv_to_igemm_info is not None
+    assert conv_to_igemm_info.conv_dims == convolution_dims
+
+    # NHWC layout: spatial and batch dims are not last.
+    assert conv_to_igemm_info.is_spatial_dim_last == False
+    assert conv_to_igemm_info.is_batch_dim_last == False
+
+    assert (
+        conv_to_igemm_info.conv_to_igemm_dim_map == igemm_details.conv_to_igemm_dim_map
+    )
+    assert conv_to_igemm_info.conv_to_igemm_dim_map == {
+        0: 0,
+        1: 1,
+        2: 2,
+        3: 3,
+        4: 4,
+        5: 4,
+        6: 4,
+    }
+
+    assert conv_to_igemm_info.input_channel_dim_to_size == {6: 16}
+    assert list(convolution_dims.input_channel) == [6]
+    assert input_type.shape[3] == 16

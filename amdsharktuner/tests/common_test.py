@@ -11,6 +11,7 @@ Usage: python -m pytest common_test.py
 import pytest
 from amdsharktuner import common
 from dataclasses import dataclass
+from types import SimpleNamespace
 
 from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import _builtin_ops_gen, iree_codegen, iree_gpu, transform  # type: ignore
@@ -567,3 +568,169 @@ def test_calculate_padded_dimensions(
         assert M_padded == [200], f"Expected M not padded, got {M_padded}"
         assert N_padded == [300], f"Expected N not padded, got {N_padded}"
         assert padding_applied == False
+
+
+def test_is_affine_expr_function_of_dim(tuner_ctx: common.TunerContext) -> None:
+    with tuner_ctx.mlir_ctx:
+        d0 = ir.AffineDimExpr.get(0)
+        d1 = ir.AffineDimExpr.get(1)
+
+        assert common.is_affine_expr_function_of_dim(d0, 0)
+        assert not common.is_affine_expr_function_of_dim(d0, 1)
+
+        c42 = ir.AffineConstantExpr.get(42)
+        assert not common.is_affine_expr_function_of_dim(c42, 0)
+        assert not common.is_affine_expr_function_of_dim(c42, 1)
+
+        add_expr = d0 + d1
+        assert common.is_affine_expr_function_of_dim(add_expr, 0)
+        assert common.is_affine_expr_function_of_dim(add_expr, 1)
+
+        mul_expr = d1 * 2
+        assert not common.is_affine_expr_function_of_dim(mul_expr, 0)
+        assert common.is_affine_expr_function_of_dim(mul_expr, 1)
+
+        complex_expr = (d0 + d1) * 2
+        assert common.is_affine_expr_function_of_dim(complex_expr, 0)
+        assert common.is_affine_expr_function_of_dim(complex_expr, 1)
+
+
+def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
+    # Note: Using SimpleNamespace to create lightweight mock objects for conv_dims.
+    # The actual linalg.ConvolutionDimensions is a C++-backed type from IREE's
+    # Python bindings, so we mock it with SimpleNamespace for testing convenience.
+
+    # Spatial dimension last (NCHW layout).
+    conv_to_igemm_info = common.ConvToIgemmInfo(
+        is_batch_dim_last=False,
+        is_spatial_dim_last=True,
+        conv_dims=SimpleNamespace(batch=[0], input_channel=[1]),
+        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 2},
+        input_channel_dim_to_size={1: 64},
+    )
+    result = common.get_padding_conv_sizes(
+        bounds=[128, 64, 56],
+        padding_sizes=[256, 128, 64],
+        workgroup_tile_sizes=[64, 32, 16],
+        reduction_tile_sizes=[0, 0, 0],
+        conv_to_igemm_info=conv_to_igemm_info,
+    )
+    assert result is None
+
+    # Batch dimension last (CHWN layout).
+    conv_to_igemm_info = common.ConvToIgemmInfo(
+        is_batch_dim_last=True,
+        is_spatial_dim_last=False,
+        conv_dims=SimpleNamespace(batch=[0, 3], input_channel=[1]),
+        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 2, 3: 3},
+        input_channel_dim_to_size={1: 64},
+    )
+    result = common.get_padding_conv_sizes(
+        bounds=[128, 64, 56, 32],
+        padding_sizes=[256, 128, 64, 64],
+        workgroup_tile_sizes=[64, 32, 16, 8],
+        reduction_tile_sizes=[0, 0, 0, 0],
+        conv_to_igemm_info=conv_to_igemm_info,
+    )
+    assert result == [0, 0, 0, 64]
+
+    # Batch dimension last with bounds divisible by padding.
+    conv_to_igemm_info = common.ConvToIgemmInfo(
+        is_batch_dim_last=True,
+        is_spatial_dim_last=False,
+        conv_dims=SimpleNamespace(batch=[0, 3], input_channel=[1]),
+        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 2, 3: 3},
+        input_channel_dim_to_size={1: 64},
+    )
+    result = common.get_padding_conv_sizes(
+        bounds=[128, 64, 56, 64],
+        padding_sizes=[256, 128, 64, 64],
+        workgroup_tile_sizes=[64, 32, 16, 8],
+        reduction_tile_sizes=[0, 0, 0, 0],
+        conv_to_igemm_info=conv_to_igemm_info,
+    )
+    assert result is None
+
+    # Normal convolution with parallel and reduction dimensions.
+    conv_to_igemm_info = common.ConvToIgemmInfo(
+        is_batch_dim_last=False,
+        is_spatial_dim_last=False,
+        conv_dims=SimpleNamespace(batch=[0], input_channel=[3]),
+        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 2, 3: 3},
+        input_channel_dim_to_size={3: 64},
+    )
+    result = common.get_padding_conv_sizes(
+        bounds=[128, 56, 56, 64],
+        padding_sizes=[256, 64, 64, 128],
+        workgroup_tile_sizes=[64, 16, 16, 0],
+        reduction_tile_sizes=[0, 0, 0, 32],
+        conv_to_igemm_info=conv_to_igemm_info,
+    )
+    assert result == [256, 64, 64, 128]
+
+    # Reduction dimension with bounds divisible by padding.
+    conv_to_igemm_info = common.ConvToIgemmInfo(
+        is_batch_dim_last=False,
+        is_spatial_dim_last=False,
+        conv_dims=SimpleNamespace(batch=[0], input_channel=[3]),
+        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 2, 3: 3},
+        input_channel_dim_to_size={3: 128},
+    )
+    result = common.get_padding_conv_sizes(
+        bounds=[128, 56, 56, 128],
+        padding_sizes=[256, 64, 64, 128],
+        workgroup_tile_sizes=[64, 16, 16, 0],
+        reduction_tile_sizes=[0, 0, 0, 32],
+        conv_to_igemm_info=conv_to_igemm_info,
+    )
+    assert result == [256, 64, 64, 0]
+
+    # Input channel size is small compared to padding size.
+    conv_to_igemm_info = common.ConvToIgemmInfo(
+        is_batch_dim_last=False,
+        is_spatial_dim_last=False,
+        conv_dims=SimpleNamespace(batch=[0], input_channel=[3]),
+        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 2, 3: 3},
+        input_channel_dim_to_size={3: 32},
+    )
+    result = common.get_padding_conv_sizes(
+        bounds=[128, 56, 56, 32],
+        padding_sizes=[256, 64, 64, 128],
+        workgroup_tile_sizes=[64, 16, 16, 0],
+        reduction_tile_sizes=[0, 0, 0, 32],
+        conv_to_igemm_info=conv_to_igemm_info,
+    )
+    assert result == [256, 64, 64, 0]
+
+    # Multiple padded parallel dims mapping to same IGEMM dim.
+    conv_to_igemm_info = common.ConvToIgemmInfo(
+        is_batch_dim_last=False,
+        is_spatial_dim_last=False,
+        conv_dims=SimpleNamespace(batch=[0], input_channel=[3]),
+        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 1, 3: 3},
+        input_channel_dim_to_size={3: 64},
+    )
+    result = common.get_padding_conv_sizes(
+        bounds=[128, 56, 56, 64],
+        padding_sizes=[256, 64, 128],
+        workgroup_tile_sizes=[64, 16, 32],
+        reduction_tile_sizes=[0, 0, 0],
+        conv_to_igemm_info=conv_to_igemm_info,
+    )
+    assert result is None
+
+    conv_to_igemm_info = common.ConvToIgemmInfo(
+        is_batch_dim_last=False,
+        is_spatial_dim_last=False,
+        conv_dims=SimpleNamespace(batch=[0], input_channel=[2]),
+        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 3},
+        input_channel_dim_to_size={2: 64},
+    )
+    result = common.get_padding_conv_sizes(
+        bounds=[128, 56, 56, 64],
+        padding_sizes=[256, 64, 64, 128],
+        workgroup_tile_sizes=[64, 16, 16, 0],
+        reduction_tile_sizes=[0, 0, 0, 32],
+        conv_to_igemm_info=conv_to_igemm_info,
+    )
+    assert result is None
