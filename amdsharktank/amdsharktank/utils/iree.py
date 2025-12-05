@@ -10,6 +10,7 @@ import sys
 import json
 from copy import deepcopy
 from pathlib import Path
+import tempfile
 
 import numpy as np
 import collections.abc
@@ -29,9 +30,15 @@ from amdsharktank.types.tensors import (
     torch_tree_flatten,
 )
 from amdsharktank.utils import verify_exactly_one_is_not_none
+from amdsharktank.utils.export import (
+    export_torch_module_to_mlir_file,
+    get_torch_eager_output,
+    _as_tuple,
+)
 from .tree import Tree
 from iree.runtime import FileHandle
 import iree.runtime
+
 
 if TYPE_CHECKING:
     from ..layers import ModelConfig
@@ -252,7 +259,8 @@ def with_iree_device_context(
     ```
     Although the dev variable will be deleted after all other variables, in practice
     with the various object wrappings with numpy and torch, the underlying HalBuffer
-    may get destroyed after the device.
+    may get destroyed after the device. For torch, use tensor.clone().detach() to break the ref to an IREE HalBuffer
+    and return the cloned tensor. With this process, usually garbage collection will do the right thing.
     """
     res = fn(devices)
     gc.collect()
@@ -615,8 +623,14 @@ def call_torch_module_function(
     return res
 
 
-def iree_to_torch(*tensors: iree.runtime.DeviceArray) -> List[torch.Tensor]:
-    return [device_array_to_host(tensor) for tensor in tensors]
+def iree_to_torch(
+    *tensors: iree.runtime.DeviceArray, to_host: bool = False
+) -> List[torch.Tensor]:
+    res_torch = [device_array_to_host(tensor) for tensor in tensors]
+    if to_host:
+        res_torch = [tensor.clone().detach() for tensor in res_torch]
+        del tensors
+    return res_torch
 
 
 def make_hal_buffer_view_trace_default_callback(
@@ -753,3 +767,159 @@ def run_model_with_iree_run_module(
     input_args = [f"--input={arg.strip()}" for arg in input_args]
     cmd += input_args
     subprocess.check_call(cmd, **subprocess_run_kwargs)
+
+
+def run_iree_module_from_vmfb(
+    vmfb_path: Path,
+    devices: list[iree.runtime.HalDevice] | None = None,
+    args=(),
+    *,
+    entrypoint="forward",
+    parameters_path=None,
+    driver="hip",
+    device_count=1,
+):
+    """
+    Load VMFB and run with IREE.
+
+    Args:
+        vmfb_path: Path to the VMFB file
+        args: Input arguments for the module
+        entrypoint: Name of the function to run
+        parameters_path: Optional path to parameters file
+        driver: IREE driver to use
+        device_count: Number of devices
+
+    Returns:
+        IREE module output
+    """
+    args = _as_tuple(args)
+
+    # Load & run with IREE
+    if devices is None:
+        devices = get_iree_devices(driver=driver, device_count=device_count)
+
+    def run_with_devices(devices):
+        iree_module, vm_context, _ = load_iree_module(
+            module_path=str(vmfb_path),
+            devices=devices,
+            parameters_path=parameters_path,
+        )
+        iree_args = prepare_iree_module_function_args(args=args, devices=devices)
+
+        iree_out = run_iree_module_function(
+            module=iree_module,
+            vm_context=vm_context,
+            args=iree_args,
+            device=devices[0],
+            function_name=entrypoint,
+        )
+        results_host = iree_to_torch(*iree_out, to_host=True)
+        return results_host
+
+    return with_iree_device_context(run_with_devices, devices)
+
+
+def assert_iree_torch_outputs_close(
+    iree_output: torch.Tensor | tuple[torch.Tensor, ...],
+    torch_output: torch.Tensor | tuple[torch.Tensor, ...],
+    *,
+    atol: Optional[float] = None,
+    rtol: Optional[float] = None,
+):
+    """
+    Compare IREE output with torch eager reference and assert closeness.
+
+    Args:
+        iree_output: Output from IREE module as a tuple of np.ndarrays.
+        torch_output: Output from torch eager execution
+        atol/rtol: tolerances passed to torch.testing.assert_close
+    """
+    # Convert and compare
+    expected = torch_output
+    actual = iree_output
+
+    if isinstance(expected, torch.Tensor):
+        expected = (expected,)
+    if isinstance(actual, torch.Tensor):
+        actual = (actual,)
+
+    torch.testing.assert_close(actual, expected, atol=atol, rtol=rtol)
+
+
+def run_iree_vs_torch_eager(
+    module: torch.nn.Module,
+    input_args=(),
+    kwargs=None,
+    *,
+    atol=1e-4,
+    rtol=0.0,
+    entrypoint="forward",
+    parameters_path=None,
+    compile_flags: list[str] | None = None,
+    driver="hip",
+    device_count=1,
+    directory=".",
+):
+    """
+    Wrapper for MLIR export via FxProgramsBuilder(model) and IREE vs Torch eager comparison.
+
+    Args:
+      module: torch.nn.Module under test
+      input_args: example positional inputs (tuple required)
+      kwargs: example kwargs
+      atol/rtol: tolerances passed to torch.testing.assert_close
+      entrypoint: the method name exported/invoked ("forward" by default)
+      parameters_path: Optional path to parameters file
+      compile_flags: List of compilation flags for iree
+      driver: IREE driver to use
+      device_count: Number of devices
+    """
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        mlir_path = td / "module.mlir"
+        vmfb_path = td / "module.vmfb"
+
+        # Get torch reference output
+        torch_output = get_torch_eager_output(
+            module=module,
+            input_args=input_args,
+            kwargs=kwargs,
+        )
+
+        # Export to MLIR
+        export_torch_module_to_mlir_file(
+            module=module,
+            input_args=input_args,
+            kwargs=kwargs,
+            mlir_path=mlir_path,
+            target_fn=entrypoint,
+        )
+
+        # Compile MLIR to VMFB
+        if compile_flags is None:
+            raise ValueError("compile_flags must be provided")
+
+        iree.compiler.compile_file(
+            str(mlir_path),
+            output_file=str(vmfb_path),
+            extra_args=compile_flags,
+        )
+        iree_devices = get_iree_devices(driver=driver, device_count=device_count)
+        # Run with IREE
+        iree_output = run_iree_module_from_vmfb(
+            vmfb_path=vmfb_path,
+            devices=iree_devices,
+            args=input_args,
+            entrypoint=entrypoint,
+            parameters_path=parameters_path,
+        )
+        # Compare outputs
+        assert_iree_torch_outputs_close(
+            iree_output=iree_output,
+            torch_output=torch_output,
+            atol=atol,
+            rtol=rtol,
+        )
+    del iree_devices
+    gc.collect()
