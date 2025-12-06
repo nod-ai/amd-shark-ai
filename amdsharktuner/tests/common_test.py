@@ -36,15 +36,15 @@ def test_gpu_pipeline_options(tuner_ctx: common.TunerContext) -> None:
     options = iree_gpu.PipelineOptionsAttr.get()
     assert str(options) == "#iree_gpu.pipeline_options<>"
 
-    options = iree_gpu.PipelineOptionsAttr.get(prefetch_shared_memory=True)
-    assert str(options) == "#iree_gpu.pipeline_options<prefetch_shared_memory = true>"
+    options = iree_gpu.PipelineOptionsAttr.get(prefetch_num_stages=2)
+    assert str(options) == "#iree_gpu.pipeline_options<prefetch_num_stages = 2>"
 
     options = iree_gpu.PipelineOptionsAttr.get(
-        prefetch_shared_memory=True, no_reduce_shared_memory_bank_conflicts=False
+        prefetch_num_stages=2, no_reduce_shared_memory_bank_conflicts=False
     )
     assert (
         str(options)
-        == "#iree_gpu.pipeline_options<prefetch_shared_memory = true, no_reduce_shared_memory_bank_conflicts = false>"
+        == "#iree_gpu.pipeline_options<prefetch_num_stages = 2, no_reduce_shared_memory_bank_conflicts = false>"
     )
 
     options = iree_gpu.PipelineOptionsAttr.get(
@@ -101,7 +101,7 @@ def test_get_pipeline_config(tuner_ctx: common.TunerContext) -> None:
     )
     assert config1_str == '{"amdgpu-waves-per-eu" = "2"}'
 
-    pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_shared_memory=True)
+    pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_num_stages=2)
     config_dict = common.get_translation_info_config(pipeline_options, 4)
     translation_info = iree_codegen.TranslationInfoAttr.get(
         pipeline_attr, None, [16, 16, 1], 32, config_dict
@@ -112,7 +112,7 @@ def test_get_pipeline_config(tuner_ctx: common.TunerContext) -> None:
     config2_str: str = str(compilation_info.translation_info.configuration)
     assert (
         config2_str
-        == '{gpu_pipeline_options = #iree_gpu.pipeline_options<prefetch_shared_memory = true>, llvm_func_attrs = {"amdgpu-waves-per-eu" = "4"}}'
+        == '{gpu_pipeline_options = #iree_gpu.pipeline_options<prefetch_num_stages = 2>, llvm_func_attrs = {"amdgpu-waves-per-eu" = "4"}}'
     )
 
 

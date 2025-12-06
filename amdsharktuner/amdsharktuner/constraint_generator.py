@@ -374,7 +374,7 @@ def generate_attention_solutions(
     sg_m_cnt = z3.Int("sg_m_cnt")
     sg_n_cnt = z3.Int("sg_n_cnt")
 
-    # Used to determine if prefetch_shared_memory can be enabled.
+    # Used to determine if prefetch_num_stages can be enabled.
     # See: https://github.com/iree-org/iree/blob/411aa64083a2303946b4d2d72d00e6a6814fbafb/compiler/src/iree/compiler/Codegen/LLVMGPU/KernelConfig.cpp#L974-L976.
     can_reuse_qk_output_for_pv_input = z3.Bool("can_reuse_qk_output_for_pv_input")
 
@@ -500,9 +500,11 @@ def generate_attention_solutions(
 
         workgroup_size = lookup(sg_m_cnt) * lookup(sg_n_cnt) * lookup(subgroup_size)
 
-        # Set prefetch_shared_memory based on whether layouts match.
+        # Set prefetch_num_stages based on whether layouts match.
+        # 0/1 = disable prefetching, 2 = two-stage pipeline (default),
+        # 3 = three-stage pipeline (separate read, write, compute stages).
         layouts_match = bool(model[can_reuse_qk_output_for_pv_input])
-        pipeline_options_search_space.prefetch_shared_memory = [layouts_match]
+        pipeline_options_search_space.prefetch_num_stages = [2 if layouts_match else 0]
 
         promote_operands = [0, 1, 2]
         compilation_infos = dispatch_constraints.generate_compilation_infos(

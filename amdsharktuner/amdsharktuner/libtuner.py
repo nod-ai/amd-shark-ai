@@ -372,10 +372,13 @@ def parse_arguments(
         "--tile-dims", help="Map of tile size matmul dims", type=str, default="mnk"
     )
     candidate_gen_args.add_argument(
-        "--prefetch-shared-memory-options",
-        type=lambda t: [s.strip().lower() == "true" for s in t.split(",")],
-        default=[True],
-        help="Comma-separated list of allowed values for the prefetch_shared_memory pipeline option. Possible values: [True, False]",
+        "--prefetch-num-stages-options",
+        type=lambda t: [int(s.strip()) for s in t.split(",")],
+        default=[2],
+        help="Comma-separated list of allowed values for prefetch_num_stages "
+        "pipeline option. Values: 0/1 = disable prefetching, 2 = two-stage "
+        "pipeline (default, combines read+write), 3 = three-stage pipeline "
+        "(separate read, write, compute stages).",
     )
     candidate_gen_args.add_argument(
         "--no-reduce-shared-memory-bank-conflicts-options",
@@ -790,7 +793,7 @@ def generate_candidate_specs(
         mlir_module = dispatch_parser.parse_mlir(mlir_text, tuning_client.tuner_context)
         logging.debug("Captured messages from candidate_gen.py:")
         pipeline_options_search_space = dispatch_constraints.PipelineOptionsSearchSpace(
-            prefetch_shared_memory=args.prefetch_shared_memory_options,
+            prefetch_num_stages=args.prefetch_num_stages_options,
             no_reduce_shared_memory_bank_conflicts=args.no_reduce_shared_memory_bank_conflicts_options,
         )
         starter_td_spec: Optional[ir.Module] = None

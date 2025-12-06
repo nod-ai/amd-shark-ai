@@ -655,7 +655,7 @@ def getMMAAttr(
 
 @dataclass
 class PipelineOptionsSearchSpace:
-    prefetch_shared_memory: list[Optional[bool]] = field(default_factory=lambda: [None])
+    prefetch_num_stages: list[Optional[int]] = field(default_factory=lambda: [None])
     no_reduce_shared_memory_bank_conflicts: list[Optional[bool]] = field(
         default_factory=lambda: [None]
     )
@@ -666,16 +666,16 @@ def generate_allowed_pipeline_options(
     pipeline_options_search_space: PipelineOptionsSearchSpace,
 ) -> list[iree_gpu.PipelineOptionsAttr]:
     pipeline_options_list = []
-    for psm in pipeline_options_search_space.prefetch_shared_memory:
+    for pns in pipeline_options_search_space.prefetch_num_stages:
         for (
             nrbc
         ) in pipeline_options_search_space.no_reduce_shared_memory_bank_conflicts:
             for igemm in pipeline_options_search_space.use_igemm_convolution:
                 pipeline_options_list.append(
                     iree_gpu.PipelineOptionsAttr.get(
-                        prefetch_shared_memory=psm,
-                        no_reduce_shared_memory_bank_conflicts=nrbc,
-                        use_igemm_convolution=igemm,
+                        pns,
+                        nrbc,
+                        igemm,
                     )
                 )
     return pipeline_options_list

@@ -76,7 +76,7 @@ def test_get_td_spec_contraction(tuner_ctx: common.TunerContext) -> None:
     pipeline_attr = iree_codegen.DispatchLoweringPassPipelineAttr.get(
         iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
     )
-    pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_shared_memory=True)
+    pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_num_stages=2)
     config_dict = common.get_translation_info_config(pipeline_options, waves_per_eu=8)
     translation_info = iree_codegen.TranslationInfoAttr.get(
         pipeline_attr, None, [16, 16, 1], 16, config_dict
@@ -126,7 +126,7 @@ def test_get_td_spec_contraction(tuner_ctx: common.TunerContext) -> None:
     assert "workgroup = [8, 8, 0]" in matcher_sequence_str
     assert "reduction = [0, 0, 8]" in matcher_sequence_str
     assert (
-        "gpu_pipeline_options = #iree_gpu.pipeline_options<prefetch_shared_memory = true>"
+        "gpu_pipeline_options = #iree_gpu.pipeline_options<prefetch_num_stages = 2>"
         in matcher_sequence_str
     )
     assert 'llvm_func_attrs = {"amdgpu-waves-per-eu" = "8"}' in matcher_sequence_str
@@ -159,7 +159,7 @@ def test_get_td_spec_convolution(tuner_ctx: common.TunerContext) -> None:
     pipeline_attr = iree_codegen.DispatchLoweringPassPipelineAttr.get(
         iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
     )
-    pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_shared_memory=False)
+    pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_num_stages=0)
     config_dict = common.get_translation_info_config(pipeline_options, waves_per_eu=2)
     translation_info = iree_codegen.TranslationInfoAttr.get(
         pipeline_attr, None, [256, 1, 1], 64, config_dict
@@ -212,7 +212,7 @@ def test_get_td_spec_convolution(tuner_ctx: common.TunerContext) -> None:
     assert "workgroup = [1, 1, 464, 320, 0, 0, 0]" in matcher_sequence_str
     assert "reduction = [0, 0, 0, 0, 1, 1, 16]" in matcher_sequence_str
     assert (
-        "gpu_pipeline_options = #iree_gpu.pipeline_options<prefetch_shared_memory = false>"
+        "gpu_pipeline_options = #iree_gpu.pipeline_options<prefetch_num_stages = 0>"
         in matcher_sequence_str
     )
 

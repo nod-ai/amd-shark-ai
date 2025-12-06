@@ -218,17 +218,17 @@ def test_generate_attention_solutions(
         )
         assert isinstance(config_list[1].configuration, ir.DictAttr)
 
-        # Verify that prefetch_shared_memory is set based on layout matching.
+        # Verify that prefetch_num_stages is set based on layout matching.
         compilation_info = config_list[0].configuration
         translation_info = compilation_info.translation_info
         if translation_info.configuration:
             pipeline_options = translation_info.configuration[
                 common.GPU_PIPELINE_OPTIONS_KEY
             ]
-            # prefetch_shared_memory should be explicitly set to a boolean (not None).
+            # prefetch_num_stages should be explicitly set to an int (not None).
             assert isinstance(
-                pipeline_options.prefetch_shared_memory, bool
-            ), "prefetch_shared_memory must be explicitly set to True or False"
+                pipeline_options.prefetch_num_stages, int
+            ), "prefetch_num_stages must be explicitly set to an int"
 
 
 def test_generate_solutions_tile_and_fuse_contraction_padding(
@@ -542,7 +542,7 @@ def test_adjust_problem_size_for_pipeline(
         batch=[0],
     )
     pipeline_options_space = dispatch_constraints.PipelineOptionsSearchSpace(
-        prefetch_shared_memory=[True],
+        prefetch_num_stages=[2],
         no_reduce_shared_memory_bank_conflicts=[True, False],
         use_igemm_convolution=[None],
     )
