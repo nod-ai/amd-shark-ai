@@ -28,7 +28,7 @@ from pathlib import Path
 from tqdm import tqdm
 import hashlib
 from dataclasses import dataclass, field
-from typing import Type, Optional, Callable, Iterable, Any
+from typing import Type, Optional
 from abc import ABC, abstractmethod
 import subprocess
 import tempfile
@@ -65,13 +65,6 @@ DEFAULT_DEVICE_LIST = ["hip://0"]
 DEFAULT_MAX_CPU_WORKERS = (
     process_utils.multiprocessing.cpu_count() // 2
 )  # the actual amount of worker that will be generated = min(max_cpu_workers, len(task_list)).
-
-# # Declare global variables at the module level for multiprocessing.
-# worker_id = None
-# device_id = None
-
-# Declare special symbols for libtuner to search and locate.
-DEVICE_ID_PLACEHOLDER = "!DEVICE_ID!"
 
 
 @dataclass
@@ -504,22 +497,6 @@ def handle_error(
 
     if exit_program:
         sys.exit(1)
-
-
-# def init_worker_context(queue: multiprocessing.Queue) -> None:
-#     """Assign a static index to current process as the worker ordinal, and specify the device indices to be used"""
-#     global worker_id, device_id
-
-#     worker_id, device_id = queue.get()
-
-
-# def create_worker_context_queue(device_ids: list[str]) -> queue.Queue[tuple[int, int]]:
-#     """Create queue contains Worker ID and Device ID for worker initialization"""
-#     worker_contexts_queue = multiprocessing.Manager().Queue()
-#     for worker_id, device_id in enumerate(device_ids):
-#         worker_contexts_queue.put((worker_id, device_id))
-
-#     return worker_contexts_queue
 
 
 def flatten_nested_td_spec(td_spec_str: str, output_path: Path) -> None:

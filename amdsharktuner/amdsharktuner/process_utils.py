@@ -5,7 +5,7 @@ import logging
 import signal
 from tqdm import tqdm
 from typing import Type, Optional, Callable, Iterable, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from . import common
 
@@ -14,6 +14,7 @@ worker_id = None
 device_id = None
 
 process_utils_logger = logging.getLogger("process_utils")
+
 
 def init_worker_context(queue: multiprocessing.Queue) -> None:
     """Assign a static index to current process as the worker ordinal, and specify the device indices to be used"""
@@ -47,6 +48,7 @@ def get_global_worker_id():
 
 def get_global_device_id():
     return device_id
+
 
 def multiprocess_progress_wrapper(
     num_worker: int,

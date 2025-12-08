@@ -8,9 +8,7 @@
 # in the code and runs it.
 
 import logging
-from dataclasses import dataclass
 from pathlib import Path
-import subprocess
 from typing import Optional, Iterator
 from abc import abstractmethod
 
@@ -299,58 +297,6 @@ def generate_configs_and_td_specs(
     tune_logger.debug(f"Generated {len(config_specs)} tuning specs")
 
     return config_specs
-
-
-# @dataclass
-# class RunPack:
-#     command: list[str]
-#     check: bool = True
-#     timeout_seconds: Optional[float] = None
-
-
-# @dataclass
-# class RunResult:
-#     process_res: Optional[subprocess.CompletedProcess]
-#     is_timeout: bool
-
-
-# def run_command(run_pack: RunPack) -> RunResult:
-#     command = run_pack.command
-#     check = run_pack.check
-#     timeout_seconds = run_pack.timeout_seconds
-
-#     result = None
-#     is_timeout = False
-#     try:
-#         # Convert the command list to a command string for logging.
-#         command_str = " ".join(command)
-#         logging.debug(f"Run: {command_str}")
-
-#         # Add timeout to subprocess.run call.
-#         result = subprocess.run(
-#             command,
-#             check=check,
-#             capture_output=True,
-#             text=True,
-#             timeout=timeout_seconds,
-#         )
-#     except subprocess.TimeoutExpired as e:
-#         logging.warning(
-#             f"Command '{command_str}' timed out after {timeout_seconds} seconds."
-#         )
-#         is_timeout = True
-#     except subprocess.CalledProcessError as e:
-#         print(e.output)
-#         logging.error(
-#             f"Command '{command_str}' returned non-zero exit status {e.returncode}."
-#         )
-#         logging.error(f"Command '{command_str}' failed with error: {e.stderr}")
-#         if check:
-#             raise
-#     except KeyboardInterrupt:
-#         print("Ctrl+C detected, terminating child processes...")
-
-#     return RunResult(result, is_timeout)
 
 
 # The `strip_root_op_attr` and `strip_compilation_info` functions are used for
