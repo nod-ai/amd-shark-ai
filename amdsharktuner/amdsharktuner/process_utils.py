@@ -3,8 +3,9 @@ import queue
 import subprocess
 import logging
 import signal
+import sys
 from tqdm import tqdm
-from typing import Type, Optional, Callable, Iterable, Any
+from typing import Optional, Callable, Iterable, Any
 from dataclasses import dataclass
 
 from . import common
