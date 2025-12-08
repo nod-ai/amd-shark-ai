@@ -129,7 +129,7 @@
     "port_for_serving": 8900
   },
   "llama-70b-fp16": {
-    "irpa": "/amdshark-dev/ossci-models/llama_3_1/70b/instruct_70b_fp16-2025-11-25.irpa",
+    "irpa": "/amdshark-dev/ossci-models/llama_3_1/70b/instruct_70b_fp16-TEST.irpa",
     "dtype": "fp16",
     "tokenizer": "/amdshark-dev/ossci-models/llama_3_1/70b/tokenizer.json",
     "tokenizer_config": "/amdshark-dev/ossci-models/llama_3_1/70b/tokenizer_config.json",
