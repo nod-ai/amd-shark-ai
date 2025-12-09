@@ -77,7 +77,7 @@ jobs:
 
       - name: Run amdsharktuner tests with coverage
         run: |
-          pytest amdsharktuner/ \
+          pytest -W error::pytest.PytestWarning amdsharktuner/ \
             --cov=amdsharktuner \
             --cov-report xml:amdsharktuner-cov.xml \
             --cov-config=.coveragerc \
