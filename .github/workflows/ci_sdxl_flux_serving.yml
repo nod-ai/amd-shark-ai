@@ -41,6 +41,7 @@ jobs:
       VENV_DIR: ${{ github.workspace }}/.venv
       HF_HOME: "/amdshark-dev/data/huggingface"
       HF_TOKEN: ${{ secrets.HF_FLUX_TOKEN }}
+      HIP_VISIBLE_DEVICES: 0
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
@@ -60,9 +61,21 @@ jobs:
       - name: Run SDXL (export)
         run: |
           mkdir -p output_artifacts/sdxl
+          sudo mkdir -p /amdshark-dev/data/huggingface
+          cd shortfin
+          python -m shortfin_apps.sd.server \
+              --device=hip \
+              --device_ids=0 \
+              --build_preference=export \
+              --port 8112 --force_update=True |& tee output_artifacts/sdxl/sdxl_export.log
+
+      - name: Run SDXL (bash)
+        run: |
+          mkdir -p output_artifacts/sdxl
+          sudo mkdir -p /amdshark-dev/data/huggingface
           bash scripts/run_sdxl_flux.sh \
             --model sdxl \
-            --build_preference export --force-update 2>&1 | tee output_artifacts/sdxl/sdxl_precompile.log
+            --build_preference export --force-update |& tee output_artifacts/sdxl/sdxl_precompile.log
 
       - name: Run Flux-Dev (precompiled)
         if: always()
