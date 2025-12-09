@@ -220,7 +220,7 @@ jobs:
 
       - name: Create Python venv
         run: |
-          ls -R shark-dev
+          ls -R /shark-dev
           python -m venv ${VENV_DIR}
           source ${VENV_DIR}/bin/activate
 
