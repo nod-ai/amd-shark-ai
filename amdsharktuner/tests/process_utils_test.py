@@ -4,7 +4,6 @@
 # See https://llvm.org/LICENSE.txt for license information.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-import time
 import pytest
 
 from amdsharktuner import process_utils
@@ -21,7 +20,7 @@ def test_worker_context_manager_set_and_get():
 def test_worker_context_manager_initializer_pulls_context():
     ctx_manager = process_utils.WorkerContextManager(device_ids=["hip://2", "hip://5"])
 
-    # Call initializer manually (simulating a multiprocessing worker)
+    # Call initializer manually (simulating a multiprocessing worker).
     ctx_manager.initializer()
     ctx = process_utils.WorkerContextManager.get()
 

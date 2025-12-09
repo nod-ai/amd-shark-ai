@@ -454,7 +454,7 @@ def setup_logging(args: argparse.Namespace, path_config: PathConfig) -> logging.
     candidate_gen_logger = logging.getLogger("candidate_gen")
     candidate_gen_logger.setLevel(logging.DEBUG)
 
-    # Config logger in process_utils.py
+    # Config logger in process_utils.py.
     process_utils_logger = logging.getLogger("process_utils")
     process_utils_logger.setLevel(logging.DEBUG)
 
