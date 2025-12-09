@@ -607,7 +607,11 @@ def run_iree_benchmark_module_command(benchmark_pack: BenchmarkPack):
         extra_flags[key] = value
 
     # Benchmark the module.
-    device_id = process_utils.get_global_device_id()
+    worker_ctx = process_utils.WorkerContextManager.get()
+    assert (
+        worker_ctx is not None
+    ), "Missing WorkerContext. Did you forget to set it in baseline?"
+    device_id = worker_ctx.device_id
     try:
         timeout = benchmark_pack.benchmark_timeout
         benchmark_results = ireert.benchmark.benchmark_module(
@@ -889,8 +893,6 @@ def benchmark_candidates(
     """
     Runs the benchmarking for a given list of candidate indices.
     """
-    worker_context_queue = process_utils.create_worker_context_queue(devices)
-
     benchmark_timeout = (
         timeout_reference
         if tuning_client.is_auto_iree_benchmark_timeout()
@@ -906,15 +908,16 @@ def benchmark_candidates(
         for idx in candidate_indices
     ]
 
-    # Perform benchmarking.
-    return process_utils.multiprocess_progress_wrapper(
-        num_worker=len(devices),
-        task_list=task_list,
-        function=run_iree_benchmark_module_command,
-        initializer=process_utils.init_worker_context,
-        initializer_inputs=(worker_context_queue,),
+    # Setup multiprocessing executor.
+    worker_context_manager = process_utils.WorkerContextManager(devices)
+    executor = process_utils.MultiprocessExecutor(
+        num_workers=len(devices),
+        initializer=worker_context_manager.initializer,
         time_budget=common.TimeBudget.for_minutes(benchmark_time),
     )
+
+    # Perform benchmarking.
+    return executor.run(task_list, run_iree_benchmark_module_command)
 
 
 def benchmark_baseline(
@@ -929,10 +932,15 @@ def benchmark_baseline(
     with tqdm(total=len(devices)) as pbar:
         try:
             # Run the baseline on each target device sequentially.
-            process_utils.set_global_worker_id(0)  # Only one process.
             for device_id in devices:
-                # Store device_id in the process, run_iree_benchmark_module_command() reads it later.
-                process_utils.set_global_device_id(device_id)
+                # Manually set the WorkerContext so
+                # run_iree_benchmark_module_command() can read the device_id as
+                # it is inside a multiprocessing worker.
+                worker_ctx = process_utils.WorkerContext(
+                    worker_id=0, device_id=device_id
+                )
+                process_utils.WorkerContextManager.set(worker_ctx)
+
                 benchmark_start_timestamp = time.perf_counter()
                 result = run_iree_benchmark_module_command(
                     BenchmarkPack(
@@ -1164,10 +1172,10 @@ def compile(
                 candidate_tracker=tuning_client.candidate_trackers[0],
             )
         )
-    num_worker = min(args.max_cpu_workers, len(task_list))
-    compiled_candidates = process_utils.multiprocess_progress_wrapper(
-        num_worker=num_worker, task_list=task_list, function=run_iree_compile_command
+    executor = process_utils.MultiprocessExecutor(
+        num_workers=min(args.max_cpu_workers, len(task_list)),
     )
+    compiled_candidates = executor.run(task_list, run_iree_compile_command)
     success_rate = get_compilation_success_rate(compiled_candidates)
     logging.debug(
         f"Successfully compiled [{len(compiled_candidates)}] candidates. Success rate: {success_rate:.2f}"
