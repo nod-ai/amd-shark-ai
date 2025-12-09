@@ -220,8 +220,7 @@ jobs:
 
       - name: Create Python venv
         run: |
-          ls -R /amdshark-dev
-          exit 0
+          ls -R shark-dev
           python -m venv ${VENV_DIR}
           source ${VENV_DIR}/bin/activate
 
@@ -267,8 +266,8 @@ jobs:
             --irpa-filename "instruct_405b_fp4_preshuffled.irpa" \
             --dtype "llama-405B-FP4" \
             --kv-cache-dtype "float8_e4m3fn" \
-            --tokenizer-path "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer.json" \
-            --tokenizer-config-path "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer_config.json" \
+            --tokenizer-path "/shark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer.json" \
+            --tokenizer-config-path "/shark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer_config.json" \
             --azure-blob-path "ossci-models/llama_3_1/405b/fp4" \
             --azure-sas-token "$AZURE_WRITE_ACCESS_OSSCI" \
             --date-suffix "$DATE" \
