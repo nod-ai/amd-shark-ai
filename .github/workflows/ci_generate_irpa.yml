@@ -220,6 +220,8 @@ jobs:
 
       - name: Create Python venv
         run: |
+          ls -R /amdshark-dev/ossci-models/
+          exit 0
           python -m venv ${VENV_DIR}
           source ${VENV_DIR}/bin/activate
 
