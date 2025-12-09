@@ -129,6 +129,17 @@ class RunResult:
 
 
 def run_command(run_pack: RunPack) -> RunResult:
+    """
+    Wrapper around subprocess.run() with optional timeout and error handling.
+
+    Example:
+        result = process_utils.run_command(
+            process_utils.RunPack(
+                command=["echo", "hello"],
+                check=True,
+            )
+        )
+    """
     command = run_pack.command
     check = run_pack.check
     timeout_seconds = run_pack.timeout_seconds
@@ -156,9 +167,9 @@ def run_command(run_pack: RunPack) -> RunResult:
     except subprocess.CalledProcessError as e:
         print(e.output)
         logging.error(
-            f"Command '{command_str}' returned non-zero exit status {e.returncode}."
+            f"Command '{command_str}' failed with exit code {e.returncode}.\n"
+            f"stderr:\n{e.stderr}"
         )
-        logging.error(f"Command '{command_str}' failed with error: {e.stderr}")
         if check:
             raise
     except KeyboardInterrupt:

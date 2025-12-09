@@ -30,7 +30,6 @@ import hashlib
 from dataclasses import dataclass, field
 from typing import Type, Optional
 from abc import ABC, abstractmethod
-import subprocess
 import tempfile
 import os
 import random
@@ -507,20 +506,20 @@ def flatten_nested_td_spec(td_spec_str: str, output_path: Path) -> None:
         with open(input_path, "w") as f:
             f.write(td_spec_str)
 
-        link_result = subprocess.run(
-            [
-                iree_opt,
-                "--iree-codegen-link-tuning-specs",
-                input_path,
-                "-o",
-                output_path,
-            ],
-            capture_output=True,
-            text=True,
-        )
+        link_command = [
+            iree_opt,
+            "--iree-codegen-link-tuning-specs",
+            input_path,
+            "-o",
+            output_path,
+        ]
 
-        if link_result.returncode != 0:
-            raise RuntimeError(f"iree-opt failed: {link_result.stderr}")
+        process_utils.run_command(
+            process_utils.RunPack(
+                command=link_command,
+                check=True,
+            )
+        )
 
 
 def run_iree_compile_command(compile_pack: CompilePack) -> Optional[int]:
