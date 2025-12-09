@@ -37,7 +37,8 @@
     "extra_export_flags_list": [
       "--use-hf",
       "--attention-kernel",
-      "amdsharktank"
+      "amdsharktank",
+      "--kv-cache-dtype=float8_e4m3fnuz"
     ],
     "output_dir": "../amdshark-ai/output_artifacts/",
     "prefill_gold_mi325x": 175.0,
