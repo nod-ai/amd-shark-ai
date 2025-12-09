@@ -287,11 +287,13 @@ def generate_generic_contraction_solutions(
             if conv_to_igemm_info and igemm_details:
                 # Use IGEMM loop bounds directly from igemm_details.
                 bounds = list(igemm_details.igemm_loop_bounds)
+                igemm_iterator_types = [
+                    str(it) for it in igemm_details.igemm_loop_iterators
+                ]
                 padding_conv = common.get_padding_conv_sizes(
                     bounds,
                     padding_tile_sizes,
-                    workgroup_tile_sizes,
-                    reduction_tile_sizes,
+                    igemm_iterator_types,
                     conv_to_igemm_info,
                 )
         # Setting subgroup basis.
@@ -428,7 +430,10 @@ def generate_attention_solutions(
     i = 0
     while solver.check() == z3.sat:
         model = solver.model()
-        lookup = lambda var: model[var].as_long()
+
+        def lookup(var):
+            return model[var].as_long()
+
         qk_intrinsic_mnk_shape = (
             lookup(qk_intrinsic_mn),
             lookup(qk_intrinsic_mn),

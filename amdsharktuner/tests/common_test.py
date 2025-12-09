@@ -611,8 +611,7 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     result = common.get_padding_conv_sizes(
         bounds=[128, 64, 56],
         padding_sizes=[256, 128, 64],
-        workgroup_tile_sizes=[64, 32, 16],
-        reduction_tile_sizes=[0, 0, 0],
+        igemm_loop_iterators=['"parallel"', '"parallel"', '"parallel"'],
         conv_to_igemm_info=conv_to_igemm_info,
     )
     assert result is None
@@ -628,8 +627,7 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     result = common.get_padding_conv_sizes(
         bounds=[128, 64, 56, 32],
         padding_sizes=[256, 128, 64, 64],
-        workgroup_tile_sizes=[64, 32, 16, 8],
-        reduction_tile_sizes=[0, 0, 0, 0],
+        igemm_loop_iterators=['"parallel"', '"parallel"', '"parallel"', '"parallel"'],
         conv_to_igemm_info=conv_to_igemm_info,
     )
     assert result == [0, 0, 0, 64]
@@ -645,8 +643,7 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     result = common.get_padding_conv_sizes(
         bounds=[128, 64, 56, 64],
         padding_sizes=[256, 128, 64, 64],
-        workgroup_tile_sizes=[64, 32, 16, 8],
-        reduction_tile_sizes=[0, 0, 0, 0],
+        igemm_loop_iterators=['"parallel"', '"parallel"', '"parallel"', '"parallel"'],
         conv_to_igemm_info=conv_to_igemm_info,
     )
     assert result is None
@@ -662,8 +659,7 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     result = common.get_padding_conv_sizes(
         bounds=[128, 56, 56, 64],
         padding_sizes=[256, 64, 64, 128],
-        workgroup_tile_sizes=[64, 16, 16, 0],
-        reduction_tile_sizes=[0, 0, 0, 32],
+        igemm_loop_iterators=['"parallel"', '"parallel"', '"parallel"', '"reduction"'],
         conv_to_igemm_info=conv_to_igemm_info,
     )
     assert result == [256, 64, 64, 128]
@@ -679,8 +675,7 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     result = common.get_padding_conv_sizes(
         bounds=[128, 56, 56, 128],
         padding_sizes=[256, 64, 64, 128],
-        workgroup_tile_sizes=[64, 16, 16, 0],
-        reduction_tile_sizes=[0, 0, 0, 32],
+        igemm_loop_iterators=['"parallel"', '"parallel"', '"parallel"', '"reduction"'],
         conv_to_igemm_info=conv_to_igemm_info,
     )
     assert result == [256, 64, 64, 0]
@@ -696,8 +691,7 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     result = common.get_padding_conv_sizes(
         bounds=[128, 56, 56, 32],
         padding_sizes=[256, 64, 64, 128],
-        workgroup_tile_sizes=[64, 16, 16, 0],
-        reduction_tile_sizes=[0, 0, 0, 32],
+        igemm_loop_iterators=['"parallel"', '"parallel"', '"parallel"', '"reduction"'],
         conv_to_igemm_info=conv_to_igemm_info,
     )
     assert result == [256, 64, 64, 0]
@@ -713,8 +707,7 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     result = common.get_padding_conv_sizes(
         bounds=[128, 56, 56, 64],
         padding_sizes=[256, 64, 128],
-        workgroup_tile_sizes=[64, 16, 32],
-        reduction_tile_sizes=[0, 0, 0],
+        igemm_loop_iterators=['"parallel"', '"parallel"', '"parallel"'],
         conv_to_igemm_info=conv_to_igemm_info,
     )
     assert result is None
@@ -729,8 +722,7 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     result = common.get_padding_conv_sizes(
         bounds=[128, 56, 56, 64],
         padding_sizes=[256, 64, 64, 128],
-        workgroup_tile_sizes=[64, 16, 16, 0],
-        reduction_tile_sizes=[0, 0, 0, 32],
+        igemm_loop_iterators=['"parallel"', '"parallel"', '"parallel"', '"reduction"'],
         conv_to_igemm_info=conv_to_igemm_info,
     )
     assert result is None

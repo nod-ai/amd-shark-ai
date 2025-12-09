@@ -611,19 +611,17 @@ def get_dim_bounds(
 def get_padding_conv_sizes(
     bounds: list[int],
     padding_sizes: list[int],
-    workgroup_tile_sizes: list[int],
-    reduction_tile_sizes: list[int],
+    igemm_loop_iterators: list[str],
     conv_to_igemm_info: ConvToIgemmInfo,
 ) -> Optional[list[int]]:
     """
     Computes padding_conv by mapping padding from IGEMM space to convolution space.
 
     Args:
-        bounds: Loop bounds for each dimension
-        padding_sizes: Padding sizes in IGEMM dimension space (M, N, K)
-        workgroup_tile_sizes: Workgroup tile sizes
-        reduction_tile_sizes: Reduction tile sizes
-        conv_to_igemm_info: Convolution to IGEMM transformation info
+        bounds: Loop bounds for each dimension.
+        padding_sizes: Padding sizes in IGEMM dimension space (M, N, K).
+        igemm_loop_iterators: IGEMM loop iterator type strings ('"reduction"' or '"parallel"').
+        conv_to_igemm_info: Convolution to IGEMM transformation info.
 
     Returns:
         Padding sizes in convolution dimension space, or None if no padding
@@ -656,8 +654,14 @@ def get_padding_conv_sizes(
         return padding_conv_sizes
 
     for conv_dim, igemm_pos in conv_to_igemm_map.items():
-        if reduction_tile_sizes[igemm_pos] != 0:
-            # Skip conv padding for reduction dims if already divisible by padding size.
+        if igemm_loop_iterators[igemm_pos] == '"reduction"':
+            # Skip filter loop dimensions (reduction dims that aren't input channels).
+            # Only pad input channel dims. If we need to pad filter dims, then we
+            # would rather just do padding on the IGEMM instead.
+            if conv_dim not in input_channel_dims:
+                continue
+
+            # Skip conv padding for input channel dims if already divisible by padding size.
             if (
                 padding_sizes[igemm_pos]
                 and bounds[igemm_pos] % padding_sizes[igemm_pos] == 0
@@ -665,32 +669,29 @@ def get_padding_conv_sizes(
                 padded_igemm_dims.add(igemm_pos)
                 continue
 
-            # Only pad input channel dims. If we need to pad filter dims, then we
-            # would rather just do padding on the IGEMM instead.
-            if conv_dim in input_channel_dims:
-                # Multiple input channel dims for a single IGEMMPos is not supported.
-                if igemm_pos in padded_igemm_dims:
-                    return None
+            # Multiple input channel dims for a single IGEMMPos is not supported.
+            if igemm_pos in padded_igemm_dims:
+                return None
 
-                input_channel_size = conv_to_igemm_info.input_channel_dim_to_size.get(
-                    conv_dim, 0
-                )
-                is_input_channel_size_small = (
-                    padding_sizes[igemm_pos] // input_channel_size > 2
-                )
+            input_channel_size = conv_to_igemm_info.input_channel_dim_to_size.get(
+                conv_dim, 0
+            )
+            is_input_channel_size_small = (
+                padding_sizes[igemm_pos] // input_channel_size > 2
+            )
 
-                # If the input channel dimension is much smaller than the padding size,
-                # skip padding along that dimension while still padding the others.
-                if is_input_channel_size_small:
-                    padding_conv_sizes[conv_dim] = 0
-                else:
-                    padding_conv_sizes[conv_dim] = padding_sizes[igemm_pos]
+            # If the input channel dimension is much smaller than the padding size,
+            # skip padding along that dimension while still padding the others.
+            if is_input_channel_size_small:
+                padding_conv_sizes[conv_dim] = 0
+            else:
+                padding_conv_sizes[conv_dim] = padding_sizes[igemm_pos]
 
-                padded_igemm_dims.add(igemm_pos)
+            padded_igemm_dims.add(igemm_pos)
             continue
 
         # Multiple padded parallel dims mapping to the same IGEMM dim is not supported.
-        if workgroup_tile_sizes[igemm_pos] != 0 and igemm_pos in padded_igemm_dims:
+        if padding_sizes[igemm_pos] and igemm_pos in padded_igemm_dims:
             return None
 
         padding_conv_sizes[conv_dim] = padding_sizes[igemm_pos]
