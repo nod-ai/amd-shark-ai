@@ -211,11 +211,12 @@ if [ "$UPLOAD_REQUIRED" = true ]; then
     --file "$IRPA_PATH"
 
   # Upload current version (overwrite)
+  DATE=$(date -u +'%Y-%m-%d')
   az storage blob upload \
     --account-name sharkpublic \
     --sas-token "$AZURE_SAS_TOKEN" \
     --container-name ossci \
-    --name "$AZURE_BLOB_PATH/${IRPA_FILENAME%.irpa}-TEST.irpa" \
+    --name "$AZURE_BLOB_PATH/${IRPA_FILENAME%.irpa}-${DATE}.irpa" \
     --file "$IRPA_PATH" \
     --overwrite
 fi
