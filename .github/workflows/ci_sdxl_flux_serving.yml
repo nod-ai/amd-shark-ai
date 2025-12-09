@@ -61,6 +61,7 @@ jobs:
       - name: Run SDXL (export)
         run: |
           mkdir -p output_artifacts/sdxl
+          ls -larRt output_artifacts
           sudo mkdir -p /amdshark-dev/data/huggingface
           cd shortfin
           python -m shortfin_apps.sd.server \
