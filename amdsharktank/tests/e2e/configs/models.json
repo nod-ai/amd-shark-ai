@@ -129,7 +129,7 @@
     "port_for_serving": 8900
   },
   "llama-70b-fp16": {
-    "irpa": "/amdshark-dev/ossci-models/llama_3_1/70b/instruct_70b_fp16.irpa",
+    "irpa": "/amdshark-dev/ossci-models/llama_3_1/70b/fp16/Llama-3.1-70B-Instruct_2025-12-09.irpa",
     "dtype": "fp16",
     "tokenizer": "/amdshark-dev/ossci-models/llama_3_1/70b/tokenizer.json",
     "tokenizer_config": "/amdshark-dev/ossci-models/llama_3_1/70b/tokenizer_config.json",
@@ -264,7 +264,7 @@
     "port_for_serving": 8900
   },
   "mistral": {
-    "irpa": "/amdshark-dev/ossci-models/mistral_nemo_instruct/mistral_nemo_2407_fp8_e4m3fnuz.irpa",
+    "irpa": "/amdshark-dev/ossci-models/mistral_nemo_instruct/mistral_nemo_2407_fp8_e4m3fnuz_2025-12-09.irpa",
     "dtype": "mistral_fp8",
     "tokenizer": "/amdshark-dev/ossci-models/mistral_nemo_instruct/tokenizer.json",
     "tokenizer_config": "/amdshark-dev/ossci-models/mistral_nemo_instruct/tokenizer_config.json",
