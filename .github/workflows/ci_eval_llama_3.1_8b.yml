@@ -27,12 +27,12 @@ jobs:
     strategy:
       matrix:
         model: [{
-                  irpa: "/amdshark-dev/ossci-models/llama_3_1/instruct_8b_fp16.irpa",
+                  irpa: "/amdshark-dev/ossci-models/llama_3_1/8b/fp16/instruct_8b_fp16_2025-12-09.ipra",
                   torch_dataset: "amdsharktank/tests/evaluate/datasets/llama_8b_fp16_torch.json",
                   iree_dataset: "amdsharktank/tests/evaluate/datasets/llama_8b_fp16_iree.json"
                 },
                 {
-                  irpa: "/amdshark-dev/ossci-models/llama_3_1/instruct_8b_fp8_e4m3fnuz.irpa",
+                  irpa: "/amdshark-dev/ossci-models/llama_3_1/8b/fp8/instruct_8b_fp8_e4m3fnuz.irpa",
                   torch_dataset: "amdsharktank/tests/evaluate/datasets/llama_8b_fp8_e4m3_fnuz_torch.json",
                   iree_dataset: "amdsharktank/tests/evaluate/datasets/llama_8b_fp8_e4m3_fnuz_iree.json"
                 }]
@@ -70,7 +70,7 @@ jobs:
         run: |
           source ${VENV_DIR}/bin/activate
           export IRPA=${{ matrix.model.irpa }}
-          export TOKENIZER=/amdshark-dev/ossci-models/llama_3_1/tokenizer
+          export TOKENIZER=/amdshark-dev/ossci-models/llama_3_1/8b/tokenizer
           export DATASET=${{ matrix.model.torch_dataset }}
 
           python3 -m amdsharktank.tools.eval_llm_model \
@@ -84,7 +84,7 @@ jobs:
         run: |
           source ${VENV_DIR}/bin/activate
           export IRPA=${{ matrix.model.irpa }}
-          export TOKENIZER=/amdshark-dev/ossci-models/llama_3_1/tokenizer
+          export TOKENIZER=/amdshark-dev/ossci-models/llama_3_1/8b/tokenizer
           export DATASET=${{ matrix.model.torch_dataset }}
 
           # See https://github.com/nod-ai/amd-shark-ai/issues/2494
@@ -102,7 +102,7 @@ jobs:
         run: |
           source ${VENV_DIR}/bin/activate
           export IRPA=${{ matrix.model.irpa }}
-          export TOKENIZER=/amdshark-dev/ossci-models/llama_3_1/tokenizer
+          export TOKENIZER=/amdshark-dev/ossci-models/llama_3_1/8b/tokenizer
           export DATASET=${{ matrix.model.iree_dataset }}
 
           python3 -m amdsharktank.tools.eval_llm_vmfb \
