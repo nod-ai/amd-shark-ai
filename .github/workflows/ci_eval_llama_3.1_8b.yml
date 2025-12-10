@@ -32,7 +32,7 @@ jobs:
                   iree_dataset: "amdsharktank/tests/evaluate/datasets/llama_8b_fp16_iree.json"
                 },
                 {
-                  irpa: "/amdshark-dev/ossci-models/llama_3_1/8b/fp8/instruct_8b_fp8_e4m3fnuz.irpa",
+                  irpa: "/amdshark-dev/ossci-models/llama_3_1/instruct_8b_fp8_e4m3fnuz.irpa",
                   torch_dataset: "amdsharktank/tests/evaluate/datasets/llama_8b_fp8_e4m3_fnuz_torch.json",
                   iree_dataset: "amdsharktank/tests/evaluate/datasets/llama_8b_fp8_e4m3_fnuz_iree.json"
                 }]

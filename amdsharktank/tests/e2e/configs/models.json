@@ -1,6 +1,6 @@
 {
   "llama-8b-fp8": {
-    "irpa": "/amdshark-dev/ossci-models/llama_3_1/8b/fp8/instruct_8b_fp8_e4m3fnuz.irpa",
+    "irpa": "/amdshark-dev/ossci-models/llama_3_1/instruct_8b_fp8_e4m3fnuz.irpa",
     "dtype": "fp8",
     "tokenizer": "/amdshark-dev/ossci-models/llama_3_1/8b/tokenizer/tokenizer.json",
     "tokenizer_config": "/amdshark-dev/ossci-models/llama_3_1/8b/tokenizer/tokenizer_config.json",
