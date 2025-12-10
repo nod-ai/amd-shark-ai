@@ -149,7 +149,7 @@ jobs:
             --iree-hip-target=gfx942 \
             --iree-hal-target-device=hip \
             --llama3-8b-f16-model-path=/amdshark-dev/ossci-models/llama_3_1/8b/fp16/instruct_8b_fp16_2025-12-09.ipra \
-            --llama3-8b-f8-model-path=/amdshark-dev/ossci-models/llama_3_1/instruct_8b_fp8_e4m3fnuz.irpa \
+            --llama3-8b-f8-model-path=/amdshark-dev/ossci-models/llama_3_1/fp8/instruct_8b_fp8_e4m3fnuz.irpa \
             --llama3-8b-tokenizer-path=/amdshark-dev/ossci-models/llama_3_1/8b/tokenizer/tokenizer_config.json \
             --html=out/llm/llama/perplexity/index.html \
             --log-cli-level=INFO
