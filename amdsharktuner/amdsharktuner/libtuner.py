@@ -277,6 +277,11 @@ class CodegenPipelines(str, Enum):
     llvmgpu_tile_and_fuse = "llvmgpu_tile_and_fuse"
 
 
+class BenchmarkTimingMethod(str, Enum):
+    iree_benchmark_module = "iree_benchmark_module"
+    rocprof = "rocprof"
+
+
 def parse_arguments(
     initial_parser: Optional[argparse.ArgumentParser] = None,
     allow_unknown: bool = False,
@@ -320,8 +325,14 @@ def parse_arguments(
         action="store_true",
         help="Do not attempt to run any modules or initialize the IREE runtime",
     )
+    general_args.add_argument(
+        "--benchmark-timing-method",
+        choices=[btm.value for btm in BenchmarkTimingMethod],
+        default=BenchmarkTimingMethod.iree_benchmark_module.value,
+        help="Select which timing tool to use for benchmark execution measurements.",
+    )
 
-    # candidate_gen.tune() options.
+    # candidate_gen options.
     candidate_gen_args = parser.add_argument_group("Candidate Generation Options")
     candidate_gen_args.add_argument(
         "--num-candidates",
@@ -331,7 +342,7 @@ def parse_arguments(
     )
     general_args.add_argument(
         "--candidate-order",
-        choices=[s.value for s in candidate_ordering.CandidateOrderKind],
+        choices=[cok.value for cok in candidate_ordering.CandidateOrderKind],
         default=candidate_ordering.CandidateOrderKind.shuffle.value,
         help="How to order generated candidates for compilation and benchmarking.",
     )
