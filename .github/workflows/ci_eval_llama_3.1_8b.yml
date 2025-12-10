@@ -59,8 +59,6 @@ jobs:
 
       - name: Install amdsharktank deps
         run: |
-          ls -R /amdshark-dev
-          exit 0
           source ${VENV_DIR}/bin/activate
           amdsharktank/build_tools/install_test_dependencies.sh \
             --torch-version ${{matrix.torch-version}} \
