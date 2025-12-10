@@ -49,8 +49,8 @@ jobs:
     env:
       VENV_DIR: ${{ github.workspace }}/.venv
       IRPA: "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/fp4_preshuffled_2025_09_12.irpa"
-      TOKENIZER: "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer.json"
-      TOKENIZER_CONFIG: "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer_config.json"
+      TOKENIZER: "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer/tokenizer.json"
+      TOKENIZER_CONFIG: "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer/tokenizer_config.json"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
