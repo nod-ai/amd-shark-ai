@@ -65,7 +65,7 @@ jobs:
             --iree-hip-target=gfx942 \
             --iree-device=hip://0 \
             --iree-hal-target-device=hip \
-            --llama3-8b-f16-model-path="/amdshark-dev/ossci-models/llama_3_1/instruct_8b_fp16.irpa"
+            --llama3-8b-f16-model-path="/amdshark-dev/ossci-models/llama_3_1/8b/fp16/llama_3_1_instruct_8b_fp16.irpa"
 
       - name: Upload llama executable files
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
