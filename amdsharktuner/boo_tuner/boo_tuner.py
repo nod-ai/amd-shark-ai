@@ -218,6 +218,7 @@ def tune_boo_dispatch(
         ]
         top_candidates = libtuner.benchmark(
             args,
+            path_config,
             compiled_candidates,
             boo_tuner,
             args.boo_tuner_num_dispatch_candidates,

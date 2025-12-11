@@ -182,7 +182,6 @@ class BenchmarkToolConfig(Protocol):
     """Marker base class for benchmark tool configuration objects."""
 
     benchmark_fn: Callable
-    pass
 
 
 @dataclass
@@ -195,7 +194,7 @@ class IreeBenchmarkModuleConfig(BenchmarkToolConfig):
 class RocProfConfig(BenchmarkToolConfig):
     benchmark_fn: Callable
     iree_benchmark_module_flags: list[str]
-    rocprof_output_dir: str
+    rocprof_output_dir: Path
     rocprof_output_filename_prefix: str
     rocprof_output_format: str
 
@@ -634,6 +633,7 @@ def run_iree_benchmark_module_command(benchmark_pack: BenchmarkPack):
     extra_flags = {}
     func_name = None
     inputs = []
+    assert isinstance(benchmark_pack.benchmark_tool_config, IreeBenchmarkModuleConfig)
     for flag in benchmark_pack.benchmark_tool_config.iree_benchmark_module_flags:
         assert flag[:2] == "--", "iree_benchmark_module_flags should begin with '--'"
         split_key_value = flag[2:].split("=")
@@ -757,6 +757,7 @@ def compute_rocprof_avg_kernel_time(trace_rows: list[dict]) -> float:
 
 
 def run_rocprof_command(benchmark_pack: BenchmarkPack):
+    assert isinstance(benchmark_pack.benchmark_tool_config, RocProfConfig)
     benchmark_tool_config: RocProfConfig = benchmark_pack.benchmark_tool_config
     candidate_tracker = benchmark_pack.candidate_tracker
 
@@ -780,6 +781,7 @@ def run_rocprof_command(benchmark_pack: BenchmarkPack):
         f"--module={vmfb_path}",
         f"--device={device_id}",
     ]
+    assert benchmark_pack.benchmark_tool_config == RocProfConfig
     benchmark_command += (
         benchmark_pack.benchmark_tool_config.iree_benchmark_module_flags
     )
@@ -1377,6 +1379,7 @@ def benchmark(
         return []
 
     # Configure benchmark timing tool.
+    benchmark_tool_config: BenchmarkToolConfig
     match args.benchmark_timing_method:
         case BenchmarkTimingMethod.iree_benchmark_module:
             benchmark_tool_config = IreeBenchmarkModuleConfig(
@@ -1387,6 +1390,7 @@ def benchmark(
                 f"Benchmark Timing Method Selected: {BenchmarkTimingMethod.iree_benchmark_module}."
             )
         case BenchmarkTimingMethod.rocprof:
+            # Rocprof will dump results into files.
             path_config.kernel_traces_dir.mkdir(parents=True, exist_ok=True)
             benchmark_tool_config = RocProfConfig(
                 benchmark_fn=run_rocprof_command,
@@ -1399,7 +1403,7 @@ def benchmark(
                 f"Benchmark Timing Method Selected: {BenchmarkTimingMethod.rocprof}."
             )
         case _:
-            raise False
+            assert False
 
     # Benchmarking baselines on each involved device.
     baseline_tracker = tuning_client.candidate_trackers[0]
