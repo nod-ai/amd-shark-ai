@@ -717,36 +717,32 @@ def run_iree_benchmark_module_command(benchmark_pack: BenchmarkPack):
     )
 
 
-def compute_rocprof_avg_kernel_time(trace_path: Path) -> float:
-    if not os.path.exists(trace_path):
-        raise FileNotFoundError(f"File not found: {trace_path}")
-
-    with open(trace_path, newline="") as f:
-        reader = csv.DictReader(f)
-        rows = list(reader)
-
-    required_cols = ["Kernel_Name", "Start_Timestamp", "End_Timestamp"]
-    if not all(col in reader.fieldnames for col in required_cols):
+def compute_rocprof_avg_kernel_time(trace_rows: list[dict]) -> float:
+    required_cols = {"Kernel_Name", "Start_Timestamp", "End_Timestamp"}
+    # Only need to check the first row.
+    row_keys = set(trace_rows[0].keys())
+    missing = required_cols - row_keys
+    if missing:
         raise ValueError(
-            f"Missing required columns in rocprof kernel trace CSV: {required_cols}"
+            f"Missing required columns in rocprof kernel trace snippet rows: {sorted(missing)}"
         )
 
     # Skip warm-up iterations
-    if len(rows) > 20:
-        rows = rows[10:]  # Drop first 10 rows
+    if len(trace_rows) >= 20:
+        trace_rows = trace_rows[10:]  # Drop first 10 rows
     else:
         logging.warning(
             "Rocprof kernel trace CSV contains insufficient records; timing results may be unreliable or noisy."
         )
 
     init_dispatch_fn_name_key = "_buffer"
-    if any(init_dispatch_fn_name_key in str(row["Kernel_Name"]) for row in rows):
+    if any(init_dispatch_fn_name_key in str(row["Kernel_Name"]) for row in trace_rows):
         raise RuntimeError(
             "Rocprof measured the initializer dispatch instead of the main kernel computation."
         )
 
     clk_diffs_ns = []
-    for row in rows:
+    for row in trace_rows:
         start = float(row["Start_Timestamp"])
         end = float(row["End_Timestamp"])
         clk_diffs_ns.append(end - start)
@@ -801,10 +797,15 @@ def run_rocprof_command(benchmark_pack: BenchmarkPack):
             device_id=str(device_id),
         )
 
-    kernel_trace_csv_path = Path(
+    trace_path = Path(
         f"{output_file}{benchmark_tool_config.rocprof_output_filename_prefix}.{benchmark_tool_config.rocprof_output_format}"
     )
-    time = compute_rocprof_avg_kernel_time(kernel_trace_csv_path)
+    if not os.path.exists(trace_path):
+        raise FileNotFoundError(f"File not found: {trace_path}")
+    with open(trace_path, newline="") as f:
+        trace_reader = csv.DictReader(f)
+
+    time = compute_rocprof_avg_kernel_time(trace_reader)
     logging.debug(f"Rocprof benchmark time of candidate {candidate_id}: {time:.2f} us")
     return BenchmarkResult(
         candidate_id=candidate_id,
