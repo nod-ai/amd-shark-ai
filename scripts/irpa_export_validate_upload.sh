@@ -204,19 +204,19 @@ if [ "$UPLOAD_REQUIRED" = true ]; then
   echo "=== Uploading new IRPA for $MODEL_TAG ==="
   # Upload with date suffix
   az storage blob upload \
-    --account-name sharkpublic \
+    --account-name amdsharkpublic \
     --sas-token "$AZURE_SAS_TOKEN" \
     --container-name ossci \
-    --name "$AZURE_BLOB_PATH/${IRPA_FILENAME%.irpa}-${DATE_SUFFIX}.irpa" \
+    --name "ossci-models/llama_3_1/405b/fp4/instruct_405b_fp4_preshuffled-2025-12-11.irpa" \
     --file "$IRPA_PATH"
 
   # Upload current version (overwrite)
   DATE=$(date -u +'%Y-%m-%d')
   az storage blob upload \
-    --account-name sharkpublic \
+    --account-name amdsharkpublic \
     --sas-token "$AZURE_SAS_TOKEN" \
     --container-name ossci \
-    --name "$AZURE_BLOB_PATH/${IRPA_FILENAME%.irpa}-${DATE}.irpa" \
+    --name "ossci-models/llama_3_1/405b/fp4/instruct_405b_fp4_preshuffled-2025-12-11.irpa" \
     --file "$IRPA_PATH" \
     --overwrite
 fi
