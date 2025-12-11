@@ -1022,6 +1022,7 @@ def benchmark_baseline(
     devices: list[str],
     tuning_client: TuningClient,
     candidate_tracker: CandidateTracker,
+    benchmark_tool_config: BenchmarkToolConfig,
 ) -> tuple[list[BenchmarkResult], float]:
     baseline_results = list()
 
@@ -1040,11 +1041,7 @@ def benchmark_baseline(
                 process_utils.WorkerContextManager.set(worker_ctx)
 
                 benchmark_start_timestamp = time.perf_counter()
-                benchmark_tool_config = IreeBenchmarkModuleConfig(
-                    run_iree_benchmark_module_command,
-                    tuning_client.get_iree_benchmark_module_flags(),
-                )
-                result = run_iree_benchmark_module_command(
+                result = benchmark_tool_config.benchmark_fn(
                     BenchmarkPack(
                         benchmark_tool_config=benchmark_tool_config,
                         benchmark_timeout=tuning_client.get_iree_benchmark_timeout_s(),
@@ -1324,28 +1321,7 @@ def benchmark(
         logging.warning("No candidates to benchmark.")
         return []
 
-    # Benchmarking baselines on each involved device.
-    baseline_tracker = tuning_client.candidate_trackers[0]
-    first_baseline_result, subprocess_timeout_reference = benchmark_baseline(
-        devices=args.devices,
-        tuning_client=tuning_client,
-        candidate_tracker=baseline_tracker,
-        # benchmark_timing_method=args.benchmark_timing_method,
-    )
-    baseline_handler = BaselineResultHandler()
-    baseline_handler.add_run(first_baseline_result)
-    if not baseline_handler.is_valid():
-        logging.warning("Baseline run failed.")
-
-    if tuning_client.is_auto_iree_benchmark_timeout():
-        logging.info(
-            f"Smart candidate benchmark timeout is set to {subprocess_timeout_reference:.2f}s"
-        )
-    candidate_indices = [i for i in compiled_candidates if i != 0]
-    for i, idx in enumerate(candidate_indices, start=1):
-        tuning_client.tuning_records[idx].benchmark_queue_position = i
-        tuning_client.tuning_records[idx].to_benchmark = True
-
+    # Configure benchmark timing tool.
     match args.benchmark_timing_method:
         case BenchmarkTimingMethod.iree_benchmark_module:
             benchmark_tool_config = IreeBenchmarkModuleConfig(
@@ -1370,6 +1346,28 @@ def benchmark(
         case _:
             raise False
 
+    # Benchmarking baselines on each involved device.
+    baseline_tracker = tuning_client.candidate_trackers[0]
+    first_baseline_result, subprocess_timeout_reference = benchmark_baseline(
+        devices=args.devices,
+        tuning_client=tuning_client,
+        candidate_tracker=baseline_tracker,
+        benchmark_tool_config=benchmark_tool_config,
+    )
+    baseline_handler = BaselineResultHandler()
+    baseline_handler.add_run(first_baseline_result)
+    if not baseline_handler.is_valid():
+        logging.warning("Baseline run failed.")
+
+    if tuning_client.is_auto_iree_benchmark_timeout():
+        logging.info(
+            f"Smart candidate benchmark timeout is set to {subprocess_timeout_reference:.2f}s"
+        )
+    candidate_indices = [i for i in compiled_candidates if i != 0]
+    for i, idx in enumerate(candidate_indices, start=1):
+        tuning_client.tuning_records[idx].benchmark_queue_position = i
+        tuning_client.tuning_records[idx].to_benchmark = True
+
     candidate_results = benchmark_candidates(
         candidate_indices=candidate_indices,
         devices=args.devices,
@@ -1392,6 +1390,7 @@ def benchmark(
         devices=args.devices,
         tuning_client=tuning_client,
         candidate_tracker=baseline_tracker,
+        benchmark_tool_config=benchmark_tool_config,
     )
 
     regression_devices = baseline_handler.detect_regressions(second_baseline_result)
