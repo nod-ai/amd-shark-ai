@@ -730,9 +730,9 @@ def compute_rocprof_avg_kernel_time(trace_rows: list[dict]) -> float:
             f"Missing required columns in rocprof kernel trace snippet rows: {sorted(missing)}"
         )
 
-    # Skip warm-up iterations
+    # Skip warm-up iterations.
     if len(trace_rows) >= 20:
-        trace_rows = trace_rows[10:]  # Drop first 10 rows
+        trace_rows = trace_rows[10:]  # Drop first 10 rows.
     else:
         logging.warning(
             "Rocprof kernel trace CSV contains insufficient records; timing results may be unreliable or noisy."
