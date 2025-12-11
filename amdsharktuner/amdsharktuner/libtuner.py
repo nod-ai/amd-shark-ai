@@ -21,6 +21,11 @@ import sys
 import shutil
 import logging
 import argparse
+import tempfile
+import os
+import random
+import time
+import csv
 from collections import defaultdict
 from datetime import datetime
 from enum import Enum
@@ -30,10 +35,6 @@ import hashlib
 from dataclasses import dataclass, field
 from typing import Type, Optional, Callable, Protocol
 from abc import ABC, abstractmethod
-import tempfile
-import os
-import random
-import time
 
 import iree.runtime as ireert  # type: ignore
 import iree.compiler as ireec  # type: ignore
@@ -114,7 +115,7 @@ class PathConfig:
     def get_candidate_vmfb_filename(self, candidate_id: int) -> str:
         return f"{candidate_id}.vmfb"
 
-    def get_candidate_kernel_trace_filename_suffix(self) -> str:
+    def get_candidate_kernel_trace_filename_prefix(self) -> str:
         return f"_kernel_trace"
 
     def get_candidate_kernel_trace_filename(self, candidate_id: int) -> str:
@@ -195,7 +196,7 @@ class RocProfConfig(BenchmarkToolConfig):
     benchmark_fn: Callable
     iree_benchmark_module_flags: list[str]
     rocprof_output_dir: str
-    rocprof_output_filename_suffix: str
+    rocprof_output_filename_prefix: str
     rocprof_output_format: str
 
 
@@ -713,6 +714,46 @@ def run_iree_benchmark_module_command(benchmark_pack: BenchmarkPack):
     )
 
 
+def compute_rocprof_avg_kernel_time(trace_path: Path) -> float:
+    if not os.path.exists(trace_path):
+        raise FileNotFoundError(f"File not found: {trace_path}")
+
+    with open(trace_path, newline="") as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+
+    required_cols = ["Kernel_Name", "Start_Timestamp", "End_Timestamp"]
+    if not all(col in reader.fieldnames for col in required_cols):
+        raise ValueError(
+            f"Missing required columns in rocprof kernel trace CSV: {required_cols}"
+        )
+
+    # Skip warm-up iterations
+    if len(rows) > 20:
+        rows = rows[10:]  # Drop first 10 rows
+    else:
+        logging.warning(
+            "Rocprof kernel trace CSV contains insufficient records; timing results may be unreliable or noisy."
+        )
+
+    init_dispatch_fn_name_key = "_buffer"
+    if any(init_dispatch_fn_name_key in str(row["Kernel_Name"]) for row in rows):
+        raise RuntimeError(
+            "Rocprof measured the initializer dispatch instead of the main kernel computation."
+        )
+
+    clk_diffs_ns = []
+    for row in rows:
+        start = float(row["Start_Timestamp"])
+        end = float(row["End_Timestamp"])
+        clk_diffs_ns.append(end - start)
+
+    avg_clk_ns = sum(clk_diffs_ns) / len(clk_diffs_ns)
+    avg_clk_us = avg_clk_ns / 1000.0
+
+    return avg_clk_us
+
+
 def run_rocprof_command(benchmark_pack: BenchmarkPack):
     benchmark_tool_config: RocProfConfig = benchmark_pack.benchmark_tool_config
     candidate_tracker = benchmark_pack.candidate_tracker
@@ -725,7 +766,7 @@ def run_rocprof_command(benchmark_pack: BenchmarkPack):
     ), "Missing WorkerContext. Did you forget to set it in baseline?"
     device_id = worker_ctx.device_id
 
-    output_file = f"{benchmark_tool_config.rocprof_output_dir}/{candidate_id}{benchmark_tool_config.rocprof_output_filename_suffix}"
+    output_file = f"{benchmark_tool_config.rocprof_output_dir}/{candidate_id}"
     rocprof_command = [
         "rocprofv3",
         "--kernel-trace",
@@ -757,8 +798,10 @@ def run_rocprof_command(benchmark_pack: BenchmarkPack):
             device_id=str(device_id),
         )
 
-    # time = compute_avg_kernel_time(f"{output_file}.{benchmark_tool_config.rocprof_output_format}")
-    time = 1  # Temp number for testing
+    kernel_trace_csv_path = Path(
+        f"{output_file}{benchmark_tool_config.rocprof_output_filename_prefix}.{benchmark_tool_config.rocprof_output_format}"
+    )
+    time = compute_rocprof_avg_kernel_time(kernel_trace_csv_path)
     logging.debug(f"Rocprof benchmark time of candidate {candidate_id}: {time:.2f} us")
     return BenchmarkResult(
         candidate_id=candidate_id,
@@ -1340,7 +1383,7 @@ def benchmark(
                 benchmark_fn=run_rocprof_command,
                 iree_benchmark_module_flags=tuning_client.get_iree_benchmark_module_flags(),
                 rocprof_output_dir=path_config.kernel_traces_dir,
-                rocprof_output_filename_suffix=path_config.get_candidate_kernel_trace_filename_suffix(),
+                rocprof_output_filename_prefix=path_config.get_candidate_kernel_trace_filename_prefix(),
                 rocprof_output_format="csv",
             )
             logging.debug(
