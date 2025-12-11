@@ -378,6 +378,9 @@ def test_baseline_result_handler_speedup():
 
 
 def test_compute_rocprof_avg_kernel_time(caplog):
+    with pytest.raises(ValueError):
+        libtuner.compute_rocprof_avg_kernel_time([])
+
     trace_rows = [
         {"Kernel_Name": "main_kernel", "Start_Timestamp": "0"},
         {"Kernel_Name": "main_kernel", "Start_Timestamp": "1000"},

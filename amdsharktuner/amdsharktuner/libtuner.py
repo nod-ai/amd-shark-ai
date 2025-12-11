@@ -718,6 +718,9 @@ def run_iree_benchmark_module_command(benchmark_pack: BenchmarkPack):
 
 
 def compute_rocprof_avg_kernel_time(trace_rows: list[dict]) -> float:
+    if not trace_rows:
+        raise ValueError("Rocprof kernel trace is empty.")
+
     required_cols = {"Kernel_Name", "Start_Timestamp", "End_Timestamp"}
     # Only need to check the first row.
     row_keys = set(trace_rows[0].keys())
@@ -800,12 +803,14 @@ def run_rocprof_command(benchmark_pack: BenchmarkPack):
     trace_path = Path(
         f"{output_file}{benchmark_tool_config.rocprof_output_filename_prefix}.{benchmark_tool_config.rocprof_output_format}"
     )
+    benchmark_pack.candidate_tracker.kernel_trace_path = trace_path
     if not os.path.exists(trace_path):
         raise FileNotFoundError(f"File not found: {trace_path}")
     with open(trace_path, newline="") as f:
         trace_reader = csv.DictReader(f)
+        trace_rows = list(trace_reader)
 
-    time = compute_rocprof_avg_kernel_time(trace_reader)
+    time = compute_rocprof_avg_kernel_time(trace_rows)
     logging.debug(f"Rocprof benchmark time of candidate {candidate_id}: {time:.2f} us")
     return BenchmarkResult(
         candidate_id=candidate_id,
