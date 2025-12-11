@@ -561,12 +561,7 @@ def flatten_nested_td_spec(td_spec_str: str, output_path: Path) -> None:
             output_path,
         ]
 
-        process_utils.run_command(
-            process_utils.RunPack(
-                command=link_command,
-                check=True,
-            )
-        )
+        process_utils.run_command(process_utils.RunPack(command=link_command))
 
 
 def run_iree_compile_command(compile_pack: CompilePack) -> Optional[int]:
@@ -789,7 +784,6 @@ def run_rocprof_command(benchmark_pack: BenchmarkPack):
     result = process_utils.run_command(
         process_utils.RunPack(
             command=measure_cmd,
-            check=True,
             timeout_seconds=benchmark_pack.benchmark_timeout,
         )
     )
@@ -1389,37 +1383,22 @@ def benchmark(
                 f"Benchmark Timing Method Selected: {BenchmarkTimingMethod.iree_benchmark_module}."
             )
         case BenchmarkTimingMethod.rocprof:
-            # Check if rocprof is available; fall back to iree-benchmark-module if not.
-            rocprof_test_run_res = process_utils.run_command(
-                process_utils.RunPack(
-                    command=["rocprofv3", "-h"],
-                    check=False,
-                )
+            # Check if rocprof is available.
+            process_utils.run_command(
+                process_utils.RunPack(command=["rocprofv3", "-h"])
             )
-            if (
-                rocprof_test_run_res.process_res is not None
-                and rocprof_test_run_res.process_res.returncode == 0
-            ):
-                # Rocprof will dump results into files.
-                path_config.kernel_traces_dir.mkdir(parents=True, exist_ok=True)
-                benchmark_tool_config = RocProfConfig(
-                    benchmark_fn=run_rocprof_command,
-                    iree_benchmark_module_flags=tuning_client.get_iree_benchmark_module_flags(),
-                    rocprof_output_dir=path_config.kernel_traces_dir,
-                    rocprof_output_filename_prefix=path_config.get_candidate_kernel_trace_filename_prefix(),
-                    rocprof_output_format="csv",
-                )
-                logging.debug(
-                    f"Benchmark Timing Method Selected: {BenchmarkTimingMethod.rocprof}."
-                )
-            else:
-                logging.warning(
-                    f"rocprof not found; falling back to {BenchmarkTimingMethod.iree_benchmark_module}."
-                )
-                benchmark_tool_config = IreeBenchmarkModuleConfig(
-                    benchmark_fn=run_iree_benchmark_module_command,
-                    iree_benchmark_module_flags=tuning_client.get_iree_benchmark_module_flags(),
-                )
+            # Rocprof will dump results into files.
+            path_config.kernel_traces_dir.mkdir(parents=True, exist_ok=True)
+            benchmark_tool_config = RocProfConfig(
+                benchmark_fn=run_rocprof_command,
+                iree_benchmark_module_flags=tuning_client.get_iree_benchmark_module_flags(),
+                rocprof_output_dir=path_config.kernel_traces_dir,
+                rocprof_output_filename_prefix=path_config.get_candidate_kernel_trace_filename_prefix(),
+                rocprof_output_format="csv",
+            )
+            logging.debug(
+                f"Benchmark Timing Method Selected: {BenchmarkTimingMethod.rocprof}."
+            )
         case _:
             assert False
 
