@@ -28,7 +28,7 @@ from pathlib import Path
 from tqdm import tqdm
 import hashlib
 from dataclasses import dataclass, field
-from typing import Type, Optional
+from typing import Type, Optional, Callable, Protocol
 from abc import ABC, abstractmethod
 import tempfile
 import os
@@ -74,6 +74,7 @@ class CandidateTracker:
     spec_path: Optional[Path] = None
     td_spec_str: Optional[str] = None
     knob_assignment: Optional[common.KnobAssignment] = None
+    kernel_trace_path: Optional[Path] = None
 
 
 @dataclass()
@@ -84,6 +85,7 @@ class PathConfig:
     candidates_dir: Path = field(init=False)
     compiled_dir: Path = field(init=False)
     specs_dir: Path = field(init=False)
+    kernel_traces_dir: Path = field(init=False)
 
     # To be set outside of class.
     run_log: Optional[Path] = field(init=False, default=None)
@@ -94,6 +96,9 @@ class PathConfig:
         object.__setattr__(self, "candidates_dir", self.base_dir / "candidates")
         object.__setattr__(self, "compiled_dir", self.candidates_dir / "compiled")
         object.__setattr__(self, "specs_dir", self.candidates_dir / "specs")
+        object.__setattr__(
+            self, "kernel_traces_dir", self.candidates_dir / "kernel_traces"
+        )
 
     def _name_base_dir(self) -> Path:
         timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M")
@@ -108,6 +113,12 @@ class PathConfig:
 
     def get_candidate_vmfb_filename(self, candidate_id: int) -> str:
         return f"{candidate_id}.vmfb"
+
+    def get_candidate_kernel_trace_filename_suffix(self) -> str:
+        return f"_kernel_trace"
+
+    def get_candidate_kernel_trace_filename(self, candidate_id: int) -> str:
+        return f"{candidate_id}_kernel_trace.csv"
 
 
 class TuningClient(ABC):
@@ -166,9 +177,31 @@ class CompilePack:
     candidate_tracker: CandidateTracker
 
 
+class BenchmarkToolConfig(Protocol):
+    """Marker base class for benchmark tool configuration objects."""
+
+    benchmark_fn: Callable
+    pass
+
+
+@dataclass
+class IreeBenchmarkModuleConfig(BenchmarkToolConfig):
+    benchmark_fn: Callable
+    iree_benchmark_module_flags: list[str]
+
+
+@dataclass
+class RocProfConfig(BenchmarkToolConfig):
+    benchmark_fn: Callable
+    iree_benchmark_module_flags: list[str]
+    rocprof_output_dir: str
+    rocprof_output_filename_suffix: str
+    rocprof_output_format: str
+
+
 @dataclass
 class BenchmarkPack:
-    iree_benchmark_module_flags: list[str]
+    benchmark_tool_config: BenchmarkToolConfig
     benchmark_timeout: Optional[float]
     candidate_tracker: CandidateTracker
 
@@ -597,7 +630,7 @@ def run_iree_benchmark_module_command(benchmark_pack: BenchmarkPack):
     extra_flags = {}
     func_name = None
     inputs = []
-    for flag in benchmark_pack.iree_benchmark_module_flags:
+    for flag in benchmark_pack.benchmark_tool_config.iree_benchmark_module_flags:
         assert flag[:2] == "--", "iree_benchmark_module_flags should begin with '--'"
         split_key_value = flag[2:].split("=")
         assert (
@@ -676,6 +709,60 @@ def run_iree_benchmark_module_command(benchmark_pack: BenchmarkPack):
     return BenchmarkResult(
         candidate_id=candidate_id,
         time=mean_benchmark_time,
+        device_id=str(device_id),
+    )
+
+
+def run_rocprof_command(benchmark_pack: BenchmarkPack):
+    benchmark_tool_config: RocProfConfig = benchmark_pack.benchmark_tool_config
+    candidate_tracker = benchmark_pack.candidate_tracker
+
+    candidate_id = candidate_tracker.candidate_id
+    vmfb_path = candidate_tracker.compiled_vmfb_path
+    worker_ctx = process_utils.WorkerContextManager.get()
+    assert (
+        worker_ctx is not None
+    ), "Missing WorkerContext. Did you forget to set it in baseline?"
+    device_id = worker_ctx.device_id
+
+    output_file = f"{benchmark_tool_config.rocprof_output_dir}/{candidate_id}{benchmark_tool_config.rocprof_output_filename_suffix}"
+    rocprof_command = [
+        "rocprofv3",
+        "--kernel-trace",
+        f"--output-file={output_file}",
+        f"--output-format={benchmark_tool_config.rocprof_output_format}",
+    ]
+    benchmark_command = [
+        "iree-benchmark-module",
+        f"--module={vmfb_path}",
+        f"--device={device_id}",
+    ]
+    benchmark_command += (
+        benchmark_pack.benchmark_tool_config.iree_benchmark_module_flags
+    )
+    measure_cmd = rocprof_command + ["--"] + benchmark_command
+
+    result = process_utils.run_command(
+        process_utils.RunPack(
+            command=measure_cmd,
+            check=True,
+            timeout_seconds=benchmark_pack.benchmark_timeout,
+        )
+    )
+
+    if result.is_timeout:
+        return BenchmarkResult(
+            candidate_id=candidate_id,
+            time=math.inf,
+            device_id=str(device_id),
+        )
+
+    # time = compute_avg_kernel_time(f"{output_file}.{benchmark_tool_config.rocprof_output_format}")
+    time = 1  # Temp number for testing
+    logging.debug(f"Rocprof benchmark time of candidate {candidate_id}: {time:.2f} us")
+    return BenchmarkResult(
+        candidate_id=candidate_id,
+        time=time,
         device_id=str(device_id),
     )
 
@@ -897,6 +984,7 @@ def benchmark_candidates(
     candidate_indices: list[int],
     devices: list[str],
     tuning_client: TuningClient,
+    benchmark_tool_config: BenchmarkToolConfig,
     timeout_reference=float,
     benchmark_time: Optional[float] = None,
 ) -> list[BenchmarkResult]:
@@ -911,7 +999,7 @@ def benchmark_candidates(
 
     task_list = [
         BenchmarkPack(
-            iree_benchmark_module_flags=tuning_client.get_iree_benchmark_module_flags(),
+            benchmark_tool_config=benchmark_tool_config,
             benchmark_timeout=benchmark_timeout,
             candidate_tracker=tuning_client.candidate_trackers[idx],
         )
@@ -927,7 +1015,7 @@ def benchmark_candidates(
     )
 
     # Perform benchmarking.
-    return executor.run(task_list, run_iree_benchmark_module_command)
+    return executor.run(task_list, benchmark_tool_config.benchmark_fn)
 
 
 def benchmark_baseline(
@@ -952,9 +1040,13 @@ def benchmark_baseline(
                 process_utils.WorkerContextManager.set(worker_ctx)
 
                 benchmark_start_timestamp = time.perf_counter()
+                benchmark_tool_config = IreeBenchmarkModuleConfig(
+                    run_iree_benchmark_module_command,
+                    tuning_client.get_iree_benchmark_module_flags(),
+                )
                 result = run_iree_benchmark_module_command(
                     BenchmarkPack(
-                        iree_benchmark_module_flags=tuning_client.get_iree_benchmark_module_flags(),
+                        benchmark_tool_config=benchmark_tool_config,
                         benchmark_timeout=tuning_client.get_iree_benchmark_timeout_s(),
                         candidate_tracker=candidate_tracker,
                     )
@@ -1221,6 +1313,7 @@ def compile(
 
 def benchmark(
     args: argparse.Namespace,
+    path_config: PathConfig,
     compiled_candidates: list[int],
     tuning_client: TuningClient,
     num_candidates: Optional[int] = None,
@@ -1237,6 +1330,7 @@ def benchmark(
         devices=args.devices,
         tuning_client=tuning_client,
         candidate_tracker=baseline_tracker,
+        # benchmark_timing_method=args.benchmark_timing_method,
     )
     baseline_handler = BaselineResultHandler()
     baseline_handler.add_run(first_baseline_result)
@@ -1252,10 +1346,35 @@ def benchmark(
         tuning_client.tuning_records[idx].benchmark_queue_position = i
         tuning_client.tuning_records[idx].to_benchmark = True
 
+    match args.benchmark_timing_method:
+        case BenchmarkTimingMethod.iree_benchmark_module:
+            benchmark_tool_config = IreeBenchmarkModuleConfig(
+                benchmark_fn=run_iree_benchmark_module_command,
+                iree_benchmark_module_flags=tuning_client.get_iree_benchmark_module_flags(),
+            )
+            logging.debug(
+                f"Benchmark Timing Method Selected: {BenchmarkTimingMethod.iree_benchmark_module.value}."
+            )
+        case BenchmarkTimingMethod.rocprof:
+            path_config.kernel_traces_dir.mkdir(parents=True, exist_ok=True)
+            benchmark_tool_config = RocProfConfig(
+                benchmark_fn=run_rocprof_command,
+                iree_benchmark_module_flags=tuning_client.get_iree_benchmark_module_flags(),
+                rocprof_output_dir=path_config.kernel_traces_dir,
+                rocprof_output_filename_suffix=path_config.get_candidate_kernel_trace_filename_suffix(),
+                rocprof_output_format="csv",
+            )
+            logging.debug(
+                f"Benchmark Timing Method Selected: {BenchmarkTimingMethod.rocprof.value}."
+            )
+        case _:
+            raise False
+
     candidate_results = benchmark_candidates(
         candidate_indices=candidate_indices,
         devices=args.devices,
         tuning_client=tuning_client,
+        benchmark_tool_config=benchmark_tool_config,
         timeout_reference=subprocess_timeout_reference,
         benchmark_time=benchmark_time,  # Only candidate benchmark has time limit.
     )
