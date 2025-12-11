@@ -27,7 +27,7 @@ jobs:
     strategy:
       matrix:
         model: [{
-                  irpa: "/amdshark-dev/ossci-models/llama_3_1/8b/fp16/instruct_8b_fp16_2025-12-09.ipra",
+                  irpa: "/amdshark-dev/ossci-models/llama_3_1/8b/fp16/llama_3_1_instruct_8b_fp16.irpa",
                   torch_dataset: "amdsharktank/tests/evaluate/datasets/llama_8b_fp16_torch.json",
                   iree_dataset: "amdsharktank/tests/evaluate/datasets/llama_8b_fp16_iree.json"
                 },
@@ -59,6 +59,7 @@ jobs:
 
       - name: Install amdsharktank deps
         run: |
+          ls -R /amdshark-dev
           source ${VENV_DIR}/bin/activate
           amdsharktank/build_tools/install_test_dependencies.sh \
             --torch-version ${{matrix.torch-version}} \
