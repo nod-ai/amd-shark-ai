@@ -350,7 +350,8 @@ def parse_arguments(
     )
     general_args.add_argument(
         "--stop-after",
-        choices=[x.value for x in ExecutionPhases],
+        choices=list(ExecutionPhases),
+        type=ExecutionPhases,
         default=ExecutionPhases.dont_stop,
         help="Stop execution after specified phase",
     )
@@ -361,8 +362,9 @@ def parse_arguments(
     )
     general_args.add_argument(
         "--benchmark-timing-method",
-        choices=[btm.value for btm in BenchmarkTimingMethod],
-        default=BenchmarkTimingMethod.iree_benchmark_module.value,
+        choices=list(BenchmarkTimingMethod),
+        type=BenchmarkTimingMethod,
+        default=BenchmarkTimingMethod.iree_benchmark_module,
         help="Select which timing tool to use for benchmark execution measurements.",
     )
 
@@ -376,8 +378,9 @@ def parse_arguments(
     )
     general_args.add_argument(
         "--candidate-order",
-        choices=[cok.value for cok in candidate_ordering.CandidateOrderKind],
-        default=candidate_ordering.CandidateOrderKind.shuffle.value,
+        choices=list(candidate_ordering.CandidateOrderKind),
+        type=candidate_ordering.CandidateOrderKind,
+        default=candidate_ordering.CandidateOrderKind.shuffle,
         help="How to order generated candidates for compilation and benchmarking.",
     )
     candidate_gen_args.add_argument(
@@ -1375,7 +1378,7 @@ def benchmark(
                 iree_benchmark_module_flags=tuning_client.get_iree_benchmark_module_flags(),
             )
             logging.debug(
-                f"Benchmark Timing Method Selected: {BenchmarkTimingMethod.iree_benchmark_module.value}."
+                f"Benchmark Timing Method Selected: {BenchmarkTimingMethod.iree_benchmark_module}."
             )
         case BenchmarkTimingMethod.rocprof:
             path_config.kernel_traces_dir.mkdir(parents=True, exist_ok=True)
@@ -1387,7 +1390,7 @@ def benchmark(
                 rocprof_output_format="csv",
             )
             logging.debug(
-                f"Benchmark Timing Method Selected: {BenchmarkTimingMethod.rocprof.value}."
+                f"Benchmark Timing Method Selected: {BenchmarkTimingMethod.rocprof}."
             )
         case _:
             raise False
