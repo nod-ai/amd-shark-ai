@@ -34,7 +34,7 @@ jobs:
         id: set-duty
         run: |
           # rotation schedule (GitHub usernames); add yourself into this schedule to get notified when it's your turn.
-          ENGINEERS=('renxida')
+          ENGINEERS=('')
 
           # current week number (1-53)
           WEEK=$(date +%V)
