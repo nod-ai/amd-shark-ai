@@ -40,6 +40,55 @@ def parse_mlir(mlir_text: str, ctx: common.TunerContext) -> ir.Module:
     return mlir_module
 
 
+def build_conv_to_igemm_info(
+    convolution_dims: linalg.ConvolutionDimensions,
+    input_type: ir.Type,
+    input_map: ir.AffineMap,
+    igemm_details,
+) -> common.ConvToIgemmInfo:
+    """
+    Builds ConvToIgemmInfo from convolution dimensions and IGEMM details.
+
+    Corresponds to IREE:
+    https://github.com/iree-org/iree/blob/d3440737cc56a4d1b20c72181d9a37f194bd3ce5/compiler/src/iree/compiler/Codegen/Dialect/GPU/TargetUtils/ConfigUtils.cpp#L872-L909
+    """
+    input_shape = input_type.shape
+    conv_to_igemm_info = common.ConvToIgemmInfo(conv_dims=convolution_dims)
+
+    # Map input channel dimensions to their sizes in the input tensor.
+    for dim in convolution_dims.input_channel:
+        for idx, expr in enumerate(input_map.results):
+            if common.is_affine_expr_function_of_dim(expr, dim):
+                conv_to_igemm_info.input_channel_dim_to_size[dim] = input_shape[idx]
+
+    # Process output image dimensions to find input image positions.
+    input_image_pos = []
+    for dim in convolution_dims.output_image:
+        for idx, expr in enumerate(input_map.results):
+            if common.is_affine_expr_function_of_dim(expr, dim):
+                input_image_pos.append(idx)
+
+    # Process batch dimensions to find batch positions.
+    batch_pos = []
+    for dim in convolution_dims.batch:
+        for idx, expr in enumerate(input_map.results):
+            if common.is_affine_expr_function_of_dim(expr, dim):
+                batch_pos.append(idx)
+
+    input_image_pos = sorted(input_image_pos)
+    batch_pos = sorted(batch_pos)
+
+    conv_to_igemm_info.is_batch_dim_last = (
+        len(batch_pos) > 0 and batch_pos[-1] == len(input_shape) - 1
+    )
+    conv_to_igemm_info.is_spatial_dim_last = (
+        len(input_image_pos) > 0 and input_image_pos[-1] == len(input_shape) - 1
+    )
+
+    conv_to_igemm_info.conv_to_igemm_dim_map = dict(igemm_details.conv_to_igemm_dim_map)
+    return conv_to_igemm_info
+
+
 @dataclass
 class OpInfo:
     root_op: ir.Operation
@@ -74,6 +123,8 @@ class ConvolutionOpInfo(OpInfo):
 
     # IGEMM details for TileAndFuse pipeline (None if not available).
     igemm_details: Optional[iree_codegen.IGEMMGenericConvDetails] = None
+    # Convolution to IGEMM transformation info (None if not available).
+    conv_to_igemm_info: Optional[common.ConvToIgemmInfo] = None
 
 
 @dataclass
@@ -203,7 +254,9 @@ class ConvolutionOpInterfaceParser(DispatchParser):
     def __init__(self, root_op: ir.Operation, tuner_ctx: common.TunerContext):
         super().__init__(root_op, tuner_ctx)
         root_op = self.get_root_op()
-        convolution_dims = linalg.infer_convolution_dimensions(root_op)
+        convolution_dims: linalg.ConvolutionDimensions = (
+            linalg.infer_convolution_dimensions(root_op)
+        )
         assert convolution_dims, "no convolution dimensions"
 
         batch_indices = list(convolution_dims.batch)
@@ -275,6 +328,13 @@ class ConvolutionOpInterfaceParser(DispatchParser):
         # for any convolution layout (nhwc_hwcf, nchw_fchw, etc.).
         igemm_details = iree_codegen.get_igemm_generic_conv_details(root_op)
 
+        # Build ConvToIgemmInfo using convolution_dims.
+        conv_to_igemm_info = None
+        if igemm_details:
+            conv_to_igemm_info = build_conv_to_igemm_info(
+                convolution_dims, lhs_type, indexing_maps[0], igemm_details
+            )
+
         self._op_info: ConvolutionOpInfo = ConvolutionOpInfo(
             root_op=root_op,
             indexing_maps=indexing_maps,
@@ -292,6 +352,7 @@ class ConvolutionOpInterfaceParser(DispatchParser):
             strides=strides,
             dilations=dilations,
             igemm_details=igemm_details,
+            conv_to_igemm_info=conv_to_igemm_info,
         )
 
     def has_valid_root_op(self) -> bool:
