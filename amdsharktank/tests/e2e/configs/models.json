@@ -76,21 +76,21 @@
       {
         "name": "prefill_bs4",
         "inputs": [
-          "@/amdshark-dev/8b/prefill_args_bs4_2048_stride_32/tokens.npy",
-          "@/amdshark-dev/8b/prefill_args_bs4_2048_stride_32/seq_lens.npy",
-          "@/amdshark-dev/8b/prefill_args_bs4_2048_stride_32/seq_block_ids.npy",
-          "@/amdshark-dev/8b/prefill_args_bs4_2048_stride_32/cs_f16.npy"
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/prefill/prefill_args_bs4_2048_stride_32/tokens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/prefill/prefill_args_bs4_2048_stride_32/seq_lens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/prefill/prefill_args_bs4_2048_stride_32/seq_block_ids.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/prefill/prefill_args_bs4_2048_stride_32/cs_f16.npy"
         ],
         "seq_len": 2048
       },
       {
         "name": "decode_bs4",
         "inputs": [
-          "@/amdshark-dev/8b/decode_args_bs4_2048_stride_32/next_tokens.npy",
-          "@/amdshark-dev/8b/decode_args_bs4_2048_stride_32/seq_lens.npy",
-          "@/amdshark-dev/8b/decode_args_bs4_2048_stride_32/start_positions.npy",
-          "@/amdshark-dev/8b/decode_args_bs4_2048_stride_32/seq_block_ids.npy",
-          "@/amdshark-dev/8b/decode_args_bs4_2048_stride_32/cs_f16.npy"
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/decode/decode_args_bs4_2048_stride_32/next_tokens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/decode/decode_args_bs4_2048_stride_32/seq_lens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/decode/decode_args_bs4_2048_stride_32/start_positions.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/decode/decode_args_bs4_2048_stride_32/seq_block_ids.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/decode/decode_args_bs4_2048_stride_32/cs_f16.npy"
         ],
         "seq_len": 2048
       }
