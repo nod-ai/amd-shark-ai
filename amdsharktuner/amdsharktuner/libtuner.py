@@ -1032,19 +1032,24 @@ def benchmark_candidates(
     devices: list[str],
     tuning_client: TuningClient,
     benchmark_tool_config: BenchmarkToolConfig,
-    timeout_reference: Optional[float],
+    timeout_reference: Optional[float] = None,
     benchmark_time: Optional[float] = None,
 ) -> list[BenchmarkResult]:
     """
     Runs the benchmarking for a given list of candidate indices.
     """
-    benchmark_timeout = (
+    benchmark_timeout: Optional[float] = (
         timeout_reference
         if tuning_client.is_auto_iree_benchmark_timeout() and timeout_reference
         else tuning_client.get_iree_benchmark_timeout_s()
     )
+    timeout_str = (
+        f"{benchmark_timeout:.2f}s"
+        if benchmark_timeout is not None
+        else "timeout disabled"
+    )
     logging.debug(
-        f"benchmark_candidates() will use benchmark subprocess timeout: {benchmark_timeout:.2f}s"
+        f"benchmark_candidates() will use benchmark subprocess timeout: {timeout_str}"
     )
 
     task_list = [
