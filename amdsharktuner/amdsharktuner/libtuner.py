@@ -1033,7 +1033,9 @@ def benchmark_candidates(
     tuning_client: TuningClient,
     benchmark_tool_config: BenchmarkToolConfig,
     timeout_reference: Optional[float] = None,
-    benchmark_time: Optional[float] = None,
+    benchmark_time: Optional[
+        float
+    ] = None,  # Total time allocated for this benchmarking phase.
 ) -> list[BenchmarkResult]:
     """
     Runs the benchmarking for a given list of candidate indices.
@@ -1369,7 +1371,9 @@ def benchmark(
     compiled_candidates: list[int],
     tuning_client: TuningClient,
     num_candidates: Optional[int] = None,
-    benchmark_time: Optional[float] = None,
+    benchmark_time: Optional[
+        float
+    ] = None,  # Overall time budget for running all candidate benchmarks.
 ):
     logging.debug("benchmark()")
     if len(compiled_candidates) == 0:
