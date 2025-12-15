@@ -31,9 +31,7 @@ dtype_to_filetag = {
 }
 
 ARTIFACT_VERSION = "09022025"
-SDXL_BUCKET = (
-    f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/{ARTIFACT_VERSION}/"
-)
+SDXL_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/{ARTIFACT_VERSION}/"
 SDXL_WEIGHTS_BUCKET = (
     "https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/weights/"
 )
