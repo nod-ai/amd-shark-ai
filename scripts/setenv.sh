@@ -75,7 +75,7 @@ if [[ $BUILD_TYPE = "nightly" ]]; then
     pip install scikit-image
 
 elif [[ $BUILD_TYPE = "stable" ]]; then
-    pip install amdshark-ai[apps]
+    pip install amd-shark-ai[apps]
     pip install scikit-image
     pip install torch --index-url https://download.pytorch.org/whl/cpu "torch>=2.4.0,<2.6.0"
 
