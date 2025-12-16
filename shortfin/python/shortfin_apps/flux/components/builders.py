@@ -18,10 +18,8 @@ parent = os.path.dirname(this_dir)
 default_config_json = os.path.join(parent, "examples", "flux_dev_config.json")
 
 ARTIFACT_VERSION = "20250622"
-FLUX_BUCKET = (
-    f"https://sharkpublic.blob.core.windows.net/sharkpublic/flux.1/{ARTIFACT_VERSION}/"
-)
-FLUX_WEIGHTS_BUCKET = "https://sharkpublic.blob.core.windows.net/sharkpublic/flux.1/weights/exported_parameters_bf16/"
+FLUX_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/flux.1/{ARTIFACT_VERSION}/"
+FLUX_WEIGHTS_BUCKET = "https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/flux.1/weights/exported_parameters_bf16/"
 
 
 def filter_by_model(filenames, model):
@@ -189,7 +187,7 @@ def flux(
             raise RuntimeError(
                 f'Could not find file "{f}".'
                 " Model parameters auto-downloading is disable."
-                " To obtain the weights please follow https://github.com/nod-ai/shark-ai/tree/main/shortfin/python/shortfin_apps/flux#prepare-artifacts"
+                " To obtain the weights please follow https://github.com/nod-ai/amd-shark-ai/tree/main/shortfin/python/shortfin_apps/flux#prepare-artifacts"
             )
     filenames = [*vmfb_filenames, *params_filenames, *mlir_filenames]
     return filenames

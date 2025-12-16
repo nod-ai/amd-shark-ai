@@ -27,12 +27,12 @@ spec:
           sudo apt-get install wget -y &&
           python3.11 -m venv amdshark_venv && source amdshark_venv/bin/activate &&
           mkdir amdshark_artifacts &&
-          wget https://sharkpublic.blob.core.windows.net/sharkpublic/stephen/llama3.1_8b/config.json -O amdshark_artifacts/config.json &&
-          wget https://sharkpublic.blob.core.windows.net/sharkpublic/stephen/llama3.1_8b/meta-llama-3.1-8b-instruct.f16.gguf -O amdshark_artifacts/meta-llama-3.1-8b-instruct.f16.gguf &&
-          wget https://sharkpublic.blob.core.windows.net/sharkpublic/stephen/llama3.1_8b/model.vmfb -O amdshark_artifacts/model.vmfb &&
-          wget https://sharkpublic.blob.core.windows.net/sharkpublic/stephen/llama3.1_8b/tokenizer_config.json -O amdshark_artifacts/tokenizer_config.json &&
-          wget https://sharkpublic.blob.core.windows.net/sharkpublic/stephen/llama3.1_8b/tokenizer.json -O amdshark_artifacts/tokenizer.json &&
-          pip install --pre  shortfin[apps] -f https://github.com/nod-ai/shark-ai/releases/expanded_assets/dev-wheels &&
+          wget https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/stephen/llama3.1_8b/config.json -O amdshark_artifacts/config.json &&
+          wget https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/stephen/llama3.1_8b/meta-llama-3.1-8b-instruct.f16.gguf -O amdshark_artifacts/meta-llama-3.1-8b-instruct.f16.gguf &&
+          wget https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/stephen/llama3.1_8b/model.vmfb -O amdshark_artifacts/model.vmfb &&
+          wget https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/stephen/llama3.1_8b/tokenizer_config.json -O amdshark_artifacts/tokenizer_config.json &&
+          wget https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/stephen/llama3.1_8b/tokenizer.json -O amdshark_artifacts/tokenizer.json &&
+          pip install --pre  shortfin[apps] -f https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels &&
           pip install pandas &&
           python -m shortfin_apps.llm.server --tokenizer_json=amdshark_artifacts/tokenizer.json --model_config=amdshark_artifacts/config.json --vmfb=amdshark_artifacts/model.vmfb --parameters=amdshark_artifacts/meta-llama-3.1-8b-instruct.f16.gguf --device=hip;
         resources:

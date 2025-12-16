@@ -31,11 +31,9 @@ dtype_to_filetag = {
 }
 
 ARTIFACT_VERSION = "09022025"
-SDXL_BUCKET = (
-    f"https://sharkpublic.blob.core.windows.net/sharkpublic/sdxl/{ARTIFACT_VERSION}/"
-)
+SDXL_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/{ARTIFACT_VERSION}/"
 SDXL_WEIGHTS_BUCKET = (
-    "https://sharkpublic.blob.core.windows.net/sharkpublic/sdxl/weights/"
+    "https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/weights/"
 )
 
 
@@ -120,7 +118,7 @@ def get_params_filename(model_params: ModelParams, model=None, splat: bool = Fal
             return filenames[0]
         case _:
             raise ValueError(
-                "Produced more than one parameter filename for a model build. This is unexpected and indicates a config parsing issue. Please file an issue at https://github.com/nod-ai/shark-ai/issues"
+                "Produced more than one parameter filename for a model build. This is unexpected and indicates a config parsing issue. Please file an issue at https://github.com/nod-ai/amd-shark-ai/issues"
             )
 
 

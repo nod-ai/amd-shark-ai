@@ -9,7 +9,7 @@ from iree.build import *
 from shortfin_apps.utils import *
 
 ARTIFACT_VERSION = "12032024"
-FLUX_CONFIG_BUCKET = f"https://sharkpublic.blob.core.windows.net/sharkpublic/flux.1/{ARTIFACT_VERSION}/configs/"
+FLUX_CONFIG_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/flux.1/{ARTIFACT_VERSION}/configs/"
 
 
 @entrypoint(description="Retreives a set of FLUX configuration files.")
