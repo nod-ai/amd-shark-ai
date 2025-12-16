@@ -112,19 +112,24 @@ class BaseBenchmarkTest(unittest.TestCase):
 @is_mi300x
 class BenchmarkLlama3_1_8B(BaseBenchmarkTest):
     def setUp(self):
-        super().setUp(artifact_dir=Path("/amdshark-dev/8b"), dir_path_name="llama-8b")
+        super().setUp(
+            artifact_dir=Path("/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/"),
+            dir_path_name="llama-8b",
+        )
         # TODO: add numpy files to Azure and download from it
         self.batch_size = 4
 
         self.prefill_args_fp16 = {
             128: self.save_benchmarks(
                 benchmark_fn="prefill_bs4",
-                input_path=self.artifact_dir / "prefill_args_bs4_128_stride_32_tp1",
+                input_path=self.artifact_dir
+                / "isl_128/prefill/prefill_args_bs4_128_stride_32",
                 tensor_parallelism_size=1,
             ),
             2048: self.save_benchmarks(
                 benchmark_fn="prefill_bs4",
-                input_path=self.artifact_dir / "prefill_args_bs4_2048_stride_32",
+                input_path=self.artifact_dir
+                / "isl_2048/prefill/prefill_args_bs4_2048_stride_32",
                 tensor_parallelism_size=1,
             ),
         }
@@ -132,12 +137,14 @@ class BenchmarkLlama3_1_8B(BaseBenchmarkTest):
         self.decode_args_fp16 = {
             128: self.save_benchmarks(
                 benchmark_fn="decode_bs4",
-                input_path=self.artifact_dir / "decode_args_bs4_128_stride_32_tp1",
+                input_path=self.artifact_dir
+                / "isl_128/decode/decode_args_bs4_128_stride_32",
                 tensor_parallelism_size=1,
             ),
             2048: self.save_benchmarks(
                 benchmark_fn="decode_bs4",
-                input_path=self.artifact_dir / "decode_args_bs4_2048_stride_32",
+                input_path=self.artifact_dir
+                / "isl_2048/decode/decode_args_bs4_2048_stride_32",
                 tensor_parallelism_size=1,
             ),
         }
