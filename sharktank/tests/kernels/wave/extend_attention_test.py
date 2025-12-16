@@ -562,7 +562,6 @@ class TestPrefillExtendAttention:
         extend_attn_token_ids = self.setup_extend_attn_inputs(
             token_ids, seq_lens, config.block_seq_stride
         )
-        extend_attn_seq_lens = padded_seq_lens
         all_task_inputs = []
         batch_size = len(extend_attn_token_ids)
         for b in range(batch_size):
