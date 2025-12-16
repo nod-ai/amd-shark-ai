@@ -67,30 +67,29 @@
     "port_for_serving": 8900
   },
   "llama-8b-fp16": {
-    "irpa": "/home/yrathore/yv/Shark-test-suite-issue/amdshark-ai_clone/llama_3_1_instruct_8b_fp16.irpa",
+    "irpa": "/amdshark-dev/ossci-models/llama_3_1/8b/fp16/llama_3_1_instruct_8b_fp16.irpa",
     "dtype": "fp16",
-    "tokenizer": "/shark-dev/tokenizers/8b/tokenizer.json",
-    "tokenizer_config": "/shark-dev/tokenizers/8b/tokenizer_config.json",
+    "tokenizer": "/amdshark-dev/ossci-models/llama_3_1/8b/tokenizer/tokenizer.json",
+    "tokenizer_config": "/amdshark-dev/ossci-models/llama_3_1/8b/tokenizer/tokenizer_config.json",
     "benchmark_model": "llama-8B-FP16",
     "benchmarks": [
       {
         "name": "prefill_bs4",
         "inputs": [
-          "@/shark-dev/8b/prefill_args_bs4_2048_stride_32/tokens.npy",
-          "@/shark-dev/8b/prefill_args_bs4_2048_stride_32/seq_lens.npy",
-          "@/shark-dev/8b/prefill_args_bs4_2048_stride_32/seq_block_ids.npy",
-          "@/shark-dev/8b/prefill_args_bs4_2048_stride_32/cs_f16.npy"
-        ],
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/prefill/prefill_args_bs4_2048_stride_32/tokens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/prefill/prefill_args_bs4_2048_stride_32/seq_lens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/prefill/prefill_args_bs4_2048_stride_32/seq_block_ids.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/prefill/prefill_args_bs4_2048_stride_32/cs_f16.npy"],
         "seq_len": 2048
       },
       {
         "name": "decode_bs4",
         "inputs": [
-          "@/shark-dev/8b/decode_args_bs4_2048_stride_32/next_tokens.npy",
-          "@/shark-dev/8b/decode_args_bs4_2048_stride_32/seq_lens.npy",
-          "@/shark-dev/8b/decode_args_bs4_2048_stride_32/start_positions.npy",
-          "@/shark-dev/8b/decode_args_bs4_2048_stride_32/seq_block_ids.npy",
-          "@/shark-dev/8b/decode_args_bs4_2048_stride_32/cs_f16.npy"
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/decode/decode_args_bs4_2048_stride_32/next_tokens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/decode/decode_args_bs4_2048_stride_32/seq_lens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/decode/decode_args_bs4_2048_stride_32/start_positions.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/decode/decode_args_bs4_2048_stride_32/seq_block_ids.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/decode/decode_args_bs4_2048_stride_32/cs_f16.npy"        
         ],
         "seq_len": 2048
       }
