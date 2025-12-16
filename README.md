@@ -206,7 +206,7 @@
 | amdsharktank/tests/models/llama4/llama4\_test.py                                    |       41 |        1 |     98% |        98 |
 | amdsharktank/tests/models/llama4/moe\_test.py                                       |       92 |        1 |     99% |       203 |
 | amdsharktank/tests/models/llama/attention\_test.py                                  |       63 |        1 |     98% |       194 |
-| amdsharktank/tests/models/llama/benchmark\_amdgpu\_test.py                          |      110 |       69 |     37% |34, 37-49, 59-93, 96-106, 115-169, 194-209, 213-228, 232-251, 256-275, 282-352, 368-389, 393-411, 415 |
+| amdsharktank/tests/models/llama/benchmark\_amdgpu\_test.py                          |      110 |       69 |     37% |34, 37-49, 59-93, 96-106, 115-176, 201-216, 220-235, 239-258, 263-282, 289-359, 375-396, 400-418, 422 |
 | amdsharktank/tests/models/llama/quantized\_theta\_test.py                           |       20 |        0 |    100% |           |
 | amdsharktank/tests/models/llama/quark\_parity\_test.py                              |       55 |       40 |     27% |21-22, 29-101, 105 |
 | amdsharktank/tests/models/llama/rot\_emb\_test.py                                   |       37 |        1 |     97% |        81 |
