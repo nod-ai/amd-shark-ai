@@ -140,6 +140,7 @@ def main() -> None:
         dispatch_tuner.benchmark_flags = ["--input=1", "--benchmark_repetitions=3"]
         top_candidates = libtuner.benchmark(
             args,
+            path_config,
             compiled_candidates,
             dispatch_tuner,
             args.dispatch_tuner_num_dispatch_candidates,
