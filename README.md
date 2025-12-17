@@ -5,12 +5,12 @@
 | Name                                                 |    Stmts |     Miss |   Cover |   Missing |
 |----------------------------------------------------- | -------: | -------: | ------: | --------: |
 | amdsharktuner/amdsharktuner/\_\_init\_\_.py          |        7 |        0 |    100% |           |
-| amdsharktuner/amdsharktuner/candidate\_gen.py        |      145 |       53 |     63% |36, 50, 55, 61, 72, 77, 80-81, 84-87, 104-105, 115, 118, 131, 137, 152, 164, 177, 183, 190, 197, 205-206, 210, 216, 244-246, 266-271, 287-299, 309-314, 320-336 |
+| amdsharktuner/amdsharktuner/candidate\_gen.py        |      134 |       46 |     66% |36, 50, 55, 61, 72, 89-90, 100, 103, 116, 122, 137, 149, 162, 168, 175, 182, 190-191, 195, 201, 229-231, 251-256, 272-284, 294-299, 305-321 |
 | amdsharktuner/amdsharktuner/candidate\_ordering.py   |       95 |       11 |     88% |89-92, 109-110, 179-187 |
 | amdsharktuner/amdsharktuner/common.py                |      325 |       11 |     97% |80, 85, 90, 92, 134, 330, 353-354, 458, 504, 674 |
 | amdsharktuner/amdsharktuner/constraint\_generator.py |      191 |        7 |     96% |376, 470, 472, 474, 589, 659, 668 |
 | amdsharktuner/amdsharktuner/dispatch\_constraints.py |      288 |       13 |     95% |106-109, 149-158, 277, 380, 564, 634, 649 |
-| amdsharktuner/amdsharktuner/dispatch\_parser.py      |      236 |        9 |     96% |36-38, 193, 198, 246-247, 361, 513 |
+| amdsharktuner/amdsharktuner/dispatch\_parser.py      |      218 |        5 |     98% |36-38, 193, 480 |
 | amdsharktuner/amdsharktuner/libtuner.py              |      675 |      405 |     40% |105-107, 110, 113, 116, 119, 122, 127-130, 134, 138, 142, 153, 161, 171, 219, 223-232, 322-453, 457-512, 523-545, 549-564, 568-610, 614-708, 755-810, 818-822, 852-858, 867-1001, 1043-1075, 1084-1119, 1172, 1281-1365, 1378-1511 |
 | amdsharktuner/amdsharktuner/merge\_td\_specs.py      |       32 |       32 |      0% |     19-79 |
 | amdsharktuner/amdsharktuner/process\_utils.py        |       89 |       32 |     64% |104-114, 144-183 |
@@ -32,11 +32,11 @@
 | amdsharktuner/tests/common\_test.py                  |      304 |        1 |     99% |       292 |
 | amdsharktuner/tests/constraint\_generator\_test.py   |      287 |        0 |    100% |           |
 | amdsharktuner/tests/dispatch\_constraints\_test.py   |      165 |        0 |    100% |           |
-| amdsharktuner/tests/dispatch\_parser\_test.py        |      186 |        0 |    100% |           |
+| amdsharktuner/tests/dispatch\_parser\_test.py        |      182 |        0 |    100% |           |
 | amdsharktuner/tests/libtuner\_test.py                |      181 |        0 |    100% |           |
 | amdsharktuner/tests/process\_utils\_test.py          |       20 |        1 |     95% |        20 |
 | amdsharktuner/tests/spec\_builder\_test.py           |      135 |        0 |    100% |           |
-|                                            **TOTAL** | **4195** |  **980** | **77%** |           |
+|                                            **TOTAL** | **4162** |  **969** | **77%** |           |
 
 
 ## Setup coverage badge
