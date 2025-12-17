@@ -331,10 +331,10 @@
     "port_for_serving": 8900
   },
   "gpt-oss-20b-bfp16": {
-    "irpa": "/amdshark-dev/ossci-models/gpt-oss/20b/gpt-oss-20b_model_bfp16.irpa",
+    "irpa": "/amdshark-dev/ossci-models/gpt-oss/20b/bfp16/gpt-oss-20b_model.irpa",
     "dtype": "bfp16",
-    "tokenizer": "/amdshark-dev/ossci-models/gpt-oss/20b/tokenizer/tokenizer.json",
-    "tokenizer_config": "/amdshark-dev/ossci-models/gpt-oss/20b/tokenizer/tokenizer_config.json",
+    "tokenizer": "/amdshark-dev/ossci-models/gpt-oss/20b/bfp16/tokenizer/tokenizer.json",
+    "tokenizer_config": "/amdshark-dev/ossci-models/gpt-oss/20b/bfp16/tokenizer/tokenizer_config.json",
     "kv_dtype": "bfloat16",
     "benchmark_model": "gpt-oss-20B-BFP16",
     "benchmarks": [
