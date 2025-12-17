@@ -188,11 +188,6 @@ class DispatchParser(metaclass=ABCMeta):
         return operand_type.shape[tensor_dim]
 
     @abstractmethod
-    def has_valid_root_op(self) -> bool:
-        """Check if the root_op is valid and supported by this tuner."""
-        pass
-
-    @abstractmethod
     def get_op_info(self) -> OpInfo:
         """Extract and return OpInfo for this operation."""
         pass
@@ -241,10 +236,6 @@ class ContractionOpInterfaceParser(DispatchParser):
             rhs_type=common.ShapedType(rhs_type.shape, rhs_type.element_type),
             res_type=common.ShapedType(res_type.shape, res_type.element_type),
         )
-
-    def has_valid_root_op(self) -> bool:
-        root_op = self.get_root_op()
-        return linalg.isa_contraction_op(root_op)
 
     def get_op_info(self) -> ContractionOpInfo:
         return self._op_info
@@ -354,26 +345,6 @@ class ConvolutionOpInterfaceParser(DispatchParser):
             igemm_details=igemm_details,
             conv_to_igemm_info=conv_to_igemm_info,
         )
-
-    def has_valid_root_op(self) -> bool:
-        root_op = self.get_root_op()
-        if not linalg.isa_convolution_op(root_op):
-            return False
-        convolution_dims = linalg.infer_convolution_dimensions(root_op)
-        assert convolution_dims, "no convolution dimensions"
-        # Only allow 'nhwc_hwcf' convs.
-        # TODO: This dispatch parser class supports more layouts, but constraint
-        #       generation is not tested. Relax this check as support is verified.
-        if (
-            list(convolution_dims.batch) != [0]
-            or list(convolution_dims.output_image) != [1, 2]
-            or list(convolution_dims.output_channel) != [3]
-            or list(convolution_dims.filter_loop) != [4, 5]
-            or list(convolution_dims.input_channel) != [6]
-            or list(convolution_dims.depth) != []
-        ):
-            return False
-        return True
 
     def get_op_info(self) -> ConvolutionOpInfo:
         return self._op_info
@@ -504,10 +475,6 @@ class AttentionOpInterfaceParser(DispatchParser):
             qk_matmul=qk_matmul,
             pv_matmul=pv_matmul,
         )
-
-    def has_valid_root_op(self) -> bool:
-        root_op = self.get_root_op()
-        return iree_codegen.isa_attention_op(root_op)
 
     def get_op_info(self) -> AttentionOpInfo:
         return self._op_info
