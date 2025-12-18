@@ -202,9 +202,6 @@ def test_get_conv_nhwc_hwcf_operation(tuner_ctx: common.TunerContext) -> None:
     root_op = root_op_list[0]
     parser = dispatch_parser.ConvolutionOpInterfaceParser(root_op, tuner_ctx)
     assert dispatch_parser.get_parent_function_name(parser.get_root_op()) == "test"
-    assert (
-        parser.has_valid_root_op()
-    ), f"ConvolutionOpInterfaceParser does not support the op: {root_op.name}"
 
 
 def test_get_group_conv_operation(tuner_ctx: common.TunerContext) -> None:
@@ -227,7 +224,6 @@ def test_get_group_conv_operation(tuner_ctx: common.TunerContext) -> None:
     root_op = root_op_list[0]
     parser = dispatch_parser.ConvolutionOpInterfaceParser(root_op, tuner_ctx)
     assert dispatch_parser.get_parent_function_name(parser.get_root_op()) == "test"
-    assert parser.has_valid_root_op() is False, "group convs aren't supported yet"
 
 
 def test_get_generic_conv_operation(tuner_ctx: common.TunerContext) -> None:
@@ -249,7 +245,6 @@ def test_get_generic_conv_operation(tuner_ctx: common.TunerContext) -> None:
     root_op = root_op_list[0]
     parser = dispatch_parser.ConvolutionOpInterfaceParser(root_op, tuner_ctx)
     assert dispatch_parser.get_parent_function_name(parser.get_root_op()) == "test"
-    assert parser.has_valid_root_op()
 
 
 def test_get_mmt_tile_sizes(tuner_ctx: common.TunerContext) -> None:
@@ -372,7 +367,6 @@ def test_get_attention_operation(tuner_ctx: common.TunerContext) -> None:
         dispatch_parser.get_parent_function_name(parser.get_root_op())
         == "attention_20x4096x64x4096x64"
     )
-    assert parser.has_valid_root_op()
 
     indexing_maps_attr = root_op.attributes["indexing_maps"]
     affine_maps = [attr.value for attr in indexing_maps_attr]

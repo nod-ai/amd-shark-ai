@@ -72,21 +72,6 @@ class DispatchTuner(dispatch_parser.DispatchParser):
         pass
 
 
-class DispatchTunerRegistry:
-    def __init__(self):
-        self.registry = set()
-
-    def register(self, dispatch_tuners: list[DispatchTuner]) -> None:
-        for dispatch_tuner in dispatch_tuners:
-            self.registry.add(dispatch_tuner)
-
-    def find_handler(self, op_name: str) -> DispatchTuner:
-        for dispatch_tuner in self.registry:
-            if dispatch_tuner.supports(op_name):
-                return dispatch_tuner
-        assert False, "Dispatch kind not supported"
-
-
 class ContractionOpInterfaceTuner(
     DispatchTuner, dispatch_parser.ContractionOpInterfaceParser
 ):

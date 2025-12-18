@@ -6,6 +6,8 @@
 
 import argparse
 import math
+import pytest
+import logging
 from unittest.mock import call, patch, MagicMock
 from amdsharktuner import libtuner
 
@@ -373,3 +375,53 @@ def test_baseline_result_handler_speedup():
         slower_candidates, prune_slow_candidates=False
     )
     assert [c.candidate_id for c, _ in candidates_with_speedup] == [1, 2]
+
+
+def test_compute_rocprof_avg_kernel_time(caplog):
+    with pytest.raises(ValueError):
+        libtuner.compute_rocprof_avg_kernel_time([])
+
+    trace_rows = [
+        {"Kernel_Name": "main_kernel", "Start_Timestamp": "0"},
+        {"Kernel_Name": "main_kernel", "Start_Timestamp": "1000"},
+    ]
+    with pytest.raises(ValueError):
+        libtuner.compute_rocprof_avg_kernel_time(trace_rows)
+
+    trace_rows = [
+        {
+            "Kernel_Name": "main_dispatch_0_rocm_hsaco_fb_main_dispatch_0_matmul_1024x1280x1280_f16xf16xf32_buffer",
+            "Start_Timestamp": "0",
+            "End_Timestamp": "1000",
+        },
+        {
+            "Kernel_Name": "main_dispatch_0_rocm_hsaco_fb_main_dispatch_0_matmul_1024x1280x1280_f16xf16xf32",
+            "Start_Timestamp": "1000",
+            "End_Timestamp": "3000",
+        },
+    ]
+    with pytest.raises(RuntimeError):
+        libtuner.compute_rocprof_avg_kernel_time(trace_rows)
+
+    drop_row = {
+        "Kernel_Name": "main_kernel",
+        "Start_Timestamp": "0",
+        "End_Timestamp": "1000",
+    }
+    cal_row = {
+        "Kernel_Name": "main_kernel",
+        "Start_Timestamp": "2000",
+        "End_Timestamp": "3500",
+    }
+    cal_row_2 = {
+        "Kernel_Name": "main_kernel",
+        "Start_Timestamp": "4000",
+        "End_Timestamp": "6000",
+    }
+    trace_rows = [drop_row] * 10
+    with caplog.at_level(logging.WARNING):
+        libtuner.compute_rocprof_avg_kernel_time(trace_rows)
+
+    trace_rows = [drop_row] * 10 + [cal_row] * 5 + [cal_row_2] * 5
+    avg_us = libtuner.compute_rocprof_avg_kernel_time(trace_rows)
+    assert avg_us == pytest.approx(1.75)
