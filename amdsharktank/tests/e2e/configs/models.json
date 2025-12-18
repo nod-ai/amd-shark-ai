@@ -331,10 +331,10 @@
     "port_for_serving": 8900
   },
   "gpt-oss-20b-bfp16": {
-    "irpa": "/amdshark-dev/ossci-models/gpt-oss/20b/bfp16/gpt-oss-20b_model.irpa",
+    "irpa": "/shark-dev/gpt-oss/bfp16/gpt-oss-20b_model.irpa",
     "dtype": "bfp16",
-    "tokenizer": "/amdshark-dev/ossci-models/gpt-oss/20b/bfp16/tokenizer/tokenizer.json",
-    "tokenizer_config": "/amdshark-dev/ossci-models/gpt-oss/20b/bfp16/tokenizer/tokenizer_config.json",
+    "tokenizer": "/shark-dev/tokenizers/gpt-oss/tokenizer.json",
+    "tokenizer_config": "/shark-dev/tokenizers/gpt-oss/tokenizer_config.json",
     "kv_dtype": "bfloat16",
     "benchmark_model": "gpt-oss-20B-BFP16",
     "benchmarks": [
@@ -354,13 +354,17 @@
           "4x1xsi64",
           "4xsi64",
           "4xsi64",
-          "4x65xsi64",
-          "513x786432xbf16"
+          "4x1xsi64",
+          "8043x786432xbf16"
         ],
         "seq_len": 4096
       }
     ],
     "benchmark_repetitions": 3,
+    "prefill_gold_mi325x": 16260.369,
+    "decode_gold_mi325x": 920,
+    "prefill_gold_mi300x": 16280.369,
+    "decode_gold_mi300x": 930,
     "device_block_count": 8043,
     "bs_prefill": 4,
     "bs_decode": 4,

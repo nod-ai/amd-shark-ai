@@ -8,6 +8,10 @@ name: CI - E2E Model Tests
 
 on:
   workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
   schedule:
     - cron: "0 12 * * *"
 
@@ -74,8 +78,7 @@ jobs:
         if: always()
         run: |
             mkdir output_artifacts/output_gpt-oss-20b-bfp16/
-            python3 -m amdsharktank.tools.e2e_model_test --model gpt-oss-20b-bfp16 --stage validate_vmfb  2>&1 | tee output_artifacts/output_gpt-oss-20b-bfp16/e2e_gpt-oss-20b-bfp16.log
-            python3 -m amdsharktank.tools.e2e_model_test --model gpt-oss-20b-bfp16 --stage online_serving 2>&1 | tee -a output_artifacts/output_gpt-oss-20b-bfp16/e2e_gpt-oss-20b-bfp16.log
+            python3 -m amdsharktank.tools.e2e_model_test --model gpt-oss-20b-bfp16 2>&1 | tee output_artifacts/output_gpt-oss-20b-bfp16/e2e_gpt-oss-20b-bfp16.log
 
       - name: Llama 8b fp16
         id: llama_8b_fp16_test
