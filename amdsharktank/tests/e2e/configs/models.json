@@ -360,7 +360,13 @@
         "seq_len": 4096
       }
     ],
-    "benchmark_repetitions": 3,
+    "benchmark_repetitions": 10,
+    "extra_benchmark_flags_list": [
+      "-—benchmark_min_warmup_time=5.0",
+      "--device=hip",
+      "--device_allocator=caching",
+      "--hip_use_streams=true"
+    ],
     "prefill_gold_mi325x": 16260.369,
     "decode_gold_mi325x": 920,
     "prefill_gold_mi300x": 16280.369,
