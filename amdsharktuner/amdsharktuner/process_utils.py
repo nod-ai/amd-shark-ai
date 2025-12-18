@@ -160,6 +160,10 @@ def run_command(run_pack: RunPack) -> RunResult:
             text=True,
             timeout=timeout_seconds,
         )
+    except FileNotFoundError as e:
+        logging.error(f"Command '{command_str}' not found: {e}")
+        if check:
+            raise
     except subprocess.TimeoutExpired as e:
         logging.warning(
             f"Command '{command_str}' timed out after {timeout_seconds} seconds."
