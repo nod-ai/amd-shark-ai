@@ -474,8 +474,14 @@ def main(argv):
     params_path: Path = args.params
     # TODO: find a way to get this programatically so we don't have to flag for it
     split_sizes = [4096, 4096, 4096] if args.model_base == "7b" else [8192, 1024, 1024]
-    layers_per_base = {"7b": 32, "70b": 40, "405b": 126}
-    num_layers = layers_per_base[args.model_base]
+
+    # Read num_hidden_layers from config.json if available, otherwise use defaults
+    config_data = _load_json(config_json_path)
+    if "num_hidden_layers" in config_data:
+        num_layers = config_data["num_hidden_layers"]
+    else:
+        layers_per_base = {"7b": 32, "70b": 40, "405b": 126}
+        num_layers = layers_per_base[args.model_base]
     # Construct the pre-transform dataset.
     dataset_props = _get_dataset_props(_load_json(config_json_path))
     OVERRIDE_OUTSCALE_NAME = False
