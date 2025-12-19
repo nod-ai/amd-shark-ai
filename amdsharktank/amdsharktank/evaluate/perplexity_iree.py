@@ -67,6 +67,7 @@ class PerplexityIree:
         prefill_length: int | None = None,
         use_toy_model: bool = False,
         extra_compile_args: list[str] | None = None,
+        input_vmfb: str | None = None,
     ):
         self.torch_device = torch_device
         self.iree_devices = iree_devices
@@ -87,6 +88,7 @@ class PerplexityIree:
         self.prefill_length = prefill_length
         self.use_toy_model = use_toy_model
         self.extra_compile_args = extra_compile_args
+        self.input_vmfb = input_vmfb
         self.vm_context: iree.runtime.VmContext = None
         self.cache_state: None | list[ireert.DeviceArray] = None
 
@@ -134,6 +136,15 @@ class PerplexityIree:
         output_vmfb: str | None,
     ):
         logger.info(f" Model: {self.weight_path_str}")
+
+        # If input_vmfb is provided, skip export and compilation
+        if self.input_vmfb is not None:
+            logger.info(f" Using pre-compiled VMFB: {self.input_vmfb}")
+            input_path = Path(self.input_vmfb)
+            if not input_path.exists():
+                raise FileNotFoundError(f"Input VMFB file not found: {self.input_vmfb}")
+            self.output_vmfb = str(input_path)
+            return
 
         cwd = (
             Path(os.path.dirname(os.path.abspath(__file__))).parent.parent.parent
@@ -510,6 +521,7 @@ def run_perplexity_iree(
         prefill_length=args.prefill_length,
         use_toy_model=args.use_toy_model,
         extra_compile_args=args.extra_compile_arg,
+        input_vmfb=args.input_vmfb,
     )
 
     perplexity.export_compile_model(
@@ -549,6 +561,13 @@ def main(argv):
     cli.add_input_dataset_options(parser)
     cli.add_tokenizer_options(parser)
     cli.add_log_options(parser)
+
+    parser.add_argument(
+        "--input-vmfb",
+        help="Path to pre-compiled VMFB file. If provided, skips export and compilation.",
+        type=str,
+        default=None,
+    )
 
     args = cli.parse(parser, args=argv)
     dataset = cli.get_input_dataset(args)
