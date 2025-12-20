@@ -734,7 +734,7 @@
     "port_for_serving": 8959
   },
   "llama-405b-fp4-with-topk": {
-    "irpa": "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/fp4_preshuffled_2025_12_09.irpa",
+    "irpa": "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/instruct_405b_fp4_preshuffled.irpa",
     "dtype": "llama-405B-FP4",
     "tokenizer": "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer/tokenizer.json",
     "tokenizer_config": "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer/tokenizer_config.json",
@@ -809,7 +809,7 @@
     "port_for_serving": 8900
   },
   "llama-405b-fp4-without-topk": {
-    "irpa": "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/fp4_preshuffled_2025_12_09.irpa",
+    "irpa": "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/instruct_405b_fp4_preshuffled.irpa",
     "dtype": "llama-405B-FP4",
     "tokenizer": "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer/tokenizer.json",
     "tokenizer_config": "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer/tokenizer_config.json",
