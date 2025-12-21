@@ -354,13 +354,23 @@
           "4x1xsi64",
           "4xsi64",
           "4xsi64",
-          "4x65xsi64",
-          "513x786432xbf16"
+          "4x1xsi64",
+          "8043x786432xbf16"
         ],
         "seq_len": 4096
       }
     ],
-    "benchmark_repetitions": 3,
+    "benchmark_repetitions": 10,
+    "extra_benchmark_flags_list": [
+      "-—benchmark_min_warmup_time=5.0",
+      "--device=hip",
+      "--device_allocator=caching",
+      "--hip_use_streams=true"
+    ],
+    "prefill_gold_mi325x": 16260.369,
+    "decode_gold_mi325x": 15.8,
+    "prefill_gold_mi300x": 16280.369,
+    "decode_gold_mi300x": 16.6,
     "device_block_count": 8043,
     "bs_prefill": 4,
     "bs_decode": 4,
@@ -744,21 +754,21 @@
       {
         "name": "prefill_bs4",
         "inputs": [
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/prefill/2500/prefill_bs4_tokenlen2500_input0_tokens.npy",
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/prefill/2500/prefill_bs4_tokenlen2500_input1_seq_lens.npy",
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/prefill/2500/prefill_bs4_tokenlen2500_input2_seq_block_ids.npy",
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/prefill/2500/prefill_bs4_tokenlen2500_input3_kv_cache_state.npy"
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/prefill/prefill_bs4_tokenlen2500_input0_tokens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/prefill/prefill_bs4_tokenlen2500_input1_seq_lens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/prefill/prefill_bs4_tokenlen2500_input2_seq_block_ids.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/prefill/prefill_bs4_tokenlen2500_input3_kv_cache_state.npy"
         ],
         "seq_len": 2500
       },
       {
         "name": "decode_bs4",
         "inputs": [
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/decode/2500/decode_bs4_tokenlen2500_input0_tokens.npy",
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/decode/2500/decode_bs4_tokenlen2500_input1_seq_lens.npy",
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/decode/2500/decode_bs4_tokenlen2500_input2_start_positions.npy",
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/decode/2500/decode_bs4_tokenlen2500_input3_seq_block_ids.npy",
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/decode/2500/decode_bs4_tokenlen2500_input4_kv_cache_state.npy"
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/decode/decode_bs4_tokenlen2500_input0_tokens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/decode/decode_bs4_tokenlen2500_input1_seq_lens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/decode/decode_bs4_tokenlen2500_input2_start_positions.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/decode/decode_bs4_tokenlen2500_input3_seq_block_ids.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/decode/decode_bs4_tokenlen2500_input4_kv_cache_state.npy"
         ],
         "seq_len": 2500
       }
@@ -819,21 +829,21 @@
       {
         "name": "prefill_bs4",
         "inputs": [
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/prefill/2500/prefill_bs4_tokenlen2500_input0_tokens.npy",
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/prefill/2500/prefill_bs4_tokenlen2500_input1_seq_lens.npy",
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/prefill/2500/prefill_bs4_tokenlen2500_input2_seq_block_ids.npy",
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/prefill/2500/prefill_bs4_tokenlen2500_input3_kv_cache_state.npy"
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/prefill/prefill_bs4_tokenlen2500_input0_tokens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/prefill/prefill_bs4_tokenlen2500_input1_seq_lens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/prefill/prefill_bs4_tokenlen2500_input2_seq_block_ids.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/prefill/prefill_bs4_tokenlen2500_input3_kv_cache_state.npy"
         ],
         "seq_len": 2500
       },
       {
         "name": "decode_bs4",
         "inputs": [
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/decode/2500/decode_bs4_tokenlen2500_input0_tokens.npy",
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/decode/2500/decode_bs4_tokenlen2500_input1_seq_lens.npy",
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/decode/2500/decode_bs4_tokenlen2500_input2_start_positions.npy",
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/decode/2500/decode_bs4_tokenlen2500_input3_seq_block_ids.npy",
-          "@/amdshark-dev/llama3.1/405b/fp4/inputs/real_inputs/decode/2500/decode_bs4_tokenlen2500_input4_kv_cache_state.npy"
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/decode/decode_bs4_tokenlen2500_input0_tokens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/decode/decode_bs4_tokenlen2500_input1_seq_lens.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/decode/decode_bs4_tokenlen2500_input2_start_positions.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/decode/decode_bs4_tokenlen2500_input3_seq_block_ids.npy",
+          "@/amdshark-dev/ossci-models/llama_3_1/405b/fp4/inputs/2500/decode/decode_bs4_tokenlen2500_input4_kv_cache_state.npy"
         ],
         "seq_len": 2500
       }

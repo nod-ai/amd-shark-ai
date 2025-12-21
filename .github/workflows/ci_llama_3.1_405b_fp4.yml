@@ -61,6 +61,7 @@ jobs:
           python-version: ${{matrix.version}}
       - name: Create Python venv
         run: |
+           ls -R /amdshark-dev  # initial check for contents of directory
            python -m venv ${VENV_DIR}
            source ${VENV_DIR}/bin/activate
 
