@@ -368,9 +368,9 @@
       "--hip_use_streams=true"
     ],
     "prefill_gold_mi325x": 16260.369,
-    "decode_gold_mi325x": 920,
+    "decode_gold_mi325x": 15.8,
     "prefill_gold_mi300x": 16280.369,
-    "decode_gold_mi300x": 930,
+    "decode_gold_mi300x": 16.6,
     "device_block_count": 8043,
     "bs_prefill": 4,
     "bs_decode": 4,
