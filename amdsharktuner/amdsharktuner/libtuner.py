@@ -702,8 +702,8 @@ def run_iree_benchmark_module_command(benchmark_pack: BenchmarkPack):
         )
 
     mean_benchmark_time = sum(times) / float(len(times))
-    logging.debug(
-        f"Benchmark time of candidate {candidate_id}: {mean_benchmark_time:.2f} us"
+    logging.info(
+        f"Candidate {candidate_id:3d}: {mean_benchmark_time:10.2f} us  (device: {device_id})"
     )
     return BenchmarkResult(
         candidate_id=candidate_id,
@@ -896,6 +896,15 @@ def generate_candidate_specs(
             )
             return []
 
+        # For attention ops, use VectorDistribute pipeline instead of TileAndFuse
+        if dispatch_tuner.get_dispatch_kind() == common.DispatchKind.attention:
+            if args.codegen_pipeline != CodegenPipelines.llvmgpu_vector_distribute:
+                logging.info(
+                    f"Attention operation detected. Overriding codegen pipeline "
+                    f"from {args.codegen_pipeline} to llvmgpu_vector_distribute"
+                )
+                args.codegen_pipeline = CodegenPipelines.llvmgpu_vector_distribute
+
         tuning_client.target_info = common.get_target_info(mlir_module)
         assert tuning_client.target_info, "Failed to query target info."
         solutions_iter = candidate_gen.generate_solutions(
@@ -942,8 +951,13 @@ def generate_candidate_specs(
         knob_assignments = [dispatch_tuner.get_knob_assignment(s) for s in solutions]
         logging.debug("candidate_gen.py ends")
         handle_error(
-            condition=(len(solutions) <= 1), msg="Failed to generate any candidates"
+            condition=(len(solutions) == 0), msg="Failed to generate any candidates"
         )
+        if len(solutions) == 1:
+            logging.warning(
+                f"Only generated 1 candidate (plus baseline). "
+                f"Constraints may be too restrictive for this problem size."
+            )
 
         # Create candidate trackers.
         candidates = []
@@ -1108,6 +1122,9 @@ def benchmark_baseline(
                 elapsed_s = time.perf_counter() - benchmark_start_timestamp
                 running_time_s.append(elapsed_s)
                 baseline_results.append(result)
+                logging.info(
+                    f"Baseline     : {result.time:10.2f} us  (device: {device_id})"
+                )
                 pbar.update(1)  # Update progress bar.
         except KeyboardInterrupt:
             # If Ctrl+C is pressed, terminate all child processes.
