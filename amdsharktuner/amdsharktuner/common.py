@@ -296,11 +296,18 @@ def get_compatible_mfma_intrinsics(
             mma_attr = iree_gpu.MMAAttr.get(mma)
 
         a_type, b_type, c_type = mma_attr.abc_element_types
-        return (
-            lhs_type.element_type == a_type
-            and rhs_type.element_type == b_type
-            and res_type.element_type == c_type
-        )
+        
+        # Check if input types match
+        if lhs_type.element_type != a_type or rhs_type.element_type != b_type:
+            return False
+        
+        # For bf16 inputs with f32 accumulator, allow bf16 result (hardware can cast)
+        if str(a_type) == 'bf16' and str(b_type) == 'bf16' and str(c_type) == 'f32':
+            if str(res_type.element_type) == 'bf16' or str(res_type.element_type) == 'f32':
+                return True
+        
+        # Otherwise, result type must match accumulator type
+        return res_type.element_type == c_type
 
     return list(filter(is_compatible, mma_intrinsics))
 
