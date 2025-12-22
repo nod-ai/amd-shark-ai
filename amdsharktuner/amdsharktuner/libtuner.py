@@ -858,6 +858,19 @@ def get_iree_codegen_pipeline(pipeline: CodegenPipelines):
             assert False, "unexpected codegen pipeline"
 
 
+def build_knob_assignments_with_baseline(
+    dispatch_tuner: candidate_gen.DispatchTuner, solutions: list
+) -> list[Optional[common.KnobAssignment]]:
+    """Build a list of knob assignments with baseline at index 0.
+
+    Index 0 is the baseline/default config with no knob assignment (None).
+    Subsequent indices contain knob assignments derived from the solutions.
+    """
+    result: list[Optional[common.KnobAssignment]] = [None]
+    result.extend(dispatch_tuner.get_knob_assignment(s) for s in solutions)
+    return result
+
+
 def generate_candidate_specs(
     args: argparse.Namespace,
     path_config: PathConfig,
@@ -939,7 +952,10 @@ def generate_candidate_specs(
             candidate_ordering.build_tuning_records_from_order(knobs, sorted_order)
         )
 
-        knob_assignments = [dispatch_tuner.get_knob_assignment(s) for s in solutions]
+        knob_assignments = build_knob_assignments_with_baseline(
+            dispatch_tuner, solutions
+        )
+        assert len(config_specs) == len(knob_assignments)
         logging.debug("candidate_gen.py ends")
         handle_error(
             condition=(len(solutions) <= 1), msg="Failed to generate any candidates"
@@ -983,8 +999,7 @@ def generate_candidate_specs(
                 candidate_id=candidate_num,
                 spec_path=spec_path,
                 td_spec_str=td_spec_str,
-                # No knob_assignment for baseline.
-                knob_assignment=knob if candidate_num != 0 else None,
+                knob_assignment=knob,
             )
             tuning_client.candidate_trackers.append(new_candidate)
     except Exception as e:
