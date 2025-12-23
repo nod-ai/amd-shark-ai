@@ -22,7 +22,7 @@
 | amdsharktank/amdsharktank/kernels/einsum\_2args\_q4.py                              |      122 |        2 |     98% |   69, 179 |
 | amdsharktank/amdsharktank/kernels/gemm\_fp4.py                                      |       17 |        0 |    100% |           |
 | amdsharktank/amdsharktank/kernels/gemm\_fp4\_asm.py                                 |       37 |       18 |     51% |29-45, 64-182, 195 |
-| amdsharktank/amdsharktank/kernels/mlir\_kernel.py                                   |      204 |       18 |     91% |40, 43, 47, 112, 123, 129, 131, 220, 262, 269, 277, 321, 329, 369-374, 382 |
+| amdsharktank/amdsharktank/kernels/mlir\_kernel.py                                   |      196 |       18 |     91% |40, 43, 47, 112, 123, 129, 131, 220, 262, 269, 277, 321, 329, 369-374, 382 |
 | amdsharktank/amdsharktank/kernels/mmt\_block\_scaled\_offset\_q4.py                 |       50 |        3 |     94% |     94-96 |
 | amdsharktank/amdsharktank/kernels/mmt\_block\_scaled\_q8.py                         |       38 |        0 |    100% |           |
 | amdsharktank/amdsharktank/kernels/mmt\_super\_block\_scaled\_offset\_q4.py          |       59 |        0 |    100% |           |
@@ -41,7 +41,7 @@
 | amdsharktank/amdsharktank/layers/causal\_llm.py                                     |       22 |        7 |     68% |     58-64 |
 | amdsharktank/amdsharktank/layers/configs/\_\_init\_\_.py                            |        2 |        0 |    100% |           |
 | amdsharktank/amdsharktank/layers/configs/config.py                                  |      170 |       15 |     91% |139, 196, 205-211, 219, 234, 248-254, 267, 269, 289, 313 |
-| amdsharktank/amdsharktank/layers/configs/llm\_configs.py                            |      558 |      162 |     71% |47-49, 239, 241, 243, 245, 247, 249, 251, 257, 259, 261, 263, 271, 275, 279, 286, 288, 292, 294, 297, 299, 301, 305, 307, 309, 320, 323, 326-329, 332-352, 355-362, 367-390, 398-401, 407-410, 414-419, 433-434, 445-446, 457-458, 488, 519-523, 527, 533, 538, 556, 616, 648-649, 654, 708-722, 726-729, 737-769, 813, 819-827, 836-848, 887, 909, 933-937, 973-976, 980-984 |
+| amdsharktank/amdsharktank/layers/configs/llm\_configs.py                            |      549 |      162 |     70% |47-49, 239, 241, 243, 245, 247, 249, 251, 257, 259, 261, 263, 271, 275, 279, 286, 288, 292, 294, 297, 299, 301, 305, 307, 309, 320, 323, 326-329, 332-352, 355-362, 367-390, 398-401, 407-410, 414-419, 433-434, 445-446, 457-458, 488, 519-523, 527, 533, 538, 556, 616, 648-649, 654, 708-722, 726-729, 737-769, 813, 819-827, 836-848, 887, 909, 933-937, 973-976, 980-984 |
 | amdsharktank/amdsharktank/layers/conv.py                                            |      100 |       61 |     39% |48, 58, 61, 63, 80, 95-110, 113-143, 157-172, 175-205 |
 | amdsharktank/amdsharktank/layers/ffn\_block.py                                      |       26 |        0 |    100% |           |
 | amdsharktank/amdsharktank/layers/ffn\_moe\_block.py                                 |      105 |       29 |     72% |73-76, 79-87, 252-286, 292-295, 302-308 |
@@ -72,7 +72,7 @@
 | amdsharktank/amdsharktank/models/flux/compile.py                                    |        1 |        0 |    100% |           |
 | amdsharktank/amdsharktank/models/flux/export.py                                     |       55 |       24 |     56% |35-36, 56, 80, 95-98, 104-127 |
 | amdsharktank/amdsharktank/models/flux/export\_flux\_transformer\_mlir.py            |       13 |       13 |      0% |      7-38 |
-| amdsharktank/amdsharktank/models/flux/flux.py                                       |      233 |       29 |     88% |82-91, 117-121, 129, 135, 137, 142, 147, 152, 218, 222, 235, 242, 268-279, 288, 407 |
+| amdsharktank/amdsharktank/models/flux/flux.py                                       |      220 |       29 |     87% |82-91, 117-121, 129, 135, 137, 142, 147, 152, 218, 222, 235, 242, 268-279, 288, 407 |
 | amdsharktank/amdsharktank/models/flux/testing.py                                    |       54 |       10 |     81% |31, 154, 209-227 |
 | amdsharktank/amdsharktank/models/grok/testing.py                                    |       22 |        0 |    100% |           |
 | amdsharktank/amdsharktank/models/grok/toy\_grok.py                                  |       31 |        6 |     81% | 67-72, 76 |
@@ -80,11 +80,11 @@
 | amdsharktank/amdsharktank/models/llama/testing.py                                   |       58 |        0 |    100% |           |
 | amdsharktank/amdsharktank/models/llama/toy\_llama.py                                |       51 |        6 |     88% |160-166, 170 |
 | amdsharktank/amdsharktank/models/llm/\_\_init\_\_.py                                |        1 |        0 |    100% |           |
-| amdsharktank/amdsharktank/models/llm/config.py                                      |       43 |        4 |     91% |     39-42 |
+| amdsharktank/amdsharktank/models/llm/config.py                                      |       28 |        4 |     86% |     39-42 |
 | amdsharktank/amdsharktank/models/llm/export.py                                      |       78 |       20 |     74% |25-30, 36, 71-73, 81-85, 90-93, 119, 127-130, 157 |
 | amdsharktank/amdsharktank/models/llm/llm.py                                         |       99 |        6 |     94% |178, 202, 231, 234, 369-370 |
 | amdsharktank/amdsharktank/models/llm/testing.py                                     |       69 |       12 |     83% |   174-191 |
-| amdsharktank/amdsharktank/models/punet/config.py                                    |       84 |       34 |     60% |70-82, 87-91, 98-122, 126-130 |
+| amdsharktank/amdsharktank/models/punet/config.py                                    |       80 |       34 |     58% |70-82, 87-91, 98-122, 126-130 |
 | amdsharktank/amdsharktank/models/punet/layers.py                                    |      324 |      191 |     41% |135-180, 195-226, 258, 280-285, 303-330, 341-355, 366-388, 393-397, 400-412, 420-445, 453-500, 514-520, 525-530, 617-625, 628-632, 655-660, 669-696, 721-726, 729, 739-740, 743-745 |
 | amdsharktank/amdsharktank/models/punet/sharding.py                                  |       31 |        0 |    100% |           |
 | amdsharktank/amdsharktank/models/punet/testing.py                                   |       65 |        0 |    100% |           |
@@ -132,8 +132,8 @@
 | amdsharktank/amdsharktank/types/pipelining.py                                       |       66 |        2 |     97% |  163, 183 |
 | amdsharktank/amdsharktank/types/quantizers.py                                       |      293 |       40 |     86% |131, 177-178, 181-182, 214, 253, 308-309, 318, 336, 342, 356, 362, 388, 390, 453, 455, 493-494, 551, 583, 585, 630, 653, 661, 691-692, 696, 708-718, 733, 745-752 |
 | amdsharktank/amdsharktank/types/sharding.py                                         |      155 |       40 |     74% |33, 104-106, 109-150, 262-263, 266, 320, 363-366, 369-402, 407-408, 411, 450-451, 454, 466-475 |
-| amdsharktank/amdsharktank/types/tensors.py                                          |      884 |      121 |     86% |73-78, 88-90, 161-167, 187-188, 193, 222, 230, 266, 294, 298, 339, 364, 382, 399-401, 409-411, 414, 419, 422, 426, 434-435, 451-453, 467-469, 483-485, 489, 492-494, 502-504, 512-513, 553, 570-572, 641, 687-689, 713, 715, 758, 765, 773, 806-807, 812, 849, 853, 855, 890, 895, 902, 953-954, 977-978, 983-984, 1112, 1143, 1168, 1170, 1172, 1174, 1239, 1286-1287, 1305-1307, 1312, 1436, 1449, 1451-1456, 1458, 1460, 1471, 1474, 1476, 1486, 1489, 1518, 1580-1582, 1587, 1647-1648, 1661, 1740, 1751-1752, 1760-1761, 1769-1770, 1776-1779, 1805-1806, 1933-1934, 1948, 1954, 1958-1959 |
-| amdsharktank/amdsharktank/types/theta.py                                            |      377 |       57 |     85% |72, 80, 109, 140-150, 170, 182-183, 212-213, 219, 231, 234, 347-351, 414, 475-476, 480-482, 492, 500-501, 505-507, 518-519, 543, 549-550, 564-565, 582-583, 607-608, 629-630, 653, 667-669, 675, 713, 761-763, 768 |
+| amdsharktank/amdsharktank/types/tensors.py                                          |      882 |      121 |     86% |73-78, 88-90, 161-167, 187-188, 193, 222, 230, 266, 294, 298, 339, 364, 382, 399-401, 409-411, 414, 419, 422, 426, 434-435, 451-453, 467-469, 483-485, 489, 492-494, 502-504, 512-513, 553, 570-572, 641, 687-689, 713, 715, 758, 765, 773, 806-807, 812, 849, 853, 855, 890, 895, 902, 953-954, 977-978, 983-984, 1112, 1143, 1168, 1170, 1172, 1174, 1239, 1286-1287, 1305-1307, 1312, 1436, 1449, 1451-1456, 1458, 1460, 1471, 1474, 1476, 1486, 1489, 1518, 1580-1582, 1587, 1647-1648, 1661, 1740, 1751-1752, 1760-1761, 1769-1770, 1776-1779, 1805-1806, 1933-1934, 1948, 1954, 1958-1959 |
+| amdsharktank/amdsharktank/types/theta.py                                            |      373 |       57 |     85% |72, 80, 109, 140-150, 170, 182-183, 212-213, 219, 231, 234, 347-351, 414, 475-476, 480-482, 492, 500-501, 505-507, 518-519, 543, 549-550, 564-565, 582-583, 607-608, 629-630, 653, 667-669, 675, 713, 761-763, 768 |
 | amdsharktank/amdsharktank/utils/\_\_init\_\_.py                                     |        1 |        0 |    100% |           |
 | amdsharktank/amdsharktank/utils/attention.py                                        |       55 |       11 |     80% |124-131, 166-182 |
 | amdsharktank/amdsharktank/utils/azure.py                                            |       58 |       58 |      0% |     7-122 |
@@ -146,20 +146,20 @@
 | amdsharktank/amdsharktank/utils/export\_artifacts.py                                |      177 |      130 |     27% |38-46, 60, 67, 74, 81, 88, 122-156, 167, 180-184, 210-230, 248-260, 264-270, 282-298, 322-364, 388-425, 449-462, 488-514, 536-542 |
 | amdsharktank/amdsharktank/utils/functools.py                                        |       10 |        8 |     20% |     27-35 |
 | amdsharktank/amdsharktank/utils/hf.py                                               |      109 |       74 |     32% |36-47, 51-53, 65-100, 115-157, 215, 237-247, 251-252 |
-| amdsharktank/amdsharktank/utils/hf\_datasets.py                                     |       92 |       26 |     72% |40-43, 46-65, 68, 88, 103, 112-113, 118, 544-562, 566 |
+| amdsharktank/amdsharktank/utils/hf\_datasets.py                                     |       88 |       26 |     70% |40-43, 46-65, 68, 88, 103, 112-113, 118, 544-562, 566 |
 | amdsharktank/amdsharktank/utils/io.py                                               |       39 |        9 |     77% |65-72, 83-86 |
 | amdsharktank/amdsharktank/utils/iree.py                                             |      287 |       56 |     80% |187, 198-201, 299, 303, 307, 313-320, 326, 332, 338, 380, 498-499, 546-547, 555-559, 660-681, 696-703, 715-723, 746 |
 | amdsharktank/amdsharktank/utils/llm\_artifacts.py                                   |       31 |        2 |     94% |    37, 42 |
 | amdsharktank/amdsharktank/utils/llm\_scheduler.py                                   |       91 |        4 |     96% |43, 47, 51, 62 |
-| amdsharktank/amdsharktank/utils/llm\_tasks.py                                       |      139 |        3 |     98% |57, 61, 66 |
-| amdsharktank/amdsharktank/utils/llm\_utils.py                                       |      464 |      109 |     77% |114-128, 150-151, 154-157, 161-166, 217, 257-259, 269-273, 286, 556-563, 646-647, 653, 663-664, 685, 688-728, 741, 744-752, 779-782, 784-785, 787, 806, 810, 847-854, 857-870, 898-904, 926 |
+| amdsharktank/amdsharktank/utils/llm\_tasks.py                                       |      131 |        3 |     98% |57, 61, 66 |
+| amdsharktank/amdsharktank/utils/llm\_utils.py                                       |      452 |      109 |     76% |114-128, 150-151, 154-157, 161-166, 217, 257-259, 269-273, 286, 556-563, 646-647, 653, 663-664, 685, 688-728, 741, 744-752, 779-782, 784-785, 787, 806, 810, 847-854, 857-870, 898-904, 926 |
 | amdsharktank/amdsharktank/utils/load\_llm.py                                        |      173 |      136 |     21% |39-41, 45, 51-65, 70-82, 93-108, 120, 123, 138-162, 166, 173, 176-185, 190-197, 200-210, 220-238, 241-279, 282-352, 355-357 |
 | amdsharktank/amdsharktank/utils/logging.py                                          |        6 |        1 |     83% |        17 |
 | amdsharktank/amdsharktank/utils/math.py                                             |       12 |        5 |     58% | 17, 25-28 |
 | amdsharktank/amdsharktank/utils/misc.py                                             |       58 |        9 |     84% |35, 100, 108-114 |
 | amdsharktank/amdsharktank/utils/patching.py                                         |      137 |       46 |     66% |138, 141, 166, 203-206, 215-221, 226, 236-261, 269-285, 288-299, 328, 362, 364 |
 | amdsharktank/amdsharktank/utils/random.py                                           |       38 |        0 |    100% |           |
-| amdsharktank/amdsharktank/utils/testing.py                                          |      444 |      207 |     53% |104-106, 157-268, 291-297, 308, 321-331, 344-368, 374-395, 411-420, 425-438, 442-446, 485-569, 604, 657-660, 697-703, 734, 758-766, 781, 786, 792-796, 804-807, 813-820, 828-832, 900, 949, 954-968, 1009, 1045-1047, 1058, 1064, 1074, 1077, 1119 |
+| amdsharktank/amdsharktank/utils/testing.py                                          |      438 |      207 |     53% |104-106, 157-268, 291-297, 308, 321-331, 344-368, 374-395, 411-420, 425-438, 442-446, 485-569, 604, 657-660, 697-703, 734, 758-766, 781, 786, 792-796, 804-807, 813-820, 828-832, 900, 949, 954-968, 1009, 1045-1047, 1058, 1064, 1074, 1077, 1119 |
 | amdsharktank/amdsharktank/utils/tokenizer.py                                        |       51 |       35 |     31% |34-38, 42-46, 50, 63-66, 69-72, 76, 80-81, 85-110 |
 | amdsharktank/amdsharktank/utils/tree.py                                             |       71 |        2 |     97% |   81, 220 |
 | amdsharktank/conftest.py                                                            |      153 |       12 |     92% |297, 304, 311, 343, 354, 378, 383-386, 415, 442-443 |
@@ -216,7 +216,7 @@
 | amdsharktank/tests/models/punet/sharded\_resnet\_block\_with\_iree\_test.py         |       43 |       12 |     72% |    76-113 |
 | amdsharktank/tests/models/punet/up\_down\_block\_test.py                            |       49 |        1 |     98% |       149 |
 | amdsharktank/tests/models/t5/t5\_test.py                                            |      269 |       59 |     78% |80-108, 146-174, 187-221, 266, 280, 289, 298, 307, 316, 325, 435-477, 522, 531, 540, 549, 558 |
-| amdsharktank/tests/models/vae/vae\_test.py                                          |      223 |      115 |     48% |85-120, 126-135, 140-149, 155-250, 276-290, 295-308, 372-376, 383-474, 575-582, 591-595, 600-605, 611 |
+| amdsharktank/tests/models/vae/vae\_test.py                                          |      223 |      112 |     50% |85-120, 126-135, 140-149, 155-250, 276-290, 295-308, 376, 383-474, 575-582, 591-595, 600-605, 611 |
 | amdsharktank/tests/ops/ops\_test.py                                                 |      854 |       30 |     96% |268-271, 386-392, 399-405, 412-419, 797-802, 1392 |
 | amdsharktank/tests/ops/pipeline\_parallelized\_test.py                              |      153 |        4 |     97% |57, 181, 193, 203 |
 | amdsharktank/tests/ops/qconv\_test.py                                               |       97 |       12 |     88% |192-228, 232 |
@@ -256,7 +256,7 @@
 | amdsharktank/tests/utils/random\_test.py                                            |       23 |        0 |    100% |           |
 | amdsharktank/tests/utils/testing\_test.py                                           |      132 |        0 |    100% |           |
 | amdsharktank/tests/utils/tree\_test.py                                              |       20 |        0 |    100% |           |
-|                                                                           **TOTAL** | **24894** | **5570** | **78%** |           |
+| **TOTAL**                                                                           | **24809** | **5567** | **78%** |           |
 
 
 ## Setup coverage badge

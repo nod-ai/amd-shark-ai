@@ -2,17 +2,17 @@
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Coverage for amdsharktank/amdsharktank/utils/llm_utils.py: 77%</title>
+    <title>Coverage for amdsharktank/amdsharktank/utils/llm_utils.py: 76%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_58284776.png">
-    <link rel="stylesheet" href="style_cb_6b508a39.css" type="text/css">
-    <script src="coverage_html_cb_6fb7b396.js" defer></script>
+    <link rel="stylesheet" href="style_cb_a5a05ca4.css" type="text/css">
+    <script src="coverage_html_cb_bcae5fc4.js" defer></script>
 </head>
 <body class="pyfile">
 <header>
     <div class="content">
         <h1>
-            <span class="text">Coverage for </span><b>amdsharktank/amdsharktank/utils/llm_utils.py</b>:
-            <span class="pc_cov">77%</span>
+            <span class="text">Coverage for </span><b>amdsharktank&#8201;/&#8201;amdsharktank&#8201;/&#8201;utils&#8201;/&#8201;llm_utils.py</b>:
+            <span class="pc_cov">76%</span>
         </h1>
         <aside id="help_panel_wrapper">
             <input id="help_panel_state" type="checkbox">
@@ -54,8 +54,8 @@
             </div>
         </aside>
         <h2>
-            <span class="text">464 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">355<span class="text"> run</span></button>
+            <span class="text">452 statements &nbsp;</span>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">343<span class="text"> run</span></button>
             <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">109<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
@@ -64,8 +64,8 @@
             <a id="indexLink" class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a id="nextFileLink" class="nav" href="z_ae39edff1cc3efd5_load_llm_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.11.0">coverage.py v7.11.0</a>,
-            created at 2025-12-23 05:34 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.13.0">coverage.py v7.13.0</a>,
+            created at 2025-12-23 05:38 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -756,12 +756,12 @@
     <p class="run"><span class="n"><a id="t674" href="#t674">674</a></span><span class="t"><span class="key">class</span> <span class="nam">LlmBencher</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t675" href="#t675">675</a></span><span class="t">    <span class="op">@</span><span class="nam">dataclasses</span><span class="op">.</span><span class="nam">dataclass</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t676" href="#t676">676</a></span><span class="t">    <span class="key">class</span> <span class="nam">BenchResults</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t677" href="#t677">677</a></span><span class="t">        <span class="nam">samples_per_sec</span><span class="op">:</span> <span class="nam">float</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t678" href="#t678">678</a></span><span class="t">        <span class="nam">bs</span><span class="op">:</span> <span class="nam">int</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t679" href="#t679">679</a></span><span class="t">        <span class="nam">total_ms</span><span class="op">:</span> <span class="nam">float</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t680" href="#t680">680</a></span><span class="t">        <span class="nam">prefill_ms</span><span class="op">:</span> <span class="nam">float</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t681" href="#t681">681</a></span><span class="t">        <span class="nam">decode_ms</span><span class="op">:</span> <span class="nam">float</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t682" href="#t682">682</a></span><span class="t">        <span class="nam">decode_step_ms</span><span class="op">:</span> <span class="nam">float</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t677" href="#t677">677</a></span><span class="t">        <span class="nam">samples_per_sec</span><span class="op">:</span> <span class="nam">float</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t678" href="#t678">678</a></span><span class="t">        <span class="nam">bs</span><span class="op">:</span> <span class="nam">int</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t679" href="#t679">679</a></span><span class="t">        <span class="nam">total_ms</span><span class="op">:</span> <span class="nam">float</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t680" href="#t680">680</a></span><span class="t">        <span class="nam">prefill_ms</span><span class="op">:</span> <span class="nam">float</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t681" href="#t681">681</a></span><span class="t">        <span class="nam">decode_ms</span><span class="op">:</span> <span class="nam">float</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t682" href="#t682">682</a></span><span class="t">        <span class="nam">decode_step_ms</span><span class="op">:</span> <span class="nam">float</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t683" href="#t683">683</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t684" href="#t684">684</a></span><span class="t">    <span class="key">def</span> <span class="nam">__init__</span><span class="op">(</span><span class="nam">self</span><span class="op">,</span> <span class="nam">batch</span><span class="op">:</span> <span class="nam">LlmRunner</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t685" href="#t685">685</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">_batch</span> <span class="op">=</span> <span class="nam">batch</span>&nbsp;</span><span class="r"></span></p>
@@ -813,10 +813,10 @@
     <p class="run"><span class="n"><a id="t731" href="#t731">731</a></span><span class="t"><span class="key">class</span> <span class="nam">LlmPerplexityEval</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t732" href="#t732">732</a></span><span class="t">    <span class="op">@</span><span class="nam">dataclasses</span><span class="op">.</span><span class="nam">dataclass</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t733" href="#t733">733</a></span><span class="t">    <span class="key">class</span> <span class="nam">Dataset</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t734" href="#t734">734</a></span><span class="t">        <span class="nam">dataset</span><span class="op">:</span> <span class="nam">str</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t735" href="#t735">735</a></span><span class="t">        <span class="nam">revision</span><span class="op">:</span> <span class="nam">str</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t736" href="#t736">736</a></span><span class="t">        <span class="nam">split</span><span class="op">:</span> <span class="nam">str</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t737" href="#t737">737</a></span><span class="t">        <span class="nam">ids</span><span class="op">:</span> <span class="nam">list</span><span class="op">[</span><span class="nam">int</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t734" href="#t734">734</a></span><span class="t">        <span class="nam">dataset</span><span class="op">:</span> <span class="nam">str</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t735" href="#t735">735</a></span><span class="t">        <span class="nam">revision</span><span class="op">:</span> <span class="nam">str</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t736" href="#t736">736</a></span><span class="t">        <span class="nam">split</span><span class="op">:</span> <span class="nam">str</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t737" href="#t737">737</a></span><span class="t">        <span class="nam">ids</span><span class="op">:</span> <span class="nam">list</span><span class="op">[</span><span class="nam">int</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t738" href="#t738">738</a></span><span class="t">        <span class="nam">scores</span><span class="op">:</span> <span class="nam">dict</span><span class="op">[</span><span class="nam">int</span><span class="op">,</span> <span class="nam">float</span><span class="op">]</span> <span class="op">|</span> <span class="key">None</span> <span class="op">=</span> <span class="key">None</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t739" href="#t739">739</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t740" href="#t740">740</a></span><span class="t">        <span class="key">def</span> <span class="nam">as_dict</span><span class="op">(</span><span class="nam">self</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
@@ -835,8 +835,8 @@
     <p class="pln"><span class="n"><a id="t753" href="#t753">753</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t754" href="#t754">754</a></span><span class="t">    <span class="op">@</span><span class="nam">dataclasses</span><span class="op">.</span><span class="nam">dataclass</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t755" href="#t755">755</a></span><span class="t">    <span class="key">class</span> <span class="nam">Result</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t756" href="#t756">756</a></span><span class="t">        <span class="nam">valid</span><span class="op">:</span> <span class="nam">bool</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t757" href="#t757">757</a></span><span class="t">        <span class="nam">score</span><span class="op">:</span> <span class="nam">float</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t756" href="#t756">756</a></span><span class="t">        <span class="nam">valid</span><span class="op">:</span> <span class="nam">bool</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t757" href="#t757">757</a></span><span class="t">        <span class="nam">score</span><span class="op">:</span> <span class="nam">float</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t758" href="#t758">758</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t759" href="#t759">759</a></span><span class="t">    <span class="key">def</span> <span class="nam">__init__</span><span class="op">(</span><span class="nam">self</span><span class="op">,</span> <span class="nam">batch</span><span class="op">:</span> <span class="nam">LlmRunner</span><span class="op">,</span> <span class="nam">logits_normalization</span><span class="op">:</span> <span class="nam">str</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t760" href="#t760">760</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">_batch</span> <span class="op">=</span> <span class="nam">batch</span>&nbsp;</span><span class="r"></span></p>
@@ -1022,8 +1022,8 @@
             <a class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a class="nav" href="z_ae39edff1cc3efd5_load_llm_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.11.0">coverage.py v7.11.0</a>,
-            created at 2025-12-23 05:34 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.13.0">coverage.py v7.13.0</a>,
+            created at 2025-12-23 05:38 +0000
         </p>
     </div>
 </footer>
