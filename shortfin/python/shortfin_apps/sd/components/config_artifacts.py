@@ -41,6 +41,7 @@ def sdxlconfig(
     model_config_urls = get_url_map(model_config_filenames, SDXL_CONFIG_BUCKET)
     for f, url in model_config_urls.items():
         if update or needs_file(f, ctx):
+            print("URL used is ", url)
             url = url + f"?{AZ_SAS_KEY}"
             fetch_http(name=f, url=url)
 

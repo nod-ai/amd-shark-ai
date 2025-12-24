@@ -446,6 +446,7 @@ def sdxl(
         mlir_urls = get_url_map(mlir_filenames, mlir_bucket)
         for f, url in mlir_urls.items():
             if update or needs_file(f, ctx, url):
+                print("URL used is ", url)
                 url = url + f"?{AZ_SAS_KEY}"
                 fetch_http(name=f, url=url)
             else:
