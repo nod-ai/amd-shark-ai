@@ -51,7 +51,7 @@ def start_server(fibers_per_device=1, isolation="per_fiber"):
     ]
     with open("sdxl_config_i8.json", "wb") as f:
         r = requests.get(
-            f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/04082025/configs/sdxl_config_i8.json?$AMDSHARKPUBLIC_SAS?{AZ_SAS_KEY}",
+            f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/04082025/configs/sdxl_config_i8.json?{AZ_SAS_KEY}",
             allow_redirects=True,
         )
         f.write(r.content)
