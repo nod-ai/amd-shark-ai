@@ -26,6 +26,8 @@ from shortfin_apps.utilities.image import (
 
 BATCH_SIZES = [1]
 AZ_SAS_KEY = os.environ.get("AZ_SAS_KEY")
+if not AZ_SAS_KEY:
+    raise RuntimeError("AZ_SAS_KEY environment variable is not set")
 
 sample_request = {
     "prompt": [
