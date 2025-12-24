@@ -9,10 +9,7 @@ from iree.build import *
 from shortfin_apps.utils import *
 
 ARTIFACT_VERSION = "09022025"
-SDXL_CONFIG_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/{ARTIFACT_VERSION}/configs/"
-AZ_SAS_KEY = os.environ.get("AZ_SAS_KEY")
-if not AZ_SAS_KEY:
-    raise RuntimeError("AZ_SAS_KEY environment variable is not set.")
+SDXL_CONFIG_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/ciartifacts/image_models/sdxl/{ARTIFACT_VERSION}/configs/"
 
 
 @entrypoint(description="Retreives a set of SDXL configuration files.")
@@ -41,22 +38,18 @@ def sdxlconfig(
     model_config_urls = get_url_map(model_config_filenames, SDXL_CONFIG_BUCKET)
     for f, url in model_config_urls.items():
         if update or needs_file(f, ctx):
-            print("URL used is ", url)
-            url = url + f"?{AZ_SAS_KEY}"
             fetch_http(name=f, url=url)
 
     topology_config_filenames = [f"topology_config_{topology}.txt"]
     topology_config_urls = get_url_map(topology_config_filenames, SDXL_CONFIG_BUCKET)
     for f, url in topology_config_urls.items():
         if update or needs_file(f, ctx):
-            url = url + f"?{AZ_SAS_KEY}"
             fetch_http(name=f, url=url)
 
     flagfile_filenames = [f"{model}_flagfile_{target}.txt"]
     flagfile_urls = get_url_map(flagfile_filenames, SDXL_CONFIG_BUCKET)
     for f, url in flagfile_urls.items():
         if update or needs_file(f, ctx):
-            url = url + f"?{AZ_SAS_KEY}"
             fetch_http(name=f, url=url)
 
     tuning_filenames = (
@@ -65,7 +58,6 @@ def sdxlconfig(
     tuning_urls = get_url_map(tuning_filenames, SDXL_CONFIG_BUCKET)
     for f, url in tuning_urls.items():
         if update or needs_file(f, ctx):
-            url = url + f"?{AZ_SAS_KEY}"
             fetch_http(name=f, url=url)
     filenames = [
         *model_config_filenames,

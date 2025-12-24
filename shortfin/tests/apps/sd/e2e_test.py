@@ -25,9 +25,6 @@ from shortfin_apps.utilities.image import (
 )
 
 BATCH_SIZES = [1]
-AZ_SAS_KEY = os.environ.get("AZ_SAS_KEY")
-if not AZ_SAS_KEY:
-    raise RuntimeError("AZ_SAS_KEY environment variable is not set")
 
 sample_request = {
     "prompt": [
@@ -53,7 +50,7 @@ def start_server(fibers_per_device=1, isolation="per_fiber"):
     ]
     with open("sdxl_config_i8.json", "wb") as f:
         r = requests.get(
-            f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/04082025/configs/sdxl_config_i8.json?{AZ_SAS_KEY}",
+            "https://amdsharkpublic.blob.core.windows.net/ciartifacts/image_models/sdxl/04082025/configs/sdxl_config_i8.json",
             allow_redirects=True,
         )
         f.write(r.content)
