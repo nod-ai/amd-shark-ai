@@ -35,7 +35,9 @@ SDXL_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl
 SDXL_WEIGHTS_BUCKET = (
     "https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/weights/"
 )
-
+AZ_SAS_KEY = os.environ.get("AZ_SAS_KEY")
+if not AZ_SAS_KEY:
+    raise RuntimeError("AZ_SAS_KEY environment variable is not set")
 
 def filter_by_model(filenames, model) -> list:
     if not model:
@@ -263,6 +265,7 @@ def get_file_size(file_path) -> int:
 def fetch_http_check_size(*, name: str, url: str) -> BuildFile:
     context = BuildContext.current()
     output_file = context.allocate_file(name)
+    url = url + f"?{AZ_SAS_KEY}"
     action = FetchHttpWithCheckAction(
         url=url, output_file=output_file, desc=f"Fetch {url}", executor=context.executor
     )
@@ -442,12 +445,14 @@ def sdxl(
         mlir_urls = get_url_map(mlir_filenames, mlir_bucket)
         for f, url in mlir_urls.items():
             if update or needs_file(f, ctx, url):
+                url = url + f"?{AZ_SAS_KEY}"
                 fetch_http(name=f, url=url)
             else:
                 get_cached(f, ctx, FileNamespace.GEN)
         params_urls = get_url_map([params_filename], SDXL_WEIGHTS_BUCKET)
         for f, url in params_urls.items():
             if needs_file(f, ctx, url):
+                url = url + f"?{AZ_SAS_KEY}"
                 fetch_http_check_size(name=f, url=url)
             else:
                 get_cached(f, ctx, FileNamespace.GEN)
@@ -471,6 +476,7 @@ def sdxl(
         vmfb_urls = get_url_map(vmfb_filenames, vmfb_bucket)
         for f, url in vmfb_urls.items():
             if update or needs_file(f, ctx, url):
+                url = url + f"?{AZ_SAS_KEY}"
                 fetch_http(name=f, url=url)
             else:
                 get_cached(f, ctx, FileNamespace.GEN)

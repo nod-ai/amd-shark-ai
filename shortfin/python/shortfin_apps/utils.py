@@ -16,6 +16,10 @@ import shortfin as sf
 
 from shortfin.interop.support.device_setup import get_selected_devices
 
+AZ_SAS_KEY = os.environ.get("AZ_SAS_KEY")
+if not AZ_SAS_KEY:
+    raise RuntimeError("AZ_SAS_KEY environment variable is not set")
+
 
 def get_system_args(parser):
     parser.add_argument(
@@ -306,6 +310,7 @@ def get_file_size(file_path):
 def fetch_http_check_size(*, name: str, url: str) -> BuildFile:
     context = BuildContext.current()
     output_file = context.allocate_file(name)
+    url = url + f"?{AZ_SAS_KEY}"
     action = FetchHttpWithCheckAction(
         url=url, output_file=output_file, desc=f"Fetch {url}", executor=context.executor
     )
