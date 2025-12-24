@@ -540,6 +540,19 @@ def generate_attention_solutions(
             padding=None,
         )
         solver.add(z3.simplify(z3.Not(z3.And(list(x == model[x] for x in all_vars)))))
+        
+        # Log the solution parameters in a more readable format
+        tuner_ctx.logger.info(
+            f"Z3 Solution #{i+1}: "
+            f"workgroup=[1,{lookup(m_var)},{lookup(n_var)},0,0] "
+            f"reduction=[0,0,0,0,{lookup(k_var)}] "
+            f"sg_m_cnt={lookup(sg_m_cnt)} "
+            f"wg_size={lookup(sg_m_cnt) * lookup(sg_n_cnt) * lookup(subgroup_size)} "
+            f"subgroup_size={lookup(subgroup_size)} "
+            f"qk_intrinsic={lookup(qk_intrinsic_mn)}x{lookup(qk_intrinsic_mn)}x{lookup(qk_intrinsic_k)} "
+            f"pv_intrinsic={lookup(pv_intrinsic_mn)}x{lookup(pv_intrinsic_mn)}x{lookup(pv_intrinsic_k)}"
+        )
+        
         i += 1
 
         for compilation_info in compilation_infos:
