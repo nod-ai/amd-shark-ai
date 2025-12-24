@@ -35,6 +35,7 @@ SDXL_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl
 SDXL_WEIGHTS_BUCKET = (
     "https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/weights/"
 )
+
 AZ_SAS_KEY = os.environ.get("AZ_SAS_KEY")
 
 
@@ -279,7 +280,7 @@ class FetchHttpWithCheckAction(BuildAction):
 
     def _invoke(self, retries=4):
         path = self.output_file.get_fs_path()
-        self.executor.write_status(f"Fetching URL: {self.url} -> {path}")
+        #self.executor.write_status(f"Fetching URL: {self.url} -> {path}")
         try:
             urllib.request.urlretrieve(self.url, str(path))
         except urllib.error.HTTPError as e:
