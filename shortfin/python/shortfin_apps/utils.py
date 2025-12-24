@@ -15,7 +15,7 @@ import shortfin.array as sfnp
 import shortfin as sf
 
 from shortfin.interop.support.device_setup import get_selected_devices
-
+AZ_SAS_KEY = os.environ.get("AZ_SAS_KEY")
 
 def get_system_args(parser):
     parser.add_argument(
@@ -227,7 +227,7 @@ dtype_to_filetag = {
 def get_url_map(filenames: list[str], bucket: str):
     file_map = {}
     for filename in filenames:
-        file_map[filename] = f"{bucket}{filename}"
+        file_map[filename] = f"{bucket}{filename}?{AZ_SAS_KEY}"
     return file_map
 
 

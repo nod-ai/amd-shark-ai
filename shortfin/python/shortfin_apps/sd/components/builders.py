@@ -35,7 +35,7 @@ SDXL_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl
 SDXL_WEIGHTS_BUCKET = (
     "https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/weights/"
 )
-
+AZ_SAS_KEY = os.environ.get("AZ_SAS_KEY")
 
 def filter_by_model(filenames, model) -> list:
     if not model:
@@ -182,7 +182,7 @@ def get_file_stems(model_params: ModelParams) -> list[str]:
 def get_url_map(filenames: list[str], bucket: str) -> dict:
     file_map = {}
     for filename in filenames:
-        file_map[filename] = f"{bucket}{filename}"
+        file_map[filename] = f"{bucket}{filename}?{AZ_SAS_KEY}"
     return file_map
 
 
