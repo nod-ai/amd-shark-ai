@@ -31,10 +31,8 @@ dtype_to_filetag = {
 }
 
 ARTIFACT_VERSION = "09022025"
-SDXL_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/{ARTIFACT_VERSION}/"
-SDXL_WEIGHTS_BUCKET = (
-    "https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/weights/"
-)
+SDXL_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/ciartifacts/image_models/sdxl/{ARTIFACT_VERSION}/"
+SDXL_WEIGHTS_BUCKET = "https://amdsharkpublic.blob.core.windows.net/ciartifacts/image_models/sdxl/weights/"
 
 
 def filter_by_model(filenames, model) -> list:
