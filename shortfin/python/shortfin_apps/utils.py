@@ -16,8 +16,6 @@ import shortfin as sf
 
 from shortfin.interop.support.device_setup import get_selected_devices
 
-AZ_SAS_KEY = os.environ.get("AZ_SAS_KEY")
-
 
 def get_system_args(parser):
     parser.add_argument(
@@ -229,7 +227,7 @@ dtype_to_filetag = {
 def get_url_map(filenames: list[str], bucket: str):
     file_map = {}
     for filename in filenames:
-        file_map[filename] = f"{bucket}{filename}?{AZ_SAS_KEY}"
+        file_map[filename] = f"{bucket}{filename}"
     return file_map
 
 
@@ -323,7 +321,7 @@ class FetchHttpWithCheckAction(BuildAction):
 
     def _invoke(self, retries=4):
         path = self.output_file.get_fs_path()
-        #self.executor.write_status(f"Fetching URL: {self.url} -> {path}")
+        self.executor.write_status(f"Fetching URL: {self.url} -> {path}")
         try:
             urllib.request.urlretrieve(self.url, str(path))
         except urllib.error.HTTPError as e:
@@ -331,7 +329,7 @@ class FetchHttpWithCheckAction(BuildAction):
                 retries -= 1
                 self._invoke(retries=retries)
             else:
-                raise IOError(f"Failed to fetch URL '{}': {e}") from None
+                raise IOError(f"Failed to fetch URL '{self.url}': {e}") from None
         local_size = get_file_size(str(path))
         try:
             with urllib.request.urlopen(self.url) as response:
