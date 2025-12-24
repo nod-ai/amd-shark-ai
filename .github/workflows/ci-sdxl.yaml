@@ -76,7 +76,6 @@ jobs:
     - name: Test apps/sd/e2e_test
       working-directory: ${{ env.LIBSHORTFIN_DIR }}
       env:
-        AZ_SAS_KEY: ${{ secrets.AZURE_AMDSHARKPUBLIC_PRIVATE_SAS_1 }}
         HIP_VISIBLE_DEVICES: 0
       run: |
         pytest tests/apps/sd/e2e_test.py -v -s --system=amdgpu
