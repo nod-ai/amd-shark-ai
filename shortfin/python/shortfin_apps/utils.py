@@ -331,7 +331,7 @@ class FetchHttpWithCheckAction(BuildAction):
                 retries -= 1
                 self._invoke(retries=retries)
             else:
-                raise IOError(f"Failed to fetch URL '{self.url}': {e}") from None
+                raise IOError(f"Failed to fetch URL '{}': {e}") from None
         local_size = get_file_size(str(path))
         try:
             with urllib.request.urlopen(self.url) as response:
