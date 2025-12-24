@@ -15,7 +15,9 @@ import shortfin.array as sfnp
 import shortfin as sf
 
 from shortfin.interop.support.device_setup import get_selected_devices
+
 AZ_SAS_KEY = os.environ.get("AZ_SAS_KEY")
+
 
 def get_system_args(parser):
     parser.add_argument(

@@ -37,6 +37,7 @@ SDXL_WEIGHTS_BUCKET = (
 )
 AZ_SAS_KEY = os.environ.get("AZ_SAS_KEY")
 
+
 def filter_by_model(filenames, model) -> list:
     if not model:
         return filenames
