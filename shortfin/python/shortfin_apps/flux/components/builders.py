@@ -18,8 +18,8 @@ parent = os.path.dirname(this_dir)
 default_config_json = os.path.join(parent, "examples", "flux_dev_config.json")
 
 ARTIFACT_VERSION = "20250622"
-FLUX_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/flux.1/{ARTIFACT_VERSION}/"
-FLUX_WEIGHTS_BUCKET = "https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/flux.1/weights/exported_parameters_bf16/"
+FLUX_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/ciartifacts/image_models/flux.1/{ARTIFACT_VERSION}/"
+FLUX_WEIGHTS_BUCKET = "https://amdsharkpublic.blob.core.windows.net/ciartifacts/image_models/flux.1/weights/exported_parameters_bf16/"
 
 
 def filter_by_model(filenames, model):
