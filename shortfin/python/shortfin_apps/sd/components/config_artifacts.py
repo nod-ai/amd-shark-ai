@@ -10,7 +10,6 @@ from shortfin_apps.utils import *
 
 ARTIFACT_VERSION = "09022025"
 SDXL_CONFIG_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/{ARTIFACT_VERSION}/configs/"
-AZ_SAS_KEY = os.environ.get("AZ_SAS_KEY")
 
 @entrypoint(description="Retreives a set of SDXL configuration files.")
 def sdxlconfig(
@@ -31,29 +30,29 @@ def sdxlconfig(
     update = needs_update(ctx, ARTIFACT_VERSION)
 
     model_config_filenames = [
-        f"{model}_config_i8.json?{AZ_SAS_KEY}",
-        f"{model}_config_fp8.json?{AZ_SAS_KEY}",
-        f"{model}_config_fp8_ocp.json?{AZ_SAS_KEY}",
+        f"{model}_config_i8.json",
+        f"{model}_config_fp8.json",
+        f"{model}_config_fp8_ocp.json",
     ]
     model_config_urls = get_url_map(model_config_filenames, SDXL_CONFIG_BUCKET)
     for f, url in model_config_urls.items():
         if update or needs_file(f, ctx):
             fetch_http(name=f, url=url)
 
-    topology_config_filenames = [f"topology_config_{topology}?{AZ_SAS_KEY}.txt"]
+    topology_config_filenames = [f"topology_config_{topology}.txt"]
     topology_config_urls = get_url_map(topology_config_filenames, SDXL_CONFIG_BUCKET)
     for f, url in topology_config_urls.items():
         if update or needs_file(f, ctx):
             fetch_http(name=f, url=url)
 
-    flagfile_filenames = [f"{model}_flagfile_{target}?{AZ_SAS_KEY}.txt"]
+    flagfile_filenames = [f"{model}_flagfile_{target}.txt"]
     flagfile_urls = get_url_map(flagfile_filenames, SDXL_CONFIG_BUCKET)
     for f, url in flagfile_urls.items():
         if update or needs_file(f, ctx):
             fetch_http(name=f, url=url)
 
     tuning_filenames = (
-        [f"attention_and_matmul_spec_{target}.mlir?{AZ_SAS_KEY}"] if target == "gfx942" else []
+        [f"attention_and_matmul_spec_{target}.mlir"] if target == "gfx942" else []
     )
     tuning_urls = get_url_map(tuning_filenames, SDXL_CONFIG_BUCKET)
     for f, url in tuning_urls.items():
