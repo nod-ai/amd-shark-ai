@@ -14,6 +14,7 @@ AZ_SAS_KEY = os.environ.get("AZ_SAS_KEY")
 if not AZ_SAS_KEY:
     raise RuntimeError("AZ_SAS_KEY environment variable is not set.")
 
+
 @entrypoint(description="Retreives a set of SDXL configuration files.")
 def sdxlconfig(
     target=cl_arg(
@@ -63,7 +64,7 @@ def sdxlconfig(
     tuning_urls = get_url_map(tuning_filenames, SDXL_CONFIG_BUCKET)
     for f, url in tuning_urls.items():
         if update or needs_file(f, ctx):
-            url = url + f"?{AZ_SAS_KEY}" 
+            url = url + f"?{AZ_SAS_KEY}"
             fetch_http(name=f, url=url)
     filenames = [
         *model_config_filenames,

@@ -39,6 +39,7 @@ AZ_SAS_KEY = os.environ.get("AZ_SAS_KEY")
 if not AZ_SAS_KEY:
     raise RuntimeError("AZ_SAS_KEY environment variable is not set")
 
+
 def filter_by_model(filenames, model) -> list:
     if not model:
         return filenames
