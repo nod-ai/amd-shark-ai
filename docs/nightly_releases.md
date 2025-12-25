@@ -134,7 +134,7 @@ meta-package that pins specific stable versions of each package that share
 at least their major and minor versions:
 
 ```bash
-pip install amdshark-ai==2.9.1
+pip install amdshark-ai==3.9.0
 
 pip freeze
 # ...
@@ -142,7 +142,7 @@ pip freeze
 # iree-base-runtime==2.9.0
 # iree-turbine==2.9.0
 # ...
-# amdshark-ai==2.9.1
+# amdshark-ai==3.9.0
 # shortfin==2.9.1
 # ...
 ```
