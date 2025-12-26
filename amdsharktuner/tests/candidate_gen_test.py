@@ -238,31 +238,6 @@ def test_set_dispatch_tuner_with_matvec(tuner_ctx: common.TunerContext) -> None:
     assert result is None
 
 
-def test_set_dispatch_tuner_with_unsupported_conv(
-    tuner_ctx: common.TunerContext,
-) -> None:
-    # Make sure we do not crash on unsupported conv layouts (nchw_fchw).
-    context = tuner_ctx.mlir_ctx
-    module_str = """
-        builtin.module{
-            func.func @test(%arg0: tensor<2x2048x34x34xi8>, %arg1: tensor<2048x2048x3x3xi8>) -> tensor<2x2048x32x32xi32> {
-                %cst = arith.constant 0 : i32
-                %0 = tensor.empty() : tensor<2x2048x32x32xi32>
-                %1 = linalg.fill ins(%cst : i32) outs(%0 : tensor<2x2048x32x32xi32>) -> tensor<2x2048x32x32xi32>
-                %2 = linalg.conv_2d_nchw_fchw {root_op}
-                    ins(%arg0, %arg1 : tensor<2x2048x34x34xi8>, tensor<2048x2048x3x3xi8>)
-                    outs(%1 : tensor<2x2048x32x32xi32>) -> tensor<2x2048x32x32xi32>
-                return %2 : tensor<2x2048x32x32xi32>
-            }
-        }"""
-
-    ir_module = ir.Module.parse(module_str, context)
-
-    # Should return None since conv with nchw_fchw layout is not supported.
-    result = candidate_gen.set_dispatch_tuner(ir_module, tuner_ctx)
-    assert result is None
-
-
 def test_set_dispatch_tuner_no_root_op(tuner_ctx: common.TunerContext) -> None:
     context = tuner_ctx.mlir_ctx
     module_str = """

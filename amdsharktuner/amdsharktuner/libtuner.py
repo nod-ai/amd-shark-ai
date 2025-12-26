@@ -435,6 +435,7 @@ def parse_arguments(
         default=CodegenPipelines.llvmgpu_vector_distribute,
         help="Codegen pipeline to tune for",
     )
+
     candidate_gen_args.add_argument(
         "--starter-td-spec",
         type=Path,
@@ -858,6 +859,21 @@ def get_iree_codegen_pipeline(pipeline: CodegenPipelines):
             assert False, "unexpected codegen pipeline"
 
 
+def get_conv_lowering_strategy_for_pipeline(
+    codegen_pipeline: CodegenPipelines,
+) -> common.ConvLoweringStrategy:
+    """Get the appropriate convolution lowering strategy for the given pipeline.
+
+    IGEMM only works with TileAndFuse, INNER_MNK only works with VectorDistribute.
+
+    TODO(Bangtian): When direct conv support is added, expose this as a CLI arg
+    (e.g., --conv-lowering-strategy) to allow users to choose between igemm and direct.
+    """
+    if codegen_pipeline == CodegenPipelines.llvmgpu_tile_and_fuse:
+        return common.ConvLoweringStrategy.IGEMM
+    return common.ConvLoweringStrategy.INNER_MNK
+
+
 def generate_candidate_specs(
     args: argparse.Namespace,
     path_config: PathConfig,
@@ -887,8 +903,13 @@ def generate_candidate_specs(
             with open(args.starter_td_spec, "r") as f:
                 starter_td_spec = ir.Module.parse(f.read())
 
+        conv_lowering_strategy = get_conv_lowering_strategy_for_pipeline(
+            args.codegen_pipeline
+        )
         dispatch_tuner = candidate_gen.set_dispatch_tuner(
-            input_module=mlir_module, tuner_ctx=tuning_client.tuner_context
+            input_module=mlir_module,
+            tuner_ctx=tuning_client.tuner_context,
+            conv_lowering_strategy=conv_lowering_strategy,
         )
         if not dispatch_tuner:
             candidate_gen_logger.warning(

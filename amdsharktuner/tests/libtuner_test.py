@@ -9,7 +9,7 @@ import math
 import pytest
 import logging
 from unittest.mock import call, patch, MagicMock
-from amdsharktuner import libtuner
+from amdsharktuner import common, libtuner
 
 """
 Usage: python -m pytest libtuner_test.py
@@ -425,3 +425,19 @@ def test_compute_rocprof_avg_kernel_time(caplog):
     trace_rows = [drop_row] * 10 + [cal_row] * 5 + [cal_row_2] * 5
     avg_us = libtuner.compute_rocprof_avg_kernel_time(trace_rows)
     assert avg_us == pytest.approx(1.75)
+
+
+def test_get_conv_lowering_strategy_for_pipeline() -> None:
+    assert (
+        libtuner.get_conv_lowering_strategy_for_pipeline(
+            libtuner.CodegenPipelines.llvmgpu_tile_and_fuse
+        )
+        == common.ConvLoweringStrategy.IGEMM
+    )
+
+    assert (
+        libtuner.get_conv_lowering_strategy_for_pipeline(
+            libtuner.CodegenPipelines.llvmgpu_vector_distribute
+        )
+        == common.ConvLoweringStrategy.INNER_MNK
+    )

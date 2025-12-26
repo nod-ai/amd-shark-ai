@@ -125,25 +125,19 @@ class ContractionOpInterfaceTuner(
 class ConvolutionOpInterfaceTuner(
     DispatchTuner, dispatch_parser.ConvolutionOpInterfaceParser
 ):
-    def __init__(self, root_op: ir.Operation, tuner_ctx: common.TunerContext):
-        super().__init__(root_op, tuner_ctx)
+    def __init__(
+        self,
+        root_op: ir.Operation,
+        tuner_ctx: common.TunerContext,
+        conv_lowering_strategy: common.ConvLoweringStrategy = common.ConvLoweringStrategy.IGEMM,
+    ):
+        super().__init__(
+            root_op, tuner_ctx, conv_lowering_strategy=conv_lowering_strategy
+        )
 
     @classmethod
     def supports_root_op(cls, root_op: ir.Operation) -> bool:
-        if not linalg.isa_convolution_op(root_op):
-            return False
-        convolution_dims = linalg.infer_convolution_dimensions(root_op)
-        if not convolution_dims:
-            return False
-        # Only allow 'nhwc_hwcf' convs.
-        return (
-            list(convolution_dims.batch) == [0]
-            and list(convolution_dims.output_image) == [1, 2]
-            and list(convolution_dims.output_channel) == [3]
-            and list(convolution_dims.filter_loop) == [4, 5]
-            and list(convolution_dims.input_channel) == [6]
-            and list(convolution_dims.depth) == []
-        )
+        return linalg.infer_convolution_dimensions(root_op) is not None
 
     def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
         return constraint_generator.ConvolutionOpInterfaceConstraintGenerator(
@@ -202,7 +196,9 @@ class AttentionOpInterfaceTuner(
 
 
 def set_dispatch_tuner(
-    input_module: ir.Module, tuner_ctx: common.TunerContext
+    input_module: ir.Module,
+    tuner_ctx: common.TunerContext,
+    conv_lowering_strategy: common.ConvLoweringStrategy = common.ConvLoweringStrategy.IGEMM,
 ) -> Optional[DispatchTuner]:
     dispatch_tuners: list[type[DispatchTuner]] = [
         ContractionOpInterfaceTuner,
@@ -226,8 +222,12 @@ def set_dispatch_tuner(
     dispatch_tuner: Optional[DispatchTuner] = None
     for tuner_class in dispatch_tuners:
         if tuner_class.supports_root_op(root_op):
-            tuner = tuner_class(root_op, tuner_ctx)
-            dispatch_tuner = tuner
+            if tuner_class is ConvolutionOpInterfaceTuner:
+                dispatch_tuner = ConvolutionOpInterfaceTuner(
+                    root_op, tuner_ctx, conv_lowering_strategy=conv_lowering_strategy
+                )
+            else:
+                dispatch_tuner = tuner_class(root_op, tuner_ctx)
             break
 
     if not dispatch_tuner:

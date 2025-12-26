@@ -15,58 +15,6 @@ from iree.compiler.dialects import iree_codegen, iree_gpu, linalg  # type: ignor
 from . import common, dispatch_constraints, dispatch_parser
 
 
-def adjust_problem_size_for_pipeline(
-    contraction_dims: common.ContractionDimensions,
-    matmul_size: common.ContractionSizes,
-    dispatch_kind: common.DispatchKind,
-    pipeline_options_search_space: dispatch_constraints.PipelineOptionsSearchSpace,
-    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline,
-    igemm_details: Optional[iree_codegen.IGEMMGenericConvDetails] = None,
-):
-    # Adjustment is only needed for IGEMM. Fail if the problem is not a conv
-    # going down the TileAndFuse pipeline.
-    if (
-        codegen_pipeline != iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
-        or dispatch_kind != common.DispatchKind.conv
-    ):
-        return
-
-    pipeline_options_search_space.use_igemm_convolution = [True]
-
-    # Use IGEMM binding details if available for accurate dimension mapping.
-    if igemm_details:
-        igemm_maps = [
-            map_attr.value for map_attr in igemm_details.igemm_contraction_maps
-        ]
-        igemm_contraction_dims = linalg.infer_contraction_dimensions_from_maps(
-            igemm_maps
-        )
-        assert (
-            igemm_contraction_dims
-        ), "Failed to infer contraction dimensions from IGEMM maps"
-
-        bounds = list(igemm_details.igemm_loop_bounds)
-
-        # Update contraction_dims with IGEMM structure.
-        contraction_dims.m = list(igemm_contraction_dims.m)
-        contraction_dims.n = list(igemm_contraction_dims.n)
-        contraction_dims.k = list(igemm_contraction_dims.k)
-        contraction_dims.batch = list(igemm_contraction_dims.batch)
-
-        # Update matmul_size with IGEMM loop bounds (K is already flattened!).
-        matmul_size.M = [bounds[i] for i in contraction_dims.m]
-        matmul_size.N = [bounds[i] for i in contraction_dims.n]
-        matmul_size.K = [bounds[i] for i in contraction_dims.k]
-        matmul_size.B = [bounds[i] for i in contraction_dims.batch]
-        return
-
-    # Fallback: Manual flattening for legacy path when IGEMM details are unavailable.
-    # TODO(Bangtian): Once all IGEMM implementation is complete, fully remove this fallback path
-    # and corresponding tests.
-    contraction_dims.k = [contraction_dims.k[0]]
-    matmul_size.K = [math.prod(matmul_size.K)]
-
-
 def generate_generic_contraction_solutions(
     tuner_ctx: common.TunerContext,
     gpu_target_info: iree_gpu.TargetInfo,
@@ -84,21 +32,14 @@ def generate_generic_contraction_solutions(
     igemm_details: Optional[iree_codegen.IGEMMGenericConvDetails] = None,
     conv_to_igemm_info: Optional[common.ConvToIgemmInfo] = None,
 ) -> Iterator[list[common.TuningConfiguration]]:
-    adjust_problem_size_for_pipeline(
-        contraction_dims,
-        matmul_size,
-        dispatch_kind,
-        pipeline_options_search_space,
-        codegen_pipeline,
-        igemm_details,
-    )
-
     # Apply padding for TileAndFuse pipeline to get better tile sizes.
     overpadding_applied = False
     if codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
-        # Use IGEMM maps if available (dimensions were restructured), otherwise use original indexing maps.
         padding_maps = indexing_maps
-        if igemm_details:
+        # IGEMM is required for convolutions going through TileAndFuse.
+        if dispatch_kind == common.DispatchKind.conv:
+            assert igemm_details, "igemm_details must exist for conv with TileAndFuse"
+            pipeline_options_search_space.use_igemm_convolution = [True]
             padding_maps = [
                 map_attr.value for map_attr in igemm_details.igemm_contraction_maps
             ]
@@ -210,10 +151,6 @@ def generate_generic_contraction_solutions(
         required_padding = any(
             p[-1] % i != 0 for p, i in zip((M, N, K), intrinsic_mnk_shape, strict=True)
         )
-        if required_padding:
-            tuner_ctx.logger.debug(
-                f"Required padding detected: M={M}, N={N}, K={K}, intrinsic_shape={intrinsic_mnk_shape}"
-            )
 
         def set_cdim_tile_sizes(tile_sizes, contraction_dims, csizes):
             for dim, size in zip(contraction_dims, csizes):
