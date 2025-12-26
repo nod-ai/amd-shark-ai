@@ -74,10 +74,18 @@ def get_mfma_intrinsic_constraints(
     lhs_layout: MMASingleSubgroupLayout | None = None,
     rhs_layout: MMASingleSubgroupLayout | None = None,
     acc_layout: MMASingleSubgroupLayout | None = None,
+    allow_virtual_mma: bool = False,
 ) -> z3.BoolRef:
     compatible_intrinsics = common.get_compatible_mfma_intrinsics(
         lhs_type, rhs_type, res_type, mma_intrinsics
     )
+    # Filter out virtual intrinsics unless explicitly allowed (e.g., for attention ops).
+    if not allow_virtual_mma:
+        compatible_intrinsics = [
+            instr
+            for instr in compatible_intrinsics
+            if isinstance(instr, iree_gpu.MMAIntrinsic)
+        ]
     assert len(compatible_intrinsics) > 0, "No compatible intrinsics found"
 
     def get_mma_attr(instrinsic):
@@ -491,6 +499,7 @@ def generate_attention_vector_distribute_constraints(
             lhs_layout=None,
             rhs_layout=None,
             acc_layout=qk_mma_acc_layout,
+            allow_virtual_mma=True,
         )
     ]
 
@@ -506,6 +515,7 @@ def generate_attention_vector_distribute_constraints(
             lhs_layout=pv_mma_lhs_layout,
             rhs_layout=pv_mma_rhs_layout,
             acc_layout=pv_mma_acc_layout,
+            allow_virtual_mma=True,
         )
     ]
 
