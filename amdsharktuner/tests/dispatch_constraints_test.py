@@ -408,6 +408,34 @@ def test_get_mfma_intrinsic_constraints(
     k_val = model[intrinsic_k].as_long()
     assert (m_val, n_val, k_val) in [(16, 16, 16), (32, 32, 8)]
 
+    lhs_type = common.ShapedType([32, 16], tuner_ctx.type.f8E4M3FNUZ)
+    rhs_type = common.ShapedType([16, 32], tuner_ctx.type.f8E4M3FNUZ)
+    res_type = common.ShapedType([32, 32], tuner_ctx.type.f32)
+
+    constraints = dispatch_constraints.get_mfma_intrinsic_constraints(
+        lhs_type=lhs_type,
+        rhs_type=rhs_type,
+        res_type=res_type,
+        intrinsic_m=intrinsic_m,
+        intrinsic_n=intrinsic_n,
+        intrinsic_k=intrinsic_k,
+        mma_intrinsics=[
+            iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16,
+            iree_gpu.VirtualMMAIntrinsic.VMFMA_F32_32x32x16_F8E4M3FNUZ,
+        ],
+        allow_virtual_mma=True,
+    )
+
+    solver = z3.Solver()
+    solver.add(constraints)
+    assert solver.check() == z3.sat
+
+    model = solver.model()
+    m_val = model[intrinsic_m].as_long()
+    n_val = model[intrinsic_n].as_long()
+    k_val = model[intrinsic_k].as_long()
+    assert (m_val, n_val, k_val) == (32, 32, 16)
+
 
 def test_match_layout():
     layout_a = dispatch_constraints.MMASingleSubgroupLayout(
