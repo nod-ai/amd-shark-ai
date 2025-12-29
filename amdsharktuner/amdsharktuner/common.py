@@ -281,20 +281,26 @@ def get_map_result_dim_positions(map: ir.AffineMap) -> Optional[list[int]]:
     return [ir.AffineDimExpr(expr).position for expr in map.results]
 
 
-def get_compatible_mfma_intrinsics(
+def get_compatible_mma_intrinsics(
     lhs_type: ShapedType,
     rhs_type: ShapedType,
     res_type: ShapedType,
     mma_intrinsics: list[iree_gpu.MMAIntrinsic | iree_gpu.VirtualMMAIntrinsic],
+    allow_virtual_mma: bool = False,
 ) -> list[iree_gpu.MMAIntrinsic | iree_gpu.VirtualMMAIntrinsic]:
     def is_compatible(
         mma: iree_gpu.MMAIntrinsic | iree_gpu.VirtualMMAIntrinsic,
     ) -> bool:
-        if isinstance(mma, iree_gpu.VirtualMMAIntrinsic):
-            mma_attr = iree_gpu.VirtualMMAAttr.get(mma)
-        else:
-            mma_attr = iree_gpu.MMAAttr.get(mma)
+        # Filter out virtual intrinsics unless explicitly allowed (for attention ops).
+        is_virtual = isinstance(mma, iree_gpu.VirtualMMAIntrinsic)
+        if is_virtual and not allow_virtual_mma:
+            return False
 
+        mma_attr = (
+            iree_gpu.VirtualMMAAttr.get(mma)
+            if is_virtual
+            else iree_gpu.MMAAttr.get(mma)
+        )
         a_type, b_type, c_type = mma_attr.abc_element_types
         return (
             lhs_type.element_type == a_type
