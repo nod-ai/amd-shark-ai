@@ -427,7 +427,7 @@ def test_compute_rocprof_avg_kernel_time(caplog):
     assert avg_us == pytest.approx(1.75)
 
 
-def test_build_knob_assignments_with_baseline():
+def test_knob_assignments_with_baseline():
     """Test that knob assignments list is correctly constructed with baseline at index 0."""
 
     knob1 = {"tile": 64}
@@ -441,14 +441,12 @@ def test_build_knob_assignments_with_baseline():
     dispatch_tuner = TestDispatchTuner()
     solutions = [knob1, knob2, knob3]
 
-    result = libtuner.build_knob_assignments_with_baseline(dispatch_tuner, solutions)
+    knob_assignments = [None] + [
+        dispatch_tuner.get_knob_assignment(s) for s in solutions
+    ]
+    assert knob_assignments == [None, knob1, knob2, knob3]
 
-    assert len(result) == 4
-    assert result[0] is None
-    assert result[1] == knob1
-    assert result[2] == knob2
-    assert result[3] == knob3
-
-    empty_result = libtuner.build_knob_assignments_with_baseline(dispatch_tuner, [])
-    assert len(empty_result) == 1
-    assert empty_result[0] is None
+    empty_knob_assignments = [None] + [
+        dispatch_tuner.get_knob_assignment(s) for s in []
+    ]
+    assert empty_knob_assignments == [None]

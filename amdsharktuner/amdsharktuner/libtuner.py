@@ -858,19 +858,6 @@ def get_iree_codegen_pipeline(pipeline: CodegenPipelines):
             assert False, "unexpected codegen pipeline"
 
 
-def build_knob_assignments_with_baseline(
-    dispatch_tuner: candidate_gen.DispatchTuner, solutions: list
-) -> list[Optional[common.KnobAssignment]]:
-    """Build a list of knob assignments with baseline at index 0.
-
-    Index 0 is the baseline/default config with no knob assignment (None).
-    Subsequent indices contain knob assignments derived from the solutions.
-    """
-    result: list[Optional[common.KnobAssignment]] = [None]
-    result.extend(dispatch_tuner.get_knob_assignment(s) for s in solutions)
-    return result
-
-
 def generate_candidate_specs(
     args: argparse.Namespace,
     path_config: PathConfig,
@@ -952,9 +939,9 @@ def generate_candidate_specs(
             candidate_ordering.build_tuning_records_from_order(knobs, sorted_order)
         )
 
-        knob_assignments = build_knob_assignments_with_baseline(
-            dispatch_tuner, solutions
-        )
+        knob_assignments = [None] + [
+            dispatch_tuner.get_knob_assignment(s) for s in solutions
+        ]
         assert len(config_specs) == len(knob_assignments)
         logging.debug("candidate_gen.py ends")
         handle_error(
