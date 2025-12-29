@@ -373,7 +373,7 @@ def test_is_valid_mma_schedule(
     assert solver.check() == z3.unsat
 
 
-def test_get_mfma_intrinsic_constraints(
+def test_get_mma_intrinsic_constraints(
     tuner_ctx: common.TunerContext,
 ) -> None:
     lhs_type = common.ShapedType([16, 16], tuner_ctx.type.f16)
@@ -384,7 +384,7 @@ def test_get_mfma_intrinsic_constraints(
     intrinsic_n = z3.Int("intrinsic_n")
     intrinsic_k = z3.Int("intrinsic_k")
 
-    constraints = dispatch_constraints.get_mfma_intrinsic_constraints(
+    constraints = dispatch_constraints.get_mma_intrinsic_constraints(
         lhs_type=lhs_type,
         rhs_type=rhs_type,
         res_type=res_type,
@@ -412,7 +412,7 @@ def test_get_mfma_intrinsic_constraints(
     rhs_type = common.ShapedType([16, 32], tuner_ctx.type.f8E4M3FNUZ)
     res_type = common.ShapedType([32, 32], tuner_ctx.type.f32)
 
-    constraints = dispatch_constraints.get_mfma_intrinsic_constraints(
+    constraints = dispatch_constraints.get_mma_intrinsic_constraints(
         lhs_type=lhs_type,
         rhs_type=rhs_type,
         res_type=res_type,

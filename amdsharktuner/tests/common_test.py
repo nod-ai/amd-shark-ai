@@ -117,7 +117,7 @@ def test_get_pipeline_config(tuner_ctx: common.TunerContext) -> None:
     )
 
 
-def test_get_compatible_mfma_intrinsics(tuner_ctx: common.TunerContext) -> None:
+def test_get_compatible_mma_intrinsics(tuner_ctx: common.TunerContext) -> None:
     all_intrinsics = [
         iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16,
         iree_gpu.MMAIntrinsic.MFMA_F32_32x32x8_F16,
@@ -128,7 +128,7 @@ def test_get_compatible_mfma_intrinsics(tuner_ctx: common.TunerContext) -> None:
     lhs = common.ShapedType([2048, 1280], tuner_ctx.type.f16)
     rhs = common.ShapedType([1280, 1280], tuner_ctx.type.f16)
     res = common.ShapedType([2048, 1280], tuner_ctx.type.f32)
-    assert common.get_compatible_mfma_intrinsics(lhs, rhs, res, all_intrinsics) == [
+    assert common.get_compatible_mma_intrinsics(lhs, rhs, res, all_intrinsics) == [
         iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16,
         iree_gpu.MMAIntrinsic.MFMA_F32_32x32x8_F16,
     ]
@@ -136,7 +136,7 @@ def test_get_compatible_mfma_intrinsics(tuner_ctx: common.TunerContext) -> None:
     lhs = common.ShapedType([2048, 1280], tuner_ctx.type.i8)
     rhs = common.ShapedType([1280, 1280], tuner_ctx.type.i8)
     res = common.ShapedType([2048, 1280], tuner_ctx.type.i32)
-    assert common.get_compatible_mfma_intrinsics(lhs, rhs, res, all_intrinsics) == [
+    assert common.get_compatible_mma_intrinsics(lhs, rhs, res, all_intrinsics) == [
         iree_gpu.MMAIntrinsic.MFMA_I32_16x16x32_I8,
         iree_gpu.MMAIntrinsic.MFMA_I32_32x32x16_I8,
     ]
@@ -144,7 +144,24 @@ def test_get_compatible_mfma_intrinsics(tuner_ctx: common.TunerContext) -> None:
     lhs = common.ShapedType([64, 968, 640], tuner_ctx.type.f32)
     rhs = common.ShapedType([64, 640, 320], tuner_ctx.type.f32)
     res = common.ShapedType([64, 968, 320], tuner_ctx.type.f32)
-    assert common.get_compatible_mfma_intrinsics(lhs, rhs, res, all_intrinsics) == []
+    assert common.get_compatible_mma_intrinsics(lhs, rhs, res, all_intrinsics) == []
+
+    intrinsics_with_virtual = [
+        iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16,
+        iree_gpu.VirtualMMAIntrinsic.VMFMA_F32_32x32x16_F8E4M3FNUZ,
+    ]
+
+    lhs = common.ShapedType([32, 16], tuner_ctx.type.f8E4M3FNUZ)
+    rhs = common.ShapedType([16, 32], tuner_ctx.type.f8E4M3FNUZ)
+    res = common.ShapedType([32, 32], tuner_ctx.type.f32)
+    assert (
+        common.get_compatible_mma_intrinsics(lhs, rhs, res, intrinsics_with_virtual)
+        == []
+    )
+
+    assert common.get_compatible_mma_intrinsics(
+        lhs, rhs, res, intrinsics_with_virtual, allow_virtual_mma=True
+    ) == [iree_gpu.VirtualMMAIntrinsic.VMFMA_F32_32x32x16_F8E4M3FNUZ]
 
 
 def test_get_lowering_config(tuner_ctx: common.TunerContext) -> None:
