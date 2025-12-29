@@ -58,7 +58,7 @@ jobs:
           source ${VENV_DIR}/bin/activate
 
       - name: Install pip deps
-        run: bash scripts/setenv.sh --nightly
+        run: bash scripts/setenv.sh --nightly && pip install dataclasses-json
 
       - name: Run SDXL (precompiled)
         run: |
