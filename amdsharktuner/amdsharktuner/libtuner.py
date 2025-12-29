@@ -939,6 +939,7 @@ def generate_candidate_specs(
             candidate_ordering.build_tuning_records_from_order(knobs, sorted_order)
         )
 
+        # Prepend None for the baseline config (no knob assignment) at index 0.
         knob_assignments = [None] + [
             dispatch_tuner.get_knob_assignment(s) for s in solutions
         ]
