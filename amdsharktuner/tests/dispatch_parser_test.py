@@ -200,7 +200,7 @@ def test_get_conv_nhwc_hwcf_operation(tuner_ctx: common.TunerContext) -> None:
     root_op_list = iree_codegen.get_tuner_root_ops(module)
     assert len(root_op_list) == 1
     root_op = root_op_list[0]
-    parser = dispatch_parser.ConvolutionOpInterfaceParser(root_op, tuner_ctx)
+    parser = dispatch_parser.IGEMMConvolutionParser(root_op, tuner_ctx)
     assert dispatch_parser.get_parent_function_name(parser.get_root_op()) == "test"
 
 
@@ -222,7 +222,7 @@ def test_get_group_conv_operation(tuner_ctx: common.TunerContext) -> None:
     root_op_list = iree_codegen.get_tuner_root_ops(module)
     assert len(root_op_list) == 1
     root_op = root_op_list[0]
-    parser = dispatch_parser.ConvolutionOpInterfaceParser(root_op, tuner_ctx)
+    parser = dispatch_parser.IGEMMConvolutionParser(root_op, tuner_ctx)
     assert dispatch_parser.get_parent_function_name(parser.get_root_op()) == "test"
 
 
@@ -243,7 +243,7 @@ def test_get_generic_conv_operation(tuner_ctx: common.TunerContext) -> None:
     root_op_list = iree_codegen.get_tuner_root_ops(module)
     assert len(root_op_list) == 1
     root_op = root_op_list[0]
-    parser = dispatch_parser.ConvolutionOpInterfaceParser(root_op, tuner_ctx)
+    parser = dispatch_parser.IGEMMConvolutionParser(root_op, tuner_ctx)
     assert dispatch_parser.get_parent_function_name(parser.get_root_op()) == "test"
 
 

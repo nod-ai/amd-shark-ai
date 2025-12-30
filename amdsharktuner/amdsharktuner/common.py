@@ -67,6 +67,35 @@ class ConvLoweringStrategy(Enum):
     IGEMM = "igemm"
 
 
+@dataclass
+class ConvDimInfo:
+    """Common convolution dimension info extracted from a convolution op.
+
+    This dataclass is reused by all convolution lowering tuners (IGEMM, INNER_MNK, etc.)
+    to share the common dimension extraction logic.
+    """
+
+    convolution_dims: linalg.ConvolutionDimensions
+    indexing_maps: list[ir.AffineMap]
+    lhs_type: ir.Type
+    rhs_type: ir.Type
+    res_type: ir.Type
+    batch_indices: list[int]
+    output_image_indices: list[int]
+    output_channel_indices: list[int]
+    filter_loop_indices: list[int]
+    input_channel_indices: list[int]
+    depth_indices: list[int]
+    strides: list[int]
+    dilations: list[int]
+    batch_sizes: list[int]
+    output_image_sizes: list[int]
+    output_channel_sizes: list[int]
+    filter_loop_sizes: list[int]
+    input_channel_sizes: list[int]
+    depth_sizes: list[int]
+
+
 class TunerContext:
     def __init__(self, logger: Optional[logging.Logger] = None):
         self.mlir_ctx: ir.Context = ir.Context()
