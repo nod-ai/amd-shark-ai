@@ -68,6 +68,39 @@ class ContractionZ3Vars(Z3Vars):
     sg_m_cnt: z3.ExprRef
     sg_n_cnt: z3.ExprRef
 
+    @classmethod
+    def from_sizes(cls, matmul_size: common.ContractionSizes) -> "ContractionZ3Vars":
+        M, N, K = matmul_size.M, matmul_size.N, matmul_size.K
+
+        m_vars = [z3.Int(f"m{i}") for i in range(len(M))]
+        n_vars = [z3.Int(f"n{i}") for i in range(len(N))]
+        k_vars = [z3.Int(f"k{i}") for i in range(len(K))]
+        subgroup_m_vars = [z3.Int(f"subgroup_m{i}") for i in range(len(M))]
+        subgroup_n_vars = [z3.Int(f"subgroup_n{i}") for i in range(len(N))]
+
+        subgroup_size = z3.Int("subgroup_size")
+        intrinsic_mn = z3.Int("intrinsic_mn")
+        intrinsic_k = z3.Int("intrinsic_k")
+        wg_x, wg_y, wg_z = z3.Int("wg_x"), z3.Int("wg_y"), z3.Int("wg_z")
+        sg_m_cnt = z3.Int("sg_m_cnt")
+        sg_n_cnt = z3.Int("sg_n_cnt")
+
+        return cls(
+            m_vars=m_vars,
+            n_vars=n_vars,
+            k_vars=k_vars,
+            subgroup_m_vars=subgroup_m_vars,
+            subgroup_n_vars=subgroup_n_vars,
+            subgroup_size=subgroup_size,
+            intrinsic_mn=intrinsic_mn,
+            intrinsic_k=intrinsic_k,
+            wg_x=wg_x,
+            wg_y=wg_y,
+            wg_z=wg_z,
+            sg_m_cnt=sg_m_cnt,
+            sg_n_cnt=sg_n_cnt,
+        )
+
     @property
     def all_vars(self) -> list[z3.ExprRef]:
         return (
@@ -163,41 +196,6 @@ def adjust_problem_size_for_pipeline(
     matmul_size.K = [math.prod(matmul_size.K)]
 
 
-def make_contraction_z3_vars(
-    matmul_size: common.ContractionSizes,
-) -> ContractionZ3Vars:
-    M, N, K = matmul_size.M, matmul_size.N, matmul_size.K
-
-    m_vars = [z3.Int(f"m{i}") for i in range(len(M))]
-    n_vars = [z3.Int(f"n{i}") for i in range(len(N))]
-    k_vars = [z3.Int(f"k{i}") for i in range(len(K))]
-    subgroup_m_vars = [z3.Int(f"subgroup_m{i}") for i in range(len(M))]
-    subgroup_n_vars = [z3.Int(f"subgroup_n{i}") for i in range(len(N))]
-
-    subgroup_size = z3.Int("subgroup_size")
-    intrinsic_mn = z3.Int("intrinsic_mn")
-    intrinsic_k = z3.Int("intrinsic_k")
-    wg_x, wg_y, wg_z = z3.Int("wg_x"), z3.Int("wg_y"), z3.Int("wg_z")
-    sg_m_cnt = z3.Int("sg_m_cnt")
-    sg_n_cnt = z3.Int("sg_n_cnt")
-
-    return ContractionZ3Vars(
-        m_vars=m_vars,
-        n_vars=n_vars,
-        k_vars=k_vars,
-        subgroup_m_vars=subgroup_m_vars,
-        subgroup_n_vars=subgroup_n_vars,
-        subgroup_size=subgroup_size,
-        intrinsic_mn=intrinsic_mn,
-        intrinsic_k=intrinsic_k,
-        wg_x=wg_x,
-        wg_y=wg_y,
-        wg_z=wg_z,
-        sg_m_cnt=sg_m_cnt,
-        sg_n_cnt=sg_n_cnt,
-    )
-
-
 def generate_generic_contraction_z3_constraints(
     tuner_ctx: common.TunerContext,
     gpu_target_info: iree_gpu.TargetInfo,
@@ -209,7 +207,7 @@ def generate_generic_contraction_z3_constraints(
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
     num_subgroups: int = 4,
 ) -> Z3Solver:
-    z3_vars = make_contraction_z3_vars(matmul_size)
+    z3_vars = ContractionZ3Vars.from_sizes(matmul_size)
     solver = z3.Solver()
     match codegen_pipeline:
         case iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute:
