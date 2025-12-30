@@ -259,12 +259,10 @@ def generate_generic_contraction_z3_constraints(
     return Z3Solver(solver, z3_vars)
 
 
-def get_z3_solutions(z3_solver: Z3Solver) -> Z3Vals:
+def get_z3_solutions(z3_solver: Z3Solver) -> Iterator[Z3Vals]:
     solver = z3_solver.solver
     z3_vars = z3_solver.z3_vars
     z3_all_vars = z3_solver.z3_vars.all_vars
-
-    z3_solutions: list[Z3Vals] = []
 
     while solver.check() == z3.sat:
         model = solver.model()
@@ -274,9 +272,7 @@ def get_z3_solutions(z3_solver: Z3Solver) -> Z3Vals:
         # Add new constraints to find the next solution.
         solver.add(z3.Or([v != model[v] for v in z3_all_vars]))
 
-        z3_solutions.append(z3_vals)
-
-    return z3_solutions
+        yield z3_vals
 
 
 def generate_generic_contraction_solutions(
@@ -347,8 +343,9 @@ def generate_generic_contraction_solutions(
         + len(contraction_dims.batch)
     )
 
-    z3_solutions: list[ContractionZ3Vals] = get_z3_solutions(constraints)
-    for z3_vals in z3_solutions:
+    z3_solutions_iter: Iterator[ContractionZ3Vals] = get_z3_solutions(constraints)
+
+    for z3_vals in list(z3_solutions_iter):
         intrinsic_mnk_shape = (
             z3_vals.intrinsic_mn,
             z3_vals.intrinsic_mn,
