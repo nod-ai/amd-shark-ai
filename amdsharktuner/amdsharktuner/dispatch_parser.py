@@ -241,15 +241,21 @@ class ContractionOpInterfaceParser(DispatchParser):
         return self._op_info
 
 
-class ConvolutionOpInterfaceParser(DispatchParser):
+class ConvolutionOpInterfaceParser(DispatchParser, metaclass=ABCMeta):
+    """Base class for convolution parsers. Subclasses implement specific lowering strategies."""
+
     def __init__(
         self,
         root_op: ir.Operation,
         tuner_ctx: common.TunerContext,
-        conv_lowering_strategy: common.ConvLoweringStrategy = common.ConvLoweringStrategy.IGEMM,
     ):
         super().__init__(root_op, tuner_ctx)
+        self._conv_dim_info = self._extract_conv_dim_info()
+
+    def _extract_conv_dim_info(self) -> common.ConvDimInfo:
+        """Extract common convolution dimension info from the root op."""
         root_op = self.get_root_op()
+
         convolution_dims: linalg.ConvolutionDimensions = (
             linalg.infer_convolution_dimensions(root_op)
         )
@@ -306,80 +312,139 @@ class ConvolutionOpInterfaceParser(DispatchParser):
             else []
         )
 
-        # Get IGEMM details for potential use with the TileAndFuse pipeline.
-        # This provides flattened K dimensions and proper M/N/K categorization
-        # for any convolution layout (nhwc_hwcf, nchw_fchw, etc.).
-        igemm_details = None
-        conv_to_igemm_info = None
-        if conv_lowering_strategy == common.ConvLoweringStrategy.IGEMM:
-            igemm_details = iree_codegen.get_igemm_generic_conv_details(root_op)
-            assert igemm_details, "Failed to get IGEMM details for convolution"
-
-            igemm_maps = [
-                map_attr.value for map_attr in igemm_details.igemm_contraction_maps
-            ]
-            igemm_contraction_dims = linalg.infer_contraction_dimensions_from_maps(
-                igemm_maps
-            )
-            assert (
-                igemm_contraction_dims
-            ), "Failed to infer contraction dimensions from IGEMM maps"
-
-            bounds = list(igemm_details.igemm_loop_bounds)
-
-            contraction_dims = common.ContractionDimensions(
-                batch=list(igemm_contraction_dims.batch),
-                m=list(igemm_contraction_dims.m),
-                n=list(igemm_contraction_dims.n),
-                k=list(igemm_contraction_dims.k),
-            )
-            matmul_size = common.ContractionSizes(
-                B=[bounds[i] for i in contraction_dims.batch],
-                M=[bounds[i] for i in contraction_dims.m],
-                N=[bounds[i] for i in contraction_dims.n],
-                K=[bounds[i] for i in contraction_dims.k],
-            )
-
-            conv_to_igemm_info = build_conv_to_igemm_info(
-                convolution_dims, lhs_type, indexing_maps[0], igemm_details
-            )
-        else:
-            # Use the convolution dimensions directly.
-            contraction_dims = common.ContractionDimensions(
-                batch=depth_indices,
-                m=batch_indices + output_image_indices,
-                n=output_channel_indices,
-                k=filter_loop_indices + input_channel_indices,
-            )
-            matmul_size = common.ContractionSizes(
-                B=depth_sizes,
-                M=batch_sizes + output_image_sizes,
-                N=output_channel_sizes,
-                K=filter_loop_sizes + input_channel_sizes,
-            )
-
-        self._op_info: ConvolutionOpInfo = ConvolutionOpInfo(
-            root_op=root_op,
+        return common.ConvDimInfo(
+            convolution_dims=convolution_dims,
             indexing_maps=indexing_maps,
-            dims=contraction_dims,
-            matmul_size=matmul_size,
-            lhs_type=common.ShapedType(lhs_type.shape, lhs_type.element_type),
-            rhs_type=common.ShapedType(rhs_type.shape, rhs_type.element_type),
-            res_type=common.ShapedType(res_type.shape, res_type.element_type),
+            lhs_type=lhs_type,
+            rhs_type=rhs_type,
+            res_type=res_type,
+            batch_indices=batch_indices,
+            output_image_indices=output_image_indices,
+            output_channel_indices=output_channel_indices,
+            filter_loop_indices=filter_loop_indices,
+            input_channel_indices=input_channel_indices,
+            depth_indices=depth_indices,
+            strides=strides,
+            dilations=dilations,
             batch_sizes=batch_sizes,
             output_image_sizes=output_image_sizes,
             output_channel_sizes=output_channel_sizes,
             filter_loop_sizes=filter_loop_sizes,
             input_channel_sizes=input_channel_sizes,
             depth_sizes=depth_sizes,
-            strides=strides,
-            dilations=dilations,
+        )
+
+    def _build_op_info(
+        self,
+        info: common.ConvDimInfo,
+        contraction_dims: common.ContractionDimensions,
+        matmul_size: common.ContractionSizes,
+        igemm_details: Optional[iree_codegen.IGEMMGenericConvDetails],
+        conv_to_igemm_info: Optional[common.ConvToIgemmInfo],
+    ) -> None:
+        """Build ConvolutionOpInfo from extracted info and strategy-specific values."""
+        self._op_info = ConvolutionOpInfo(
+            root_op=self.get_root_op(),
+            indexing_maps=info.indexing_maps,
+            dims=contraction_dims,
+            matmul_size=matmul_size,
+            lhs_type=common.ShapedType(info.lhs_type.shape, info.lhs_type.element_type),
+            rhs_type=common.ShapedType(info.rhs_type.shape, info.rhs_type.element_type),
+            res_type=common.ShapedType(info.res_type.shape, info.res_type.element_type),
+            batch_sizes=info.batch_sizes,
+            output_image_sizes=info.output_image_sizes,
+            output_channel_sizes=info.output_channel_sizes,
+            filter_loop_sizes=info.filter_loop_sizes,
+            input_channel_sizes=info.input_channel_sizes,
+            depth_sizes=info.depth_sizes,
+            strides=info.strides,
+            dilations=info.dilations,
             igemm_details=igemm_details,
             conv_to_igemm_info=conv_to_igemm_info,
         )
 
     def get_op_info(self) -> ConvolutionOpInfo:
+        assert isinstance(
+            self._op_info, ConvolutionOpInfo
+        ), "Failed to build ConvolutionOpInfo"
         return self._op_info
+
+
+class IGEMMConvolutionParser(ConvolutionOpInterfaceParser):
+    """Convolution parser using IGEMM (Implicit GEMM) lowering strategy."""
+
+    def __init__(
+        self,
+        root_op: ir.Operation,
+        tuner_ctx: common.TunerContext,
+    ):
+        super().__init__(root_op, tuner_ctx)
+        info = self._conv_dim_info
+
+        # Get IGEMM details for the TileAndFuse pipeline.
+        igemm_details = iree_codegen.get_igemm_generic_conv_details(root_op)
+        assert igemm_details, "Failed to get IGEMM details for convolution"
+
+        igemm_maps = [
+            map_attr.value for map_attr in igemm_details.igemm_contraction_maps
+        ]
+        igemm_contraction_dims = linalg.infer_contraction_dimensions_from_maps(
+            igemm_maps
+        )
+        assert (
+            igemm_contraction_dims
+        ), "Failed to infer contraction dimensions from IGEMM maps"
+
+        bounds = list(igemm_details.igemm_loop_bounds)
+
+        contraction_dims = common.ContractionDimensions(
+            batch=list(igemm_contraction_dims.batch),
+            m=list(igemm_contraction_dims.m),
+            n=list(igemm_contraction_dims.n),
+            k=list(igemm_contraction_dims.k),
+        )
+        matmul_size = common.ContractionSizes(
+            B=[bounds[i] for i in contraction_dims.batch],
+            M=[bounds[i] for i in contraction_dims.m],
+            N=[bounds[i] for i in contraction_dims.n],
+            K=[bounds[i] for i in contraction_dims.k],
+        )
+
+        conv_to_igemm_info = build_conv_to_igemm_info(
+            info.convolution_dims, info.lhs_type, info.indexing_maps[0], igemm_details
+        )
+
+        self._build_op_info(
+            info, contraction_dims, matmul_size, igemm_details, conv_to_igemm_info
+        )
+
+
+class InnerMNKConvolutionParser(ConvolutionOpInterfaceParser):
+    """Convolution parser using INNER_MNK lowering strategy."""
+
+    def __init__(
+        self,
+        root_op: ir.Operation,
+        tuner_ctx: common.TunerContext,
+    ):
+        super().__init__(root_op, tuner_ctx)
+        info = self._conv_dim_info
+
+        # INNER_MNK: Use the convolution dimensions directly.
+        contraction_dims = common.ContractionDimensions(
+            batch=info.depth_indices,
+            m=info.batch_indices + info.output_image_indices,
+            n=info.output_channel_indices,
+            k=info.filter_loop_indices + info.input_channel_indices,
+        )
+        matmul_size = common.ContractionSizes(
+            B=info.depth_sizes,
+            M=info.batch_sizes + info.output_image_sizes,
+            N=info.output_channel_sizes,
+            K=info.filter_loop_sizes + info.input_channel_sizes,
+        )
+
+        self._build_op_info(info, contraction_dims, matmul_size, None, None)
 
 
 class AttentionOpInterfaceParser(DispatchParser):

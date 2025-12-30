@@ -439,7 +439,7 @@ def test_generate_solutions_tile_and_fuse_conv_padding(
         assert len(root_ops) == 1
         root_op = root_ops[0]
 
-        parser = dispatch_parser.ConvolutionOpInterfaceParser(root_op, tuner_ctx)
+        parser = dispatch_parser.IGEMMConvolutionParser(root_op, tuner_ctx)
         op_info = parser.get_op_info()
         gen = rocm_constraint_generators.ROCmConvolutionTileAndFuseConstraintGenerator(
             op_info
@@ -512,7 +512,7 @@ def test_generate_solutions_tile_and_fuse_conv_small_unaligned(
         assert len(root_ops) == 1
         root_op = root_ops[0]
 
-        parser = dispatch_parser.ConvolutionOpInterfaceParser(root_op, tuner_ctx)
+        parser = dispatch_parser.IGEMMConvolutionParser(root_op, tuner_ctx)
         op_info = parser.get_op_info()
         gen = rocm_constraint_generators.ROCmConvolutionTileAndFuseConstraintGenerator(
             op_info
@@ -584,7 +584,7 @@ def test_generate_solutions_tile_and_fuse_conv_nchw_fchw(
         assert len(root_ops) == 1
         root_op = root_ops[0]
 
-        parser = dispatch_parser.ConvolutionOpInterfaceParser(root_op, tuner_ctx)
+        parser = dispatch_parser.IGEMMConvolutionParser(root_op, tuner_ctx)
         op_info = parser.get_op_info()
         gen = constraint_generator.ConvolutionOpInterfaceConstraintGenerator(op_info)
 
@@ -637,7 +637,7 @@ def test_generate_solutions_tile_and_fuse_conv_nhwc_fhwc(
         assert len(root_ops) == 1
         root_op = root_ops[0]
 
-        parser = dispatch_parser.ConvolutionOpInterfaceParser(root_op, tuner_ctx)
+        parser = dispatch_parser.IGEMMConvolutionParser(root_op, tuner_ctx)
         op_info = parser.get_op_info()
         gen = constraint_generator.ConvolutionOpInterfaceConstraintGenerator(op_info)
 
@@ -690,7 +690,7 @@ def test_generate_solutions_tile_and_fuse_conv_chwn_chwf(
         assert len(root_ops) == 1
         root_op = root_ops[0]
 
-        parser = dispatch_parser.ConvolutionOpInterfaceParser(root_op, tuner_ctx)
+        parser = dispatch_parser.IGEMMConvolutionParser(root_op, tuner_ctx)
         op_info = parser.get_op_info()
         gen = constraint_generator.ConvolutionOpInterfaceConstraintGenerator(op_info)
 
