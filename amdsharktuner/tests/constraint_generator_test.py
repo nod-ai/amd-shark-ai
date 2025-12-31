@@ -9,6 +9,7 @@ Usage: python -m pytest constraint_generator_test.py
 """
 
 import pytest
+from types import SimpleNamespace
 
 # TODO: remove after https://github.com/llvm/llvm-project/pull/117918 is resolved.
 import amdsharktuner
@@ -656,3 +657,35 @@ def test_adjust_problem_size_for_pipeline_with_igemm_details(
 
         # Verify that K is flattened (3*3*128 = 1152).
         assert conv_size.K == [1152]
+
+
+def test_get_z3_solutions():
+    x = constraint_generator.z3.Int("x")
+    y = constraint_generator.z3.Int("y")
+
+    solver = constraint_generator.z3.Solver()
+    solver.add(constraint_generator.z3.Or(x == 0, x == 1))
+    solver.add(y == 0)
+
+    z3_vars = SimpleNamespace(
+        all_vars=[x, y],
+        eval=lambda model: SimpleNamespace(x=model[x].as_long(), y=model[y].as_long()),
+    )
+    z3_solver = constraint_generator.Z3Solver(solver=solver, z3_vars=z3_vars)
+    results = list(constraint_generator.get_z3_solutions(z3_solver))
+    pairs = {(res.x, res.y) for res in results}
+
+    assert pairs == {(0, 0), (1, 0)}
+    assert len(results) == 2
+
+    solver = constraint_generator.z3.Solver()
+    solver.add(x == 0)
+    solver.add(x == 1)
+
+    z3_vars = SimpleNamespace(
+        all_vars=[x], eval=lambda model: SimpleNamespace(x=model[x].as_long())
+    )
+    z3_solver = constraint_generator.Z3Solver(solver=solver, z3_vars=z3_vars)
+    results = list(constraint_generator.get_z3_solutions(z3_solver))
+
+    assert list(results) == []
