@@ -343,7 +343,7 @@ def generate_generic_contraction_solutions(
 
     z3_solutions_iter = cast(Iterator[ContractionZ3Vals], get_z3_solutions(constraints))
 
-    for z3_vals in list(z3_solutions_iter):
+    for z3_vals in z3_solutions_iter:
         intrinsic_mnk_shape = (
             z3_vals.intrinsic_mn,
             z3_vals.intrinsic_mn,
