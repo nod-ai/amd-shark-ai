@@ -107,6 +107,8 @@ class ContractionZ3Vars(Z3Vars):
             self.m_vars
             + self.n_vars
             + self.k_vars
+            + self.subgroup_m_vars
+            + self.subgroup_n_vars
             + [
                 self.subgroup_size,
                 self.intrinsic_mn,

@@ -916,7 +916,8 @@ def generate_candidate_specs(
         solutions = list(solutions_iter)
         solution_gen_end_time = time.perf_counter()
         elapsed_time = solution_gen_end_time - solution_gen_start_time
-        logging.debug(f"Completed candidate generation in {elapsed_time:.6f}s")
+        logging.debug(f"Completed candidate generation in {elapsed_time:.6f}s\n")
+        logging.debug(f"Max search space size: {len(solutions)}")
 
         knobs: list[Optional[common.KnobAssignment]] = [
             dispatch_tuner.get_knob_assignment(s) for s in solutions
