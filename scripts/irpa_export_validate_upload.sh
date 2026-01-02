@@ -207,7 +207,7 @@ if [ "$UPLOAD_REQUIRED" = true ]; then
     --account-name amdsharkpublic \
     --sas-token "$AZURE_SAS_TOKEN" \
     --container-name ossci \
-    --name "ossci-models/llama_3_1/405b/fp4/instruct_405b_fp4_preshuffled-2025-12-11.irpa" \
+    --name "ossci-models/llama_3_1/70b/fp8/instruct_70b_fp8_e4m3fnuz.irpa" \
     --file "$IRPA_PATH"
 
   # Upload current version (overwrite)
@@ -216,7 +216,7 @@ if [ "$UPLOAD_REQUIRED" = true ]; then
     --account-name amdsharkpublic \
     --sas-token "$AZURE_SAS_TOKEN" \
     --container-name ossci \
-    --name "ossci-models/llama_3_1/405b/fp4/instruct_405b_fp4_preshuffled-2025-12-11.irpa" \
+    --name "ossci-models/llama_3_1/70b/fp8/instruct_70b_fp8_e4m3fnuz.irpa" \
     --file "$IRPA_PATH" \
     --overwrite
 fi
