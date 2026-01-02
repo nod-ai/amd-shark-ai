@@ -182,12 +182,12 @@ jobs:
 
        - name: Cleanup download Directory
          run: |
+           test ! -d Llama-3.1-70B-Instruct-FP8-KV  && echo "Llama-3.1-70B-Instruct-FP8-KV downloaded artifacts removed"
   #         rm -rf Llama-3.1-8B-Instruct Llama-3.1-70B-Instruct Llama-3.1-8B-Instruct-FP8-KV output_artifacts
   #         rm -f instruct_8b_fp8_e4m3fn.irpa instruct_8b_fp8_e4m3fn_previous.irpa instruct_70b_fp16_previous.irpa instruct_8b_fp16_previous.irpa
   #         test ! -d Llama-3.1-8B-Instruct  && echo "Llama-3.1-8B-Instruct downloaded artifacts removed"
   #         test ! -d Llama-3.1-8B-Instruct-FP8-KV  && echo "Llama-3.1-8B-Instruct-FP8-KV downloaded artifacts removed"
   #         test ! -d Llama-3.1-70B-Instruct  && echo "Llama-3.1-70B-Instruct downloaded artifacts removed"
-           test ! -d Llama-3.1-70B-Instruct-FP8-KV  && echo "Llama-3.1-70B-Instruct-FP8-KV downloaded artifacts removed"
   #         test ! -d Mistral-Nemo-Instruct-2407-FP8  && echo "Mistral-Nemo-Instruct-2407-FP8 downloaded artifacts removed"
 
   #  generate_irpa_405b:
@@ -238,7 +238,7 @@ jobs:
   #        export LD_LIBRARY_PATH="$ROCM_PATH/lib":$LD_LIBRARY_PATH
   #        echo "ROCM_PATH=$ROCM_PATH" >> $GITHUB_ENV
   #        echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
-  
+
   #        bash scripts/setenv.sh --source
   #        pip install azure-cli
   #        mkdir -p output_artifacts
