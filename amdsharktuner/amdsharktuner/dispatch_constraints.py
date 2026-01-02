@@ -63,7 +63,7 @@ def match_layout(
     )
 
 
-def get_mfma_intrinsic_constraints(
+def get_mma_intrinsic_constraints(
     lhs_type: common.ShapedType,
     rhs_type: common.ShapedType,
     res_type: common.ShapedType,
@@ -74,9 +74,10 @@ def get_mfma_intrinsic_constraints(
     lhs_layout: MMASingleSubgroupLayout | None = None,
     rhs_layout: MMASingleSubgroupLayout | None = None,
     acc_layout: MMASingleSubgroupLayout | None = None,
+    allow_virtual_mma: bool = False,
 ) -> z3.BoolRef:
-    compatible_intrinsics = common.get_compatible_mfma_intrinsics(
-        lhs_type, rhs_type, res_type, mma_intrinsics
+    compatible_intrinsics = common.get_compatible_mma_intrinsics(
+        lhs_type, rhs_type, res_type, mma_intrinsics, allow_virtual_mma
     )
     assert len(compatible_intrinsics) > 0, "No compatible intrinsics found"
 
@@ -226,7 +227,7 @@ def generate_vector_distribute_constraints(
         wg_threads <= gpu_target_info.max_thread_count_per_workgroup,
     ]
     constraints += [
-        get_mfma_intrinsic_constraints(
+        get_mma_intrinsic_constraints(
             lhs_type,
             rhs_type,
             res_type,
@@ -317,7 +318,7 @@ def generate_tile_and_fuse_constraints(
         wg_threads <= gpu_target_info.max_thread_count_per_workgroup,
     ]
     constraints += [
-        get_mfma_intrinsic_constraints(
+        get_mma_intrinsic_constraints(
             lhs_type,
             rhs_type,
             res_type,
@@ -480,7 +481,7 @@ def generate_attention_vector_distribute_constraints(
 
     constraints = []
     constraints += [
-        get_mfma_intrinsic_constraints(
+        get_mma_intrinsic_constraints(
             lhs_type=common.ShapedType([qk_matmul.m, qk_matmul.k], qk_matmul.lhs_type),
             rhs_type=common.ShapedType([qk_matmul.k, qk_matmul.n], qk_matmul.rhs_type),
             res_type=common.ShapedType([qk_matmul.m, qk_matmul.n], qk_matmul.acc_type),
@@ -491,11 +492,12 @@ def generate_attention_vector_distribute_constraints(
             lhs_layout=None,
             rhs_layout=None,
             acc_layout=qk_mma_acc_layout,
+            allow_virtual_mma=True,
         )
     ]
 
     constraints += [
-        get_mfma_intrinsic_constraints(
+        get_mma_intrinsic_constraints(
             lhs_type=common.ShapedType([pv_matmul.m, pv_matmul.k], pv_matmul.lhs_type),
             rhs_type=common.ShapedType([pv_matmul.k, pv_matmul.n], pv_matmul.rhs_type),
             res_type=common.ShapedType([pv_matmul.m, pv_matmul.n], pv_matmul.acc_type),
@@ -506,6 +508,7 @@ def generate_attention_vector_distribute_constraints(
             lhs_layout=pv_mma_lhs_layout,
             rhs_layout=pv_mma_rhs_layout,
             acc_layout=pv_mma_acc_layout,
+            allow_virtual_mma=True,
         )
     ]
 
@@ -696,6 +699,7 @@ def generate_compilation_infos(
     pipeline_options_search_space: PipelineOptionsSearchSpace,
     allowed_waves_per_eu: list[int],
     padding: Optional[list[int]] = None,
+    padding_conv: Optional[list[int]] = None,
 ) -> list[iree_codegen.CompilationInfoAttr]:
     subgroup_basis = [subgroup_basis_counts, subgroup_basis_mapping]
     # Create the LoweringConfigAttr.
@@ -711,6 +715,9 @@ def generate_compilation_infos(
 
     if padding is not None:
         lowering_config_args["padding"] = padding
+
+    if padding_conv is not None:
+        lowering_config_args["padding_conv"] = padding_conv
 
     if codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
         lowering_config_args["subgroup"] = subgroup_tile_sizes

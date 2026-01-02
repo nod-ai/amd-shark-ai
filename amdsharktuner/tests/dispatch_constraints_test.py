@@ -373,7 +373,7 @@ def test_is_valid_mma_schedule(
     assert solver.check() == z3.unsat
 
 
-def test_get_mfma_intrinsic_constraints(
+def test_get_mma_intrinsic_constraints(
     tuner_ctx: common.TunerContext,
 ) -> None:
     lhs_type = common.ShapedType([16, 16], tuner_ctx.type.f16)
@@ -384,7 +384,7 @@ def test_get_mfma_intrinsic_constraints(
     intrinsic_n = z3.Int("intrinsic_n")
     intrinsic_k = z3.Int("intrinsic_k")
 
-    constraints = dispatch_constraints.get_mfma_intrinsic_constraints(
+    constraints = dispatch_constraints.get_mma_intrinsic_constraints(
         lhs_type=lhs_type,
         rhs_type=rhs_type,
         res_type=res_type,
@@ -407,6 +407,34 @@ def test_get_mfma_intrinsic_constraints(
     n_val = model[intrinsic_n].as_long()
     k_val = model[intrinsic_k].as_long()
     assert (m_val, n_val, k_val) in [(16, 16, 16), (32, 32, 8)]
+
+    lhs_type = common.ShapedType([32, 16], tuner_ctx.type.f8E4M3FNUZ)
+    rhs_type = common.ShapedType([16, 32], tuner_ctx.type.f8E4M3FNUZ)
+    res_type = common.ShapedType([32, 32], tuner_ctx.type.f32)
+
+    constraints = dispatch_constraints.get_mma_intrinsic_constraints(
+        lhs_type=lhs_type,
+        rhs_type=rhs_type,
+        res_type=res_type,
+        intrinsic_m=intrinsic_m,
+        intrinsic_n=intrinsic_n,
+        intrinsic_k=intrinsic_k,
+        mma_intrinsics=[
+            iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16,
+            iree_gpu.VirtualMMAIntrinsic.VMFMA_F32_32x32x16_F8E4M3FNUZ,
+        ],
+        allow_virtual_mma=True,
+    )
+
+    solver = z3.Solver()
+    solver.add(constraints)
+    assert solver.check() == z3.sat
+
+    model = solver.model()
+    m_val = model[intrinsic_m].as_long()
+    n_val = model[intrinsic_n].as_long()
+    k_val = model[intrinsic_k].as_long()
+    assert (m_val, n_val, k_val) == (32, 32, 16)
 
 
 def test_match_layout():

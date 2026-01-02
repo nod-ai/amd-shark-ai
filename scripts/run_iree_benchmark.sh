@@ -221,10 +221,10 @@ elif [[ $MODEL == "llama-8B-FP16" ]]; then
           --parameters=model=$IRPA_PATH \
           --device=hip \
           --function=prefill_bs4 \
-          --input=@/amdshark-dev/data/llama3.1/weights/8b/prefill_args_bs4_128_stride_32/tokens.npy \
-          --input=@/amdshark-dev/data/llama3.1/weights/8b/prefill_args_bs4_128_stride_32/seq_lens.npy \
-          --input=@/amdshark-dev/data/llama3.1/weights/8b/prefill_args_bs4_128_stride_32/seq_block_ids.npy \
-          --input=@/amdshark-dev/data/llama3.1/weights/8b/prefill_args_bs4_128_stride_32/cs_f16.npy \
+          --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_128/prefill/prefill_args_bs4_128_stride_32/tokens.npy \
+          --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_128/prefill/prefill_args_bs4_128_stride_32/seq_lens.npy \
+          --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_128/prefill/prefill_args_bs4_128_stride_32/seq_block_ids.npy \
+          --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_128/prefill/prefill_args_bs4_128_stride_32/cs_f16.npy \
           --benchmark_repetitions=3 \
           --benchmark_out_format=json \
           --benchmark_out=${BENCHMARK_DIR}/llama-8B-FP16_prefill_bs4_isl_128.json
@@ -236,11 +236,11 @@ elif [[ $MODEL == "llama-8B-FP16" ]]; then
       --parameters=model=$IRPA_PATH \
       --device=hip \
       --function=decode_bs4 \
-      --input=@/amdshark-dev/data/llama3.1/weights/8b/decode_args_bs4_128_stride_32/next_tokens.npy \
-      --input=@/amdshark-dev/data/llama3.1/weights/8b/decode_args_bs4_128_stride_32/seq_lens.npy \
-      --input=@/amdshark-dev/data/llama3.1/weights/8b/decode_args_bs4_128_stride_32/start_positions.npy \
-      --input=@/amdshark-dev/data/llama3.1/weights/8b/decode_args_bs4_128_stride_32/seq_block_ids.npy \
-      --input=@/amdshark-dev/data/llama3.1/weights/8b/decode_args_bs4_128_stride_32/cs_f16.npy \
+      --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_128/decode/decode_args_bs4_128_stride_32/next_tokens.npy \
+      --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_128/decode/decode_args_bs4_128_stride_32/seq_lens.npy \
+      --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_128/decode/decode_args_bs4_128_stride_32/start_positions.npy \
+      --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_128/decode/decode_args_bs4_128_stride_32/seq_block_ids.npy \
+      --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_128/decode/decode_args_bs4_128_stride_32/cs_f16.npy \
       --benchmark_repetitions=3 \
       --benchmark_out_format=json \
       --benchmark_out=${BENCHMARK_DIR}/llama-8B-FP16_decode_bs4_isl_128.json
@@ -252,10 +252,10 @@ elif [[ $MODEL == "llama-8B-FP16" ]]; then
           --parameters=model=$IRPA_PATH \
           --device=hip \
           --function=prefill_bs4 \
-          --input=@/amdshark-dev/8b/prefill_args_bs4_2048_stride_32/tokens.npy \
-          --input=@/amdshark-dev/8b/prefill_args_bs4_2048_stride_32/seq_lens.npy \
-          --input=@/amdshark-dev/8b/prefill_args_bs4_2048_stride_32/seq_block_ids.npy \
-          --input=@/amdshark-dev/8b/prefill_args_bs4_2048_stride_32/cs_f16.npy \
+          --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/prefill/prefill_args_bs4_2048_stride_32/tokens.npy \
+          --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/prefill/prefill_args_bs4_2048_stride_32/seq_lens.npy \
+          --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/prefill/prefill_args_bs4_2048_stride_32/seq_block_ids.npy \
+          --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/prefill/prefill_args_bs4_2048_stride_32/cs_f16.npy \
           --benchmark_repetitions=3 \
           --benchmark_out_format=json \
           --benchmark_out=${BENCHMARK_DIR}/llama-8B-FP16_prefill_bs4_isl_2048.json
@@ -267,11 +267,11 @@ elif [[ $MODEL == "llama-8B-FP16" ]]; then
       --parameters=model=$IRPA_PATH \
       --device=hip \
       --function=decode_bs4 \
-      --input=@/amdshark-dev/8b/decode_args_bs4_2048_stride_32/next_tokens.npy \
-      --input=@/amdshark-dev/8b/decode_args_bs4_2048_stride_32/seq_lens.npy \
-      --input=@/amdshark-dev/8b/decode_args_bs4_2048_stride_32/start_positions.npy \
-      --input=@/amdshark-dev/8b/decode_args_bs4_2048_stride_32/seq_block_ids.npy \
-      --input=@/amdshark-dev/8b/decode_args_bs4_2048_stride_32/cs_f16.npy \
+      --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/decode/decode_args_bs4_2048_stride_32/next_tokens.npy \
+      --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/decode/decode_args_bs4_2048_stride_32/seq_lens.npy \
+      --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/decode/decode_args_bs4_2048_stride_32/start_positions.npy \
+      --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/decode/decode_args_bs4_2048_stride_32/seq_block_ids.npy \
+      --input=@/amdshark-dev/ossci-models/llama_3_1/8b/fp16/inputs/isl_2048/decode/decode_args_bs4_2048_stride_32/cs_f16.npy \
       --benchmark_repetitions=3 \
       --benchmark_out_format=json \
       --benchmark_out=${BENCHMARK_DIR}/llama-8B-FP16_decode_bs4_isl_2048.json

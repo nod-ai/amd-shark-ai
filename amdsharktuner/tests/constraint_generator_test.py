@@ -278,23 +278,17 @@ def test_generate_solutions_tile_and_fuse_contraction_padding(
 
         assert len(solutions) > 0, "No solutions generated with TileAndFuse pipeline."
         for solution in solutions:
-            assert len(solution) == 1, f"Expected a single-item list, got: {solution}"
+            assert len(solution) == 1
             config = solution[0]
-            assert isinstance(
-                config, common.TuningConfiguration
-            ), f"Expected TuningConfiguration, got: {type(config)}"
+            assert isinstance(config, common.TuningConfiguration)
 
-            assert (
-                config.name == "compilation_info"
-            ), f"Expected key 'compilation_info', got: {config.name}"
-            assert isinstance(
-                config.configuration, iree_codegen.CompilationInfoAttr
-            ), f"Expected CompilationInfoAttr, got: {type(config.configuration)}"
+            assert config.name == "compilation_info"
+            assert isinstance(config.configuration, iree_codegen.CompilationInfoAttr)
 
             lowering_config = config.configuration.lowering_config
-            assert "padding =" in str(
-                lowering_config
-            ), f"Missing padding in lowering config: {lowering_config}"
+            assert "padding =" in str(lowering_config)
+            # padding_conv only for convolutions, not contractions.
+            assert "padding_conv =" not in str(lowering_config)
             promote = [int(x) for x in lowering_config.attributes["promote_operands"]]
             assert promote == [0, 1]
 
@@ -355,23 +349,16 @@ def test_generate_solutions_tile_and_fuse_conv_padding(
 
         assert len(solutions) > 0, "No solutions generated with TileAndFuse pipeline."
         for solution in solutions:
-            assert len(solution) == 1, f"Expected a single-item list, got: {solution}"
+            assert len(solution) == 1
             config = solution[0]
-            assert isinstance(
-                config, common.TuningConfiguration
-            ), f"Expected TuningConfiguration, got: {type(config)}"
+            assert isinstance(config, common.TuningConfiguration)
 
-            assert (
-                config.name == "compilation_info"
-            ), f"Expected key 'compilation_info', got: {config.name}"
-            assert isinstance(
-                config.configuration, iree_codegen.CompilationInfoAttr
-            ), f"Expected CompilationInfoAttr, got: {type(config.configuration)}"
+            assert config.name == "compilation_info"
+            assert isinstance(config.configuration, iree_codegen.CompilationInfoAttr)
 
             lowering_config = config.configuration.lowering_config
-            assert "padding =" in str(
-                lowering_config
-            ), f"Missing padding in lowering config: {lowering_config}"
+            assert "padding =" in str(lowering_config)
+            assert "padding_conv =" in str(lowering_config)
             promote = [int(x) for x in lowering_config.attributes["promote_operands"]]
             assert promote == [0, 1]
 
@@ -434,23 +421,15 @@ def test_generate_solutions_tile_and_fuse_conv_small_unaligned(
         assert len(solutions) > 0, "No solutions generated for small unaligned case."
 
         for solution in solutions:
-            assert len(solution) == 1, f"Expected a single-item list, got: {solution}"
+            assert len(solution) == 1
             config = solution[0]
-            assert isinstance(
-                config, common.TuningConfiguration
-            ), f"Expected TuningConfiguration, got: {type(config)}"
+            assert isinstance(config, common.TuningConfiguration)
 
-            assert (
-                config.name == "compilation_info"
-            ), f"Expected key 'compilation_info', got: {config.name}"
-            assert isinstance(
-                config.configuration, iree_codegen.CompilationInfoAttr
-            ), f"Expected CompilationInfoAttr, got: {type(config.configuration)}"
+            assert config.name == "compilation_info"
+            assert isinstance(config.configuration, iree_codegen.CompilationInfoAttr)
 
             lowering_config = config.configuration.lowering_config
-            assert "padding =" in str(
-                lowering_config
-            ), f"Missing padding in lowering config: {lowering_config}"
+            assert "padding =" in str(lowering_config)
             promote = [int(x) for x in lowering_config.attributes["promote_operands"]]
             assert promote == [0, 1]
 
@@ -504,24 +483,15 @@ def test_generate_solutions_tile_and_fuse_matmul_small_unaligned(
         ), "No solutions generated for small unaligned matmul case."
 
         for solution in solutions:
-            print(solution)
-            assert len(solution) == 1, f"Expected a single-item list, got: {solution}"
+            assert len(solution) == 1
             config = solution[0]
-            assert isinstance(
-                config, common.TuningConfiguration
-            ), f"Expected TuningConfiguration, got: {type(config)}"
+            assert isinstance(config, common.TuningConfiguration)
 
-            assert (
-                config.name == "compilation_info"
-            ), f"Expected key 'compilation_info', got: {config.name}"
-            assert isinstance(
-                config.configuration, iree_codegen.CompilationInfoAttr
-            ), f"Expected CompilationInfoAttr, got: {type(config.configuration)}"
+            assert config.name == "compilation_info"
+            assert isinstance(config.configuration, iree_codegen.CompilationInfoAttr)
 
             lowering_config = config.configuration.lowering_config
-            assert "padding =" in str(
-                lowering_config
-            ), f"Missing padding in lowering config: {lowering_config}"
+            assert "padding =" in str(lowering_config)
             promote = [int(x) for x in lowering_config.attributes["promote_operands"]]
             assert promote == [0, 1]
 

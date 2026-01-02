@@ -172,6 +172,7 @@ def main() -> None:
         model_tuner.benchmark_flags = ["--input=1", "--benchmark_repetitions=3"]
         top_candidates = libtuner.benchmark(
             args,
+            path_config,
             compiled_candidates,
             model_tuner,
             args.model_tuner_num_dispatch_candidates,
@@ -217,6 +218,7 @@ def main() -> None:
         model_tuner.set_prune_slower_candidates(True)
         top_model_candidates = libtuner.benchmark(
             args,
+            path_config,
             compiled_model_candidates,
             model_tuner,
             args.model_tuner_num_model_candidates,
