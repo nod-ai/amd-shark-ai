@@ -7,7 +7,7 @@
 import z3  # type: ignore
 import math
 from abc import ABC, abstractmethod
-from typing import Iterator, Optional, Protocol, cast
+from typing import Iterator, Optional, cast
 from dataclasses import dataclass, fields
 
 from iree.compiler import ir  # type: ignore
@@ -338,9 +338,7 @@ def generate_generic_contraction_solutions(
         + len(contraction_dims.batch)
     )
 
-    z3_solutions_iter = cast(
-        Iterator[ContractionZ3Assignment], get_z3_solutions(constraints)
-    )
+    z3_solutions_iter = get_z3_solutions(constraints)
 
     for z3_assignment in z3_solutions_iter:
         intrinsic_mnk_shape = (
