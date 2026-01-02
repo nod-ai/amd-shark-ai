@@ -145,7 +145,7 @@ jobs:
              --hf-token "${HF_TOKEN}" \
              --irpa-path "instruct_70b_fp8_e4m3fnuz.irpa" \
              --irpa-filename "instruct_70b_fp8_e4m3fnuz.irpa" \
-             --dtype "fp8" \
+             --dtype "llama-70B-FP8" \
              --kv-cache-dtype "float8_e4m3fnuz" \
              --tokenizer-path "/amdshark-dev/ossci-models/llama_3_1/70b/tokenizer/tokenizer.json" \
              --tokenizer-config-path "/amdshark-dev/ossci-models/llama_3_1/70b/tokenizer/tokenizer_config.json" \
