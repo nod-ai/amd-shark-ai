@@ -7,7 +7,7 @@
 | amdsharktank/amdsharktank/\_\_init\_\_.py                                           |        4 |        1 |     75% |        15 |
 | amdsharktank/amdsharktank/build/\_\_init\_\_.py                                     |        1 |        1 |      0% |         7 |
 | amdsharktank/amdsharktank/build/actions.py                                          |       45 |       45 |      0% |     7-109 |
-| amdsharktank/amdsharktank/evaluate/perplexity\_iree.py                              |      248 |      208 |     16% |71-91, 95-101, 106-128, 136-172, 180-216, 226-252, 257-302, 307-356, 359-414, 421-469, 482-536, 543-592, 596 |
+| amdsharktank/amdsharktank/evaluate/perplexity\_iree.py                              |      257 |      217 |     16% |72-93, 97-103, 108-130, 138-183, 191-227, 237-263, 268-313, 318-367, 370-425, 432-480, 493-548, 555-611, 615 |
 | amdsharktank/amdsharktank/evaluate/perplexity\_torch.py                             |      184 |      146 |     21% |54-56, 60-66, 71-93, 112-139, 143-160, 164-228, 242-281, 295-350, 374-397, 401-441, 445 |
 | amdsharktank/amdsharktank/examples/export\_paged\_llm\_v1.py                        |      133 |       47 |     65% |48, 84-90, 100, 113-131, 238-326, 330 |
 | amdsharktank/amdsharktank/examples/paged\_llm\_v1.py                                |       52 |       41 |     21% |38-132, 136 |
@@ -256,7 +256,7 @@
 | amdsharktank/tests/utils/random\_test.py                                            |       23 |        0 |    100% |           |
 | amdsharktank/tests/utils/testing\_test.py                                           |      132 |        0 |    100% |           |
 | amdsharktank/tests/utils/tree\_test.py                                              |       20 |        0 |    100% |           |
-| **TOTAL**                                                                           | **24809** | **5567** | **78%** |           |
+| **TOTAL**                                                                           | **24818** | **5576** | **78%** |           |
 
 
 ## Setup coverage badge
