@@ -2,6 +2,7 @@
 
 export BUILD_PREFERENCE="precompiled"
 export PORT=8112
+export FORCE_UPDATE=False
 SCRIPT_DIR=$(dirname $(realpath "$0"))
 SHORTFIN_SRC=$SCRIPT_DIR/../shortfin
 HF_HOME_DIR=${HF_HOME:-"$HOME/.cache/huggingface"}
@@ -15,7 +16,7 @@ function run_sdxl_model() {
         --device=hip \
         --device_ids=0 \
         --build_preference=$BUILD_PREFERENCE \
-        --port $PORT &
+        --port $PORT --force_update=$FORCE_UPDATE &
 
     SHORTFIN_PROCESS=$!
     wait_for_server $PORT
@@ -111,6 +112,10 @@ while [[ "$1" != "" ]]; do
     --hf-token)
         shift
         export HF_TOKEN=$1
+        ;;
+    --force-update)
+        shift
+        export FORCE_UPDATE=True
         ;;
     -h | --help)
         echo "Usage: $0 [--<different flags>] "
