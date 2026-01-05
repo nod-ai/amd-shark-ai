@@ -21,11 +21,11 @@ TScalar = TypeVar("TScalar", int, z3.ExprRef)
 
 @dataclass(slots=True)
 class ContractionConstantsBase(Generic[TScalar]):
-    m_vars: list[TScalar]
-    n_vars: list[TScalar]
-    k_vars: list[TScalar]
-    subgroup_m_vars: list[TScalar]
-    subgroup_n_vars: list[TScalar]
+    m_vals: list[TScalar]
+    n_vals: list[TScalar]
+    k_vals: list[TScalar]
+    subgroup_m_vals: list[TScalar]
+    subgroup_n_vals: list[TScalar]
 
     subgroup_size: TScalar
     intrinsic_mn: TScalar
@@ -54,11 +54,11 @@ class ContractionZ3Constants(ContractionConstantsBase[z3.ExprRef]):
     ) -> "ContractionZ3Constants":
         M, N, K = matmul_size.M, matmul_size.N, matmul_size.K
 
-        m_vars = [z3.Int(f"m{i}") for i in range(len(M))]
-        n_vars = [z3.Int(f"n{i}") for i in range(len(N))]
-        k_vars = [z3.Int(f"k{i}") for i in range(len(K))]
-        subgroup_m_vars = [z3.Int(f"subgroup_m{i}") for i in range(len(M))]
-        subgroup_n_vars = [z3.Int(f"subgroup_n{i}") for i in range(len(N))]
+        m_vals = [z3.Int(f"m{i}") for i in range(len(M))]
+        n_vals = [z3.Int(f"n{i}") for i in range(len(N))]
+        k_vals = [z3.Int(f"k{i}") for i in range(len(K))]
+        subgroup_m_vals = [z3.Int(f"subgroup_m{i}") for i in range(len(M))]
+        subgroup_n_vals = [z3.Int(f"subgroup_n{i}") for i in range(len(N))]
 
         subgroup_size = z3.Int("subgroup_size")
         intrinsic_mn = z3.Int("intrinsic_mn")
@@ -68,11 +68,11 @@ class ContractionZ3Constants(ContractionConstantsBase[z3.ExprRef]):
         sg_n_cnt = z3.Int("sg_n_cnt")
 
         return cls(
-            m_vars=m_vars,
-            n_vars=n_vars,
-            k_vars=k_vars,
-            subgroup_m_vars=subgroup_m_vars,
-            subgroup_n_vars=subgroup_n_vars,
+            m_vals=m_vals,
+            n_vals=n_vals,
+            k_vals=k_vals,
+            subgroup_m_vals=subgroup_m_vals,
+            subgroup_n_vals=subgroup_n_vals,
             subgroup_size=subgroup_size,
             intrinsic_mn=intrinsic_mn,
             intrinsic_k=intrinsic_k,
@@ -107,11 +107,11 @@ class ContractionZ3Constants(ContractionConstantsBase[z3.ExprRef]):
             return val.as_long()
 
         return ContractionZ3Assignment(
-            m_vars=[get(v) for v in self.m_vars],
-            n_vars=[get(v) for v in self.n_vars],
-            k_vars=[get(v) for v in self.k_vars],
-            subgroup_m_vars=[get(v) for v in self.subgroup_m_vars],
-            subgroup_n_vars=[get(v) for v in self.subgroup_n_vars],
+            m_vals=[get(v) for v in self.m_vals],
+            n_vals=[get(v) for v in self.n_vals],
+            k_vals=[get(v) for v in self.k_vals],
+            subgroup_m_vals=[get(v) for v in self.subgroup_m_vals],
+            subgroup_n_vals=[get(v) for v in self.subgroup_n_vals],
             subgroup_size=get(self.subgroup_size),
             intrinsic_mn=get(self.intrinsic_mn),
             intrinsic_k=get(self.intrinsic_k),
@@ -212,7 +212,7 @@ def generate_generic_contraction_z3_constraints(
                 lhs_type,
                 rhs_type,
                 res_type,
-                [z3_constants.m_vars, z3_constants.n_vars, z3_constants.k_vars],
+                [z3_constants.m_vals, z3_constants.n_vals, z3_constants.k_vals],
                 num_subgroups,
                 z3_constants.subgroup_size,
                 [z3_constants.intrinsic_mn, z3_constants.intrinsic_k],
@@ -224,7 +224,7 @@ def generate_generic_contraction_z3_constraints(
             )
             constraints += [
                 v == 0
-                for v in z3_constants.subgroup_m_vars + z3_constants.subgroup_n_vars
+                for v in z3_constants.subgroup_m_vals + z3_constants.subgroup_n_vals
             ]
         case iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
             constraints = dispatch_constraints.generate_tile_and_fuse_constraints(
@@ -233,11 +233,11 @@ def generate_generic_contraction_z3_constraints(
                 rhs_type,
                 res_type,
                 [
-                    z3_constants.m_vars,
-                    z3_constants.n_vars,
-                    z3_constants.k_vars,
-                    z3_constants.subgroup_m_vars,
-                    z3_constants.subgroup_n_vars,
+                    z3_constants.m_vals,
+                    z3_constants.n_vals,
+                    z3_constants.k_vals,
+                    z3_constants.subgroup_m_vals,
+                    z3_constants.subgroup_n_vals,
                 ],
                 num_subgroups,
                 z3_constants.subgroup_size,
@@ -377,12 +377,12 @@ def generate_generic_contraction_solutions(
         set_cdim_tile_sizes(
             workgroup_tile_sizes,
             contraction_dims.m,
-            z3_assignment.m_vars,
+            z3_assignment.m_vals,
         )
         set_cdim_tile_sizes(
             workgroup_tile_sizes,
             contraction_dims.n,
-            z3_assignment.n_vars,
+            z3_assignment.n_vals,
         )
         set_cdim_tile_sizes(
             workgroup_tile_sizes,
@@ -397,12 +397,12 @@ def generate_generic_contraction_solutions(
         set_cdim_tile_sizes(
             subgroup_tile_sizes,
             contraction_dims.m,
-            z3_assignment.subgroup_m_vars,
+            z3_assignment.subgroup_m_vals,
         )
         set_cdim_tile_sizes(
             subgroup_tile_sizes,
             contraction_dims.n,
-            z3_assignment.subgroup_n_vars,
+            z3_assignment.subgroup_n_vals,
         )
         set_cdim_tile_sizes(
             subgroup_tile_sizes,
@@ -417,7 +417,7 @@ def generate_generic_contraction_solutions(
         set_cdim_tile_sizes(
             reduction_tile_sizes,
             contraction_dims.k,
-            z3_assignment.k_vars,
+            z3_assignment.k_vals,
         )
 
         promote_operands = [0, 1]
