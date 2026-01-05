@@ -125,6 +125,17 @@ class ContractionZ3Constants(ContractionConstantsBase[z3.ExprRef]):
 
 @dataclass
 class ConstraintSet:
+    """
+    A container for a Z3 solver and the symbolic constants used in its constraints.
+
+    `solver` is expected to be populated with all assertions defining a
+    single contraction problem. No additional base constraints should be added
+    after construction. The solver should be ready for Z3 `check()` and model enumeration.
+
+    'z3_constants` contains the complete set of Z3 symbols referenced by the
+    solver and is used for model extraction and blocking.
+    """
+
     solver: z3.Solver
     z3_constants: ContractionZ3Constants
 
