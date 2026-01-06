@@ -898,6 +898,7 @@ def generate_candidate_specs(
 
         tuning_client.target_info = common.get_target_info(mlir_module)
         assert tuning_client.target_info, "Failed to query target info."
+        solution_gen_start_time = time.perf_counter()
         solutions_iter = candidate_gen.generate_solutions(
             dispatch_tuner=dispatch_tuner,
             target_info=tuning_client.target_info,
@@ -907,13 +908,17 @@ def generate_candidate_specs(
             pipeline_options_search_space=pipeline_options_search_space,
             codegen_pipeline=get_iree_codegen_pipeline(args.codegen_pipeline),
         )
-
         if args.enable_random_seed:
             random.seed()
         else:
             random.seed(args.search_space_shuffle_seed)
 
         solutions = list(solutions_iter)
+        solution_gen_end_time = time.perf_counter()
+        elapsed_time = solution_gen_end_time - solution_gen_start_time
+        logging.debug(f"Completed candidate generation in {elapsed_time:.6f}s\n")
+        logging.debug(f"Max search space size: {len(solutions)}")
+
         knobs: list[Optional[common.KnobAssignment]] = [
             dispatch_tuner.get_knob_assignment(s) for s in solutions
         ]
