@@ -95,7 +95,7 @@ class ContractionZ3Constants(ContractionConstantsBase[z3.ExprRef]):
             ...
         }
         """
-        meta = {}
+        meta: dict[str, str | list[str]] = {}
 
         for f in fields(self):
             attr = getattr(self, f.name)
