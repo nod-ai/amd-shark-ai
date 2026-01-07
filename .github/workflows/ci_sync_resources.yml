@@ -16,7 +16,7 @@ jobs:
     name: "CI - Sync Data Files"
     strategy:
       matrix:
-        runs-on: [linux-mi325-1gpu-ossci-nod-ai, linux-mi355-1gpu-ossci-nod-ai]
+        runs-on: [linux-mi325-1gpu-ossci-nod-ai, linux-mi355-1gpu-ossci-nod-ai, linux-mi355-1gpu-ossci-nod-ai.test]
     runs-on: ${{matrix.runs-on}}
     defaults:
       run:
