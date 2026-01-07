@@ -315,7 +315,7 @@ def solve_z3_contraint_payload(
     constraint_payload: ConstraintPayload,
 ) -> list[ContractionZ3Assignment]:
     """
-    Function executed in worker processes to solve an indipendent constraint set.
+    Function executed in worker processes to solve an independent constraint set.
     """
     ctx = z3.Context()
     solver = z3.Solver(ctx=ctx)
