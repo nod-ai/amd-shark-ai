@@ -5,10 +5,6 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 from amdsharktuner import process_utils
-from amdsharktuner.test_utils import configure_pytest_multiprocessing
-
-
-configure_pytest_multiprocessing()
 
 
 def test_worker_context_manager_set_and_get():
