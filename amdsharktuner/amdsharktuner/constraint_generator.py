@@ -311,7 +311,12 @@ def generate_generic_contraction_z3_constraints(
     return mega_constraints_list
 
 
-def solve_z3_contraint_payload(constraint_payload: ConstraintPayload):
+def solve_z3_contraint_payload(
+    constraint_payload: ConstraintPayload,
+) -> list[ContractionZ3Assignment]:
+    """
+    Function executed in worker processes to solve an indipendent constraint set.
+    """
     ctx = z3.Context()
     solver = z3.Solver(ctx=ctx)
     solver.add(z3.parse_smt2_string(constraint_payload.z3_smt2, ctx=ctx))
