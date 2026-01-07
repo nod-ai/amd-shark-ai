@@ -170,7 +170,7 @@ class ConstraintSet:
 class ConstraintPayload:
     """
     A container for Z3 data passed to worker processes.
-    `z3_smt2`is SMT-2 string of all formulas asserted in the ConstraintSet.solver.
+    `z3_smt2` is SMT-2 string of all formulas asserted in the ConstraintSet.solver.
     `z3_constants_meta` is serialized ConstraintSet.z3_constants.
     """
 
