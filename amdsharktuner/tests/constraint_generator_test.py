@@ -22,7 +22,10 @@ from amdsharktuner import (
     dispatch_parser,
 )
 
-from amdsharktuner.test_utils import tuner_ctx
+from amdsharktuner.test_utils import tuner_ctx, configure_pytest_multiprocessing
+
+
+configure_pytest_multiprocessing()
 
 
 @pytest.fixture

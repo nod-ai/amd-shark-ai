@@ -6,6 +6,7 @@
 
 
 import pytest
+import multiprocessing
 
 from typing import Generator
 from logging import Logger
@@ -27,3 +28,12 @@ def tuner_ctx() -> Generator[common.TunerContext, None, None]:
 def mlir_ctx() -> Generator[ir.Context, None, None]:
     with ir.Context() as ctx:
         yield ctx
+
+
+def configure_pytest_multiprocessing() -> None:
+    try:
+        # Use "spawn" to avoid fork() warnings in pytest.
+        multiprocessing.set_start_method("spawn")
+    except RuntimeError:
+        # Start method already set or multiprocessing already initialized.
+        pass
