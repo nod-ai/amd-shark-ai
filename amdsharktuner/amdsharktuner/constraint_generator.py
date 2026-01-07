@@ -423,6 +423,9 @@ def generate_generic_contraction_solutions(
     tuner_ctx.logger.debug(
         f"Will generate [{len(constraint_payload_list)}] constraint solvers."
     )
+    print(
+        f"Running {len(constraint_payload_list)} worker processes (one per mega-constraint set)"
+    )
     executor = process_utils.MultiprocessExecutor(
         num_workers=len(constraint_payload_list),
     )
