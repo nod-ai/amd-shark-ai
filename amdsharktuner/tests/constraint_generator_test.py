@@ -658,6 +658,26 @@ def test_adjust_problem_size_for_pipeline_with_igemm_details(
         assert conv_size.K == [1152]
 
 
+def test_Z3Constants_class_methods() -> None:
+    matmul_size = common.ContractionSizes(M=[1], N=[1], K=[1], B=[1])
+    orig = constraint_generator.ContractionZ3Constants.from_sizes(matmul_size)
+    meta = orig.to_meta()
+
+    ctx = constraint_generator.z3.Context()
+    recon = constraint_generator.ContractionZ3Constants.from_meta(meta=meta, ctx=ctx)
+
+    for f in constraint_generator.fields(orig):
+        orig_field = getattr(orig, f.name)
+        recon_field = getattr(recon, f.name)
+
+        if isinstance(orig_field, list):
+            assert [v.decl().name() for v in orig_field] == [
+                v.decl().name() for v in recon_field
+            ]
+        else:
+            assert orig_field.decl().name() == recon_field.decl().name()
+
+
 def test_get_z3_solutions() -> None:
     matmul_size = common.ContractionSizes(M=[1], N=[1], K=[1], B=[1])
     z3_constants = constraint_generator.ContractionZ3Constants.from_sizes(matmul_size)
