@@ -83,8 +83,18 @@ class ContractionZ3Constants(ContractionConstantsBase[z3.ExprRef]):
             sg_n_cnt=sg_n_cnt,
         )
 
-    def to_meta(self) -> dict:
-        """Serialize constants to their symbol names."""
+    def to_meta(self) -> dict[str, str | list[str]]:
+        """
+        Serialize constants to their symbol names.
+
+        Example:
+        meta = {
+            "m_vals": ["m0", "m1"],
+            "subgroup_n_vals": ["subgroup_n0"],
+            "intrinsic_mn": "intrinsic_mn",
+            ...
+        }
+        """
         meta = {}
 
         for f in fields(self):
@@ -97,8 +107,31 @@ class ContractionZ3Constants(ContractionConstantsBase[z3.ExprRef]):
         return meta
 
     @classmethod
-    def from_meta(cls, meta: dict, ctx: z3.Context) -> "ContractionZ3Constants":
-        """Reconstruct constants from serialized metadata."""
+    def from_meta(
+        cls, meta: dict[str, str | list[str]], ctx: z3.Context
+    ) -> "ContractionZ3Constants":
+        """
+        Reconstruct constants from serialized metadata.
+
+        Z3 expressions are context-bound and cannot be shared across
+        contexts. Providing `ctx` ensures that all reconstructed symbols
+        belong to the same context and can be safely combined in constraints
+        and solvers.
+
+        Example:
+        meta = {
+            "m_vals": ["m0", "m1"],
+            "subgroup_n_vals": ["subgroup_n0"],
+            "intrinsic_mn": "intrinsic_mn",
+            ...
+        }
+        kwargs = {
+            "m_vals": [z3.Int("m0", ctx), z3.Int("m1", ctx)],
+            "subgroup_n_vals": [z3.Int("subgroup_n0", ctx)],
+            "intrinsic_mn": z3.Int("intrinsic_mn", ctx),
+            ...
+        }
+        """
         kwargs = {}
         for f in fields(cls):
             value = meta[f.name]
