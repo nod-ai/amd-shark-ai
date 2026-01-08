@@ -40,55 +40,6 @@ def parse_mlir(mlir_text: str, ctx: common.TunerContext) -> ir.Module:
     return mlir_module
 
 
-def build_conv_to_igemm_info(
-    convolution_dims: linalg.ConvolutionDimensions,
-    input_type: ir.Type,
-    input_map: ir.AffineMap,
-    igemm_details,
-) -> common.ConvToIgemmInfo:
-    """
-    Builds ConvToIgemmInfo from convolution dimensions and IGEMM details.
-
-    Corresponds to IREE:
-    https://github.com/iree-org/iree/blob/d3440737cc56a4d1b20c72181d9a37f194bd3ce5/compiler/src/iree/compiler/Codegen/Dialect/GPU/TargetUtils/ConfigUtils.cpp#L872-L909
-    """
-    input_shape = input_type.shape
-    conv_to_igemm_info = common.ConvToIgemmInfo(conv_dims=convolution_dims)
-
-    # Map input channel dimensions to their sizes in the input tensor.
-    for dim in convolution_dims.input_channel:
-        for idx, expr in enumerate(input_map.results):
-            if common.is_affine_expr_function_of_dim(expr, dim):
-                conv_to_igemm_info.input_channel_dim_to_size[dim] = input_shape[idx]
-
-    # Process output image dimensions to find input image positions.
-    input_image_pos = []
-    for dim in convolution_dims.output_image:
-        for idx, expr in enumerate(input_map.results):
-            if common.is_affine_expr_function_of_dim(expr, dim):
-                input_image_pos.append(idx)
-
-    # Process batch dimensions to find batch positions.
-    batch_pos = []
-    for dim in convolution_dims.batch:
-        for idx, expr in enumerate(input_map.results):
-            if common.is_affine_expr_function_of_dim(expr, dim):
-                batch_pos.append(idx)
-
-    input_image_pos = sorted(input_image_pos)
-    batch_pos = sorted(batch_pos)
-
-    conv_to_igemm_info.is_batch_dim_last = (
-        len(batch_pos) > 0 and batch_pos[-1] == len(input_shape) - 1
-    )
-    conv_to_igemm_info.is_spatial_dim_last = (
-        len(input_image_pos) > 0 and input_image_pos[-1] == len(input_shape) - 1
-    )
-
-    conv_to_igemm_info.conv_to_igemm_dim_map = dict(igemm_details.conv_to_igemm_dim_map)
-    return conv_to_igemm_info
-
-
 @dataclass
 class OpInfo:
     root_op: ir.Operation
@@ -120,11 +71,6 @@ class ConvolutionOpInfo(OpInfo):
     depth_sizes: list[int]
     strides: list[int]
     dilations: list[int]
-
-    # IGEMM details for TileAndFuse pipeline (None if not available).
-    igemm_details: Optional[iree_codegen.IGEMMGenericConvDetails] = None
-    # Convolution to IGEMM transformation info (None if not available).
-    conv_to_igemm_info: Optional[common.ConvToIgemmInfo] = None
 
 
 @dataclass
@@ -339,8 +285,6 @@ class ConvolutionOpInterfaceParser(DispatchParser, metaclass=ABCMeta):
         info: common.ConvDimInfo,
         contraction_dims: common.ContractionDimensions,
         matmul_size: common.ContractionSizes,
-        igemm_details: Optional[iree_codegen.IGEMMGenericConvDetails],
-        conv_to_igemm_info: Optional[common.ConvToIgemmInfo],
     ) -> None:
         """Build ConvolutionOpInfo from extracted info and strategy-specific values."""
         self._op_info = ConvolutionOpInfo(
@@ -359,8 +303,6 @@ class ConvolutionOpInterfaceParser(DispatchParser, metaclass=ABCMeta):
             depth_sizes=info.depth_sizes,
             strides=info.strides,
             dilations=info.dilations,
-            igemm_details=igemm_details,
-            conv_to_igemm_info=conv_to_igemm_info,
         )
 
     def get_op_info(self) -> ConvolutionOpInfo:
@@ -368,83 +310,6 @@ class ConvolutionOpInterfaceParser(DispatchParser, metaclass=ABCMeta):
             self._op_info, ConvolutionOpInfo
         ), "Failed to build ConvolutionOpInfo"
         return self._op_info
-
-
-class IGEMMConvolutionParser(ConvolutionOpInterfaceParser):
-    """Convolution parser using IGEMM (Implicit GEMM) lowering strategy."""
-
-    def __init__(
-        self,
-        root_op: ir.Operation,
-        tuner_ctx: common.TunerContext,
-    ):
-        super().__init__(root_op, tuner_ctx)
-        info = self._conv_dim_info
-
-        # Get IGEMM details for the TileAndFuse pipeline.
-        igemm_details = iree_codegen.get_igemm_generic_conv_details(root_op)
-        assert igemm_details, "Failed to get IGEMM details for convolution"
-
-        igemm_maps = [
-            map_attr.value for map_attr in igemm_details.igemm_contraction_maps
-        ]
-        igemm_contraction_dims = linalg.infer_contraction_dimensions_from_maps(
-            igemm_maps
-        )
-        assert (
-            igemm_contraction_dims
-        ), "Failed to infer contraction dimensions from IGEMM maps"
-
-        bounds = list(igemm_details.igemm_loop_bounds)
-
-        contraction_dims = common.ContractionDimensions(
-            batch=list(igemm_contraction_dims.batch),
-            m=list(igemm_contraction_dims.m),
-            n=list(igemm_contraction_dims.n),
-            k=list(igemm_contraction_dims.k),
-        )
-        matmul_size = common.ContractionSizes(
-            B=[bounds[i] for i in contraction_dims.batch],
-            M=[bounds[i] for i in contraction_dims.m],
-            N=[bounds[i] for i in contraction_dims.n],
-            K=[bounds[i] for i in contraction_dims.k],
-        )
-
-        conv_to_igemm_info = build_conv_to_igemm_info(
-            info.convolution_dims, info.lhs_type, info.indexing_maps[0], igemm_details
-        )
-
-        self._build_op_info(
-            info, contraction_dims, matmul_size, igemm_details, conv_to_igemm_info
-        )
-
-
-class InnerMNKConvolutionParser(ConvolutionOpInterfaceParser):
-    """Convolution parser using INNER_MNK lowering strategy."""
-
-    def __init__(
-        self,
-        root_op: ir.Operation,
-        tuner_ctx: common.TunerContext,
-    ):
-        super().__init__(root_op, tuner_ctx)
-        info = self._conv_dim_info
-
-        # INNER_MNK: Use the convolution dimensions directly.
-        contraction_dims = common.ContractionDimensions(
-            batch=info.depth_indices,
-            m=info.batch_indices + info.output_image_indices,
-            n=info.output_channel_indices,
-            k=info.filter_loop_indices + info.input_channel_indices,
-        )
-        matmul_size = common.ContractionSizes(
-            B=info.depth_sizes,
-            M=info.batch_sizes + info.output_image_sizes,
-            N=info.output_channel_sizes,
-            K=info.filter_loop_sizes + info.input_channel_sizes,
-        )
-
-        self._build_op_info(info, contraction_dims, matmul_size, None, None)
 
 
 class AttentionOpInterfaceParser(DispatchParser):
