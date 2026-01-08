@@ -34,16 +34,16 @@ jobs:
         version: [3.12]
       fail-fast: false
     runs-on: linux-mi355-1gpu-ossci-nod-ai
-    container:
-      image: rocm/pytorch:rocm7.1.1_ubuntu24.04_py3.12_pytorch_release_2.9.1
-      options: >
-        --ipc host
-        --shm-size=8G
-        --cap-add=SYS_PTRACE
-        --security-opt seccomp=unconfined
-        --group-add video
-        --device /dev/kfd
-        --device /dev/dri
+    #container:
+    #  image: rocm/pytorch:rocm7.1.1_ubuntu24.04_py3.12_pytorch_release_2.9.1
+    #  options: >
+    #    --ipc host
+    #    --shm-size=8G
+    #    --cap-add=SYS_PTRACE
+    #    --security-opt seccomp=unconfined
+    #    --group-add video
+    #    --device /dev/kfd
+    #    --device /dev/dri
 
     defaults:
       run:
@@ -75,6 +75,20 @@ jobs:
         #  --ipc=host \
         #  --shm-size 8G \
         #  rocm/pytorch:latest
+        
+
+        # try with non-interactive mode
+        docker pull rocm/pytorch:rocm7.1.1_ubuntu24.04_py3.12_pytorch_release_2.9.1
+        docker run -d \
+          --cap-add=SYS_PTRACE \
+          --security-opt seccomp=unconfined \
+          --device=/dev/kfd \
+          --device=/dev/dri \
+          --group-add video \
+          --ipc=host \
+          --shm-size 8G \
+          rocm/pytorch:latest
+        
         mkdir -p output_artifacts
         git clone https://github.com/iree-org/iree-turbine.git
         cd iree-turbine
