@@ -31,19 +31,20 @@ jobs:
     name: "Boo on Mi355"
     strategy:
       matrix:
-        version: [3.11]
+        version: [3.12]
       fail-fast: false
     runs-on: linux-mi355-1gpu-ossci-nod-ai
-    #container:
-    #  image: 'ghcr.io/rocm/no_rocm_image_ubuntu24_04@sha256:405945a40deaff9db90b9839c0f41d4cba4a383c1a7459b28627047bf6302a26'
-    #  options: --ipc host
-    #    --group-add video
-    #    --device /dev/kfd
-    #    --device /dev/dri
-    #    --env-file /etc/podinfo/gha-gpu-isolation-settings
-    #  volumes:
-    #    - /amdshark-dev:/amdshark-dev
-    #    - /amdshark-cache:/amdshark-cache
+    container:
+      image: rocm/pytorch:rocm7.1.1_ubuntu24.04_py3.12_pytorch_release_2.9.1
+      options: >
+        --ipc host
+        --shm-size=8G
+        --cap-add=SYS_PTRACE
+        --security-opt seccomp=unconfined
+        --group-add video
+        --device /dev/kfd
+        --device /dev/dri
+        --env-file /etc/podinfo/gha-gpu-isolation-settings
     defaults:
       run:
         shell: bash
@@ -60,20 +61,20 @@ jobs:
         python-version: ${{matrix.version}}
     - name: Create Python venv
       run: |
-        python -m venv ${VENV_DIR}
-        source ${VENV_DIR}/bin/activate
+        #python -m venv ${VENV_DIR}
+        #source ${VENV_DIR}/bin/activate
     - name: Install pip deps
       run: |
-        docker pull rocm/pytorch:rocm7.1.1_ubuntu24.04_py3.12_pytorch_release_2.9.1
-        docker run -it \
-          --cap-add=SYS_PTRACE \
-          --security-opt seccomp=unconfined \
-          --device=/dev/kfd \
-          --device=/dev/dri \
-          --group-add video \
-          --ipc=host \
-          --shm-size 8G \
-          rocm/pytorch:latest
+        # docker pull rocm/pytorch:rocm7.1.1_ubuntu24.04_py3.12_pytorch_release_2.9.1
+        # docker run -it \
+        #  --cap-add=SYS_PTRACE \
+        #  --security-opt seccomp=unconfined \
+        #  --device=/dev/kfd \
+        #  --device=/dev/dri \
+        #  --group-add video \
+        #  --ipc=host \
+        #  --shm-size 8G \
+        #  rocm/pytorch:latest
         mkdir -p output_artifacts
         git clone https://github.com/iree-org/iree-turbine.git
         cd iree-turbine
