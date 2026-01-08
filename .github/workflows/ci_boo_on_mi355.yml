@@ -101,4 +101,3 @@ jobs:
         path: |
           output_artifacts/*.csv
           output_artifacts/version.txt
-
