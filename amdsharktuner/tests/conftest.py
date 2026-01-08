@@ -5,10 +5,14 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 
+import multiprocessing
 from typing import Any
-
-from amdsharktuner.test_utils import configure_pytest_multiprocessing
 
 
 def pytest_sessionstart(session: Any) -> None:
-    configure_pytest_multiprocessing()
+    try:
+        # Use "spawn" to avoid fork() warnings in pytest.
+        multiprocessing.set_start_method("spawn")
+    except RuntimeError:
+        # Start method already set or multiprocessing already initialized.
+        pass
