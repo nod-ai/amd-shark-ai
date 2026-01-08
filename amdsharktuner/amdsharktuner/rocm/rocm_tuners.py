@@ -11,7 +11,7 @@ from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_codegen, linalg  # type: ignore
 
 from .. import common, constraint_generator, dispatch_parser, spec_builder, tuner_base
-from . import rocm_constraint_generators
+from . import rocm_constraint_generators, rocm_parsers
 
 
 class ROCmContractionVectorDistributeTuner(
@@ -115,7 +115,7 @@ class ROCmContractionTileAndFuseTuner(
 
 
 class ROCmConvolutionVectorDistributeTuner(
-    tuner_base.DispatchTuner, dispatch_parser.ConvolutionOpInterfaceParser
+    tuner_base.DispatchTuner, rocm_parsers.InnerMNKConvolutionParser
 ):
     def __init__(self, root_op: ir.Operation, tuner_ctx: common.TunerContext):
         super().__init__(root_op, tuner_ctx)
@@ -161,7 +161,7 @@ class ROCmConvolutionVectorDistributeTuner(
 
 
 class ROCmConvolutionTileAndFuseTuner(
-    tuner_base.DispatchTuner, dispatch_parser.ConvolutionOpInterfaceParser
+    tuner_base.DispatchTuner, rocm_parsers.IGEMMConvolutionParser
 ):
     def __init__(self, root_op: ir.Operation, tuner_ctx: common.TunerContext):
         super().__init__(root_op, tuner_ctx)
@@ -173,15 +173,8 @@ class ROCmConvolutionTileAndFuseTuner(
         convolution_dims = linalg.infer_convolution_dimensions(root_op)
         if not convolution_dims:
             return False
-        # Only allow 'nhwc_hwcf' convs.
-        return (
-            list(convolution_dims.batch) == [0]
-            and list(convolution_dims.output_image) == [1, 2]
-            and list(convolution_dims.output_channel) == [3]
-            and list(convolution_dims.filter_loop) == [4, 5]
-            and list(convolution_dims.input_channel) == [6]
-            and list(convolution_dims.depth) == []
-        )
+        # Support all 2D convolutions (no depth dimension) for IGEMM.
+        return list(convolution_dims.depth) == []
 
     def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
         return rocm_constraint_generators.ROCmConvolutionTileAndFuseConstraintGenerator(

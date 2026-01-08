@@ -741,21 +741,6 @@ def get_iree_codegen_pipeline(pipeline: CodegenPipelines):
             assert False, "unexpected codegen pipeline"
 
 
-def get_conv_lowering_strategy_for_pipeline(
-    codegen_pipeline: CodegenPipelines,
-) -> common.ConvLoweringStrategy:
-    """Get the appropriate convolution lowering strategy for the given pipeline.
-
-    IGEMM only works with TileAndFuse, INNER_MNK only works with VectorDistribute.
-
-    TODO(Bangtian): When direct conv support is added, expose this as a CLI arg
-    (e.g., --conv-lowering-strategy) to allow users to choose between igemm and direct.
-    """
-    if codegen_pipeline == CodegenPipelines.llvmgpu_tile_and_fuse:
-        return common.ConvLoweringStrategy.IGEMM
-    return common.ConvLoweringStrategy.INNER_MNK
-
-
 def generate_candidate_specs(
     args: argparse.Namespace,
     path_config: PathConfig,

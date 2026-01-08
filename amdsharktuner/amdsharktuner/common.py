@@ -52,27 +52,12 @@ class BenchmarkToolConfig(Protocol):
     benchmark_fn: Callable
 
 
-class ConvLoweringStrategy(Enum):
-    """Convolution lowering strategy for code generation.
-
-    INNER_MNK: Uses innermost conv dimensions as M/N/K directly, tiling other
-               dims to 1 to reduce to matmul form (used with VectorDistribute).
-    IGEMM: Implicit GEMM transformation (used with TileAndFuse pipeline).
-
-    TODO(Bangtian): Add DIRECT strategy for direct convolution (along TileAndFuse
-    pipeline like IGEMM).
-    """
-
-    INNER_MNK = "inner_mnk"
-    IGEMM = "igemm"
-
-
 @dataclass
 class ConvDimInfo:
     """Common convolution dimension info extracted from a convolution op.
 
-    This dataclass is reused by all convolution lowering tuners (IGEMM, INNER_MNK, etc.)
-    to share the common dimension extraction logic.
+    This dataclass is reused by all convolution parsers to share the common
+    dimension extraction logic.
     """
 
     convolution_dims: linalg.ConvolutionDimensions
@@ -238,23 +223,6 @@ class ContractionDimensions:
     n: list[int]
     k: list[int]
     batch: list[int] = field(default_factory=list)
-
-
-@dataclass
-class ConvToIgemmInfo:
-    """
-    Stores information about convolution to IGEMM transformation.
-    Used by get_padding_conv_sizes to calculate padding_conv attribute.
-
-    Corresponds to ConvToIgemmInfo struct in IREE:
-    https://github.com/iree-org/iree/blob/d3440737cc56a4d1b20c72181d9a37f194bd3ce5/compiler/src/iree/compiler/Codegen/Dialect/GPU/TargetUtils/ConfigUtils.cpp#L373-L379
-    """
-
-    conv_dims: linalg.ConvolutionDimensions
-    is_batch_dim_last: bool = False
-    is_spatial_dim_last: bool = False
-    conv_to_igemm_dim_map: dict[int, int] = field(default_factory=dict)
-    input_channel_dim_to_size: dict[int, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -532,105 +500,6 @@ def get_dim_bounds(
             result.append(dim)
 
     return result
-
-
-# Implemented the logic from IREE side:
-# https://github.com/iree-org/iree/blob/8ae91ebb0e555e660b8a6898f6071476f7a1f20b/compiler/src/iree/compiler/Codegen/Dialect/GPU/TargetUtils/ConfigUtils.cpp#L382-L467
-def get_padding_conv_sizes(
-    bounds: list[int],
-    padding_sizes: list[int],
-    igemm_loop_iterators: list[str],
-    conv_to_igemm_info: ConvToIgemmInfo,
-) -> Optional[list[int]]:
-    """
-    Computes padding_conv by mapping padding from IGEMM space to convolution space.
-
-    Args:
-        bounds: Loop bounds for each dimension.
-        padding_sizes: Padding sizes in IGEMM dimension space (M, N, K).
-        igemm_loop_iterators: IGEMM loop iterator type strings ('"reduction"' or '"parallel"').
-        conv_to_igemm_info: Convolution to IGEMM transformation info.
-
-    Returns:
-        Padding sizes in convolution dimension space, or None if no padding
-        is needed along original convolution dimensions.
-    """
-    # Skip padding convolution for NCHW layout (spatial dimensions are last).
-    if conv_to_igemm_info.is_spatial_dim_last:
-        return None
-
-    conv_to_igemm_map = conv_to_igemm_info.conv_to_igemm_dim_map
-    padded_igemm_dims = set()
-    conv_dims = conv_to_igemm_info.conv_dims
-    input_channel_dims = set(conv_dims.input_channel)
-
-    padding_conv_sizes = [0] * len(conv_to_igemm_map)
-
-    # For batch-last layout (e.g., CHWN), only pad the batch dimension to avoid
-    # introducing pad op as the producer of collapse_shape op which may cause fusion problem.
-    if conv_to_igemm_info.is_batch_dim_last:
-        last_batch_dim = list(conv_dims.batch)[-1]
-        igemm_batch_pos = conv_to_igemm_map[last_batch_dim]
-
-        if (
-            padding_sizes[igemm_batch_pos]
-            and bounds[igemm_batch_pos] % padding_sizes[igemm_batch_pos] == 0
-        ):
-            return None
-
-        padding_conv_sizes[last_batch_dim] = padding_sizes[igemm_batch_pos]
-        return padding_conv_sizes
-
-    for conv_dim, igemm_pos in conv_to_igemm_map.items():
-        if igemm_loop_iterators[igemm_pos] == '"reduction"':
-            # Skip filter loop dimensions (reduction dims that aren't input channels).
-            # Only pad input channel dims. If we need to pad filter dims, then we
-            # would rather just do padding on the IGEMM instead.
-            if conv_dim not in input_channel_dims:
-                continue
-
-            # Skip conv padding for input channel dims if already divisible by padding size.
-            if (
-                padding_sizes[igemm_pos]
-                and bounds[igemm_pos] % padding_sizes[igemm_pos] == 0
-            ):
-                padded_igemm_dims.add(igemm_pos)
-                continue
-
-            # Multiple input channel dims for a single IGEMMPos is not supported.
-            if igemm_pos in padded_igemm_dims:
-                return None
-
-            input_channel_size = conv_to_igemm_info.input_channel_dim_to_size.get(
-                conv_dim, 0
-            )
-            is_input_channel_size_small = (
-                padding_sizes[igemm_pos] // input_channel_size > 2
-            )
-
-            # If the input channel dimension is much smaller than the padding size,
-            # skip padding along that dimension while still padding the others.
-            if is_input_channel_size_small:
-                padding_conv_sizes[conv_dim] = 0
-            else:
-                padding_conv_sizes[conv_dim] = padding_sizes[igemm_pos]
-
-            padded_igemm_dims.add(igemm_pos)
-            continue
-
-        # Multiple padded parallel dims mapping to the same IGEMM dim is not supported.
-        if padding_sizes[igemm_pos] and igemm_pos in padded_igemm_dims:
-            return None
-
-        padding_conv_sizes[conv_dim] = padding_sizes[igemm_pos]
-        padded_igemm_dims.add(igemm_pos)
-
-    # Ensure that all dimensions have been padded.
-    if len(padded_igemm_dims) != len(padding_sizes):
-        return None
-
-    return padding_conv_sizes
-
 
 
 def calculate_padded_dimensions(
