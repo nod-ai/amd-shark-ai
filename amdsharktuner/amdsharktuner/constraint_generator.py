@@ -461,9 +461,7 @@ def generate_generic_contraction_solutions(
     tuner_ctx.logger.debug(
         f"Will generate [{len(constraint_payload_list)}] constraint solvers."
     )
-    print(
-        f"Running {len(constraint_payload_list)} worker processes (one per mega-constraint set)"
-    )
+    print(f"Running {len(constraint_payload_list)} worker processes...")
     executor = process_utils.MultiprocessExecutor(
         num_workers=len(constraint_payload_list),
     )
@@ -471,7 +469,7 @@ def generate_generic_contraction_solutions(
         task_list=constraint_payload_list, worker_fn=solve_z3_contraint_payload
     )
     tuner_ctx.logger.debug(
-        f"Search space sizes for each mega-constraint set: {[len(i) for i in z3_solutions_list]}."
+        f"Search space sizes for each constraint set: {[len(i) for i in z3_solutions_list]}."
     )
     z3_solutions_list = [x for sublist in z3_solutions_list for x in sublist]
 
