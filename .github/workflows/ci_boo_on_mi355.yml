@@ -128,7 +128,7 @@ jobs:
        git checkout main
        cd -
        cd iree-turbine
-       export ROCR_VISIBLE_DEVICES="0"
+       #export ROCR_VISIBLE_DEVICES="0"
        # echo "Running all proxy config without tuning"
        # python iree/turbine/kernel/boo/driver/driver.py  --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_run_without_tuning.csv || true
        echo "Running prod conv config without tuning"
