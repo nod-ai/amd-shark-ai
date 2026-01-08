@@ -64,6 +64,16 @@ jobs:
         source ${VENV_DIR}/bin/activate
     - name: Install pip deps
       run: |
+        docker pull rocm/pytorch:rocm7.1.1_ubuntu24.04_py3.12_pytorch_release_2.9.1
+        docker run -it \
+          --cap-add=SYS_PTRACE \
+          --security-opt seccomp=unconfined \
+          --device=/dev/kfd \
+          --device=/dev/dri \
+          --group-add video \
+          --ipc=host \
+          --shm-size 8G \
+          rocm/pytorch:latest
         mkdir -p output_artifacts
         git clone https://github.com/iree-org/iree-turbine.git
         cd iree-turbine
@@ -95,6 +105,7 @@ jobs:
 
     - name: Run all proxy config
       run: |
+       
        git clone --filter=blob:none --no-checkout https://x-access-token:${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}@github.com/nod-ai/amd-shark-ai-reports.git
        cd amd-shark-ai-reports
        git sparse-checkout init --cone
