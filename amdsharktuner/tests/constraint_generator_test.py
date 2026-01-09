@@ -701,14 +701,12 @@ def test_ContractionZ3Constants_from_meta_dict() -> None:
     recon = constraint_generator.ContractionZ3Constants.from_meta(meta=meta, ctx=ctx)
 
     assert recon.m_vals == [constraint_generator.z3.Int(f"m{i}", ctx) for i in range(2)]
-    assert recon.n_vals == [constraint_generator.z3.Int(f"n{i}", ctx) for i in range(1)]
-    assert recon.k_vals == [constraint_generator.z3.Int(f"k{i}", ctx) for i in range(1)]
+    assert recon.n_vals == [constraint_generator.z3.Int(f"n0", ctx)]
+    assert recon.k_vals == [constraint_generator.z3.Int(f"k0", ctx)]
     assert recon.subgroup_m_vals == [
         constraint_generator.z3.Int(f"subgroup_m{i}", ctx) for i in range(2)
     ]
-    assert recon.subgroup_n_vals == [
-        constraint_generator.z3.Int(f"subgroup_n{i}", ctx) for i in range(1)
-    ]
+    assert recon.subgroup_n_vals == [constraint_generator.z3.Int(f"subgroup_n0", ctx)]
 
     assert recon.subgroup_size == constraint_generator.z3.Int("subgroup_size", ctx)
     assert recon.intrinsic_mn == constraint_generator.z3.Int("intrinsic_mn", ctx)
