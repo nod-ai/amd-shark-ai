@@ -163,28 +163,24 @@ elif [[ $BUILD_TYPE = "tom" ]]; then
           iree-base-compiler iree-base-runtime --src deps \
           -e "git+https://github.com/iree-org/iree-turbine.git#egg=iree-turbine"
     pip uninstall -y iree-base-compiler iree-base-runtime iree-turbine
-    https://github.com/iree-org/iree-turbine.git
-    cd iree-turbine
-    git checkout 356975d29d349bbacc65aeab28c10b44f9d5d379
-    pip install -r pytorch-rocm-requirements.txt
-    pip install -r requirements.txt -e .
-    cd $PWD/../
-    git clone https://github.com/iree-org/iree.git
-    cd iree
-        git checkout 47fe908217caef04be21608cfcf45d44410f8dad
-        git submodule update --init
-        cmake -G Ninja -B ../iree-build/ -S . \
-       -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-       -DIREE_ENABLE_ASSERTIONS=ON \
-       -DIREE_ENABLE_SPLIT_DWARF=ON \
-       -DIREE_ENABLE_THIN_ARCHIVES=ON \
-       -DCMAKE_C_COMPILER=clang \
-       -DIREE_HIP_TEST_TARGET_CHIP= \
-       -DCMAKE_CXX_COMPILER=clang++ \
-       -DIREE_BUILD_PYTHON_BINDINGS=ON \
-       -DIREE_HAL_DRIVER_HIP=ON -DIREE_TARGET_BACKEND_ROCM=ON \
-       -DIREE_ENABLE_LLD=ON \
-       -DPYTHON3_EXECUTABLE=$(which python3) ; cmake --build ../iree-build/
+    pip install   --find-links https://iree.dev/pip-release-links.html   iree-base-compiler==3.10.0rc20260101   iree-base-runtime==3.10.0rc20260101   iree-turbine==3.10.0rc20260101
+    
+    # git clone https://github.com/iree-org/iree.git
+    # cd iree
+    #     git checkout 47fe908217caef04be21608cfcf45d44410f8dad
+    #     git submodule update --init
+    #     cmake -G Ninja -B ../iree-build/ -S . \
+    #    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    #    -DIREE_ENABLE_ASSERTIONS=ON \
+    #    -DIREE_ENABLE_SPLIT_DWARF=ON \
+    #    -DIREE_ENABLE_THIN_ARCHIVES=ON \
+    #    -DCMAKE_C_COMPILER=clang \
+    #    -DIREE_HIP_TEST_TARGET_CHIP= \
+    #    -DCMAKE_CXX_COMPILER=clang++ \
+    #    -DIREE_BUILD_PYTHON_BINDINGS=ON \
+    #    -DIREE_HAL_DRIVER_HIP=ON -DIREE_TARGET_BACKEND_ROCM=ON \
+    #    -DIREE_ENABLE_LLD=ON \
+    #    -DPYTHON3_EXECUTABLE=$(which python3) ; cmake --build ../iree-build/
     cd -
 else
     echo "Invalid build type specified"
