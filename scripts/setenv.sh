@@ -135,26 +135,24 @@ elif [[ $BUILD_TYPE = "source" ]]; then
 
     ## Create and install IREE compiler and runtime wheels
     rm -rf iree
-    pip uninstall -y iree-base-compiler iree-base-runtime iree-turbine
-    pip install   --find-links https://iree.dev/pip-release-links.html   iree-base-compiler==3.10.0rc20260101   iree-base-runtime==3.10.0rc20260101   iree-turbine==3.10.0rc20260101
-    # git clone https://github.com/iree-org/iree.git && cd iree
-    # git remote add fork_user https://github.com/${IREE_REMOTE_REPO}
-    # git fetch fork_user
-    # git checkout ${IREE_COMMIT_HASH}
-    # git submodule update --init
-    # export IREE_HAL_DRIVER_HIP=ON
-    # export IREE_TARGET_BACKEND_ROCM=ON
-    # pip install -v compiler/ runtime/
-    # echo -n "IREE (${IREE_REMOTE_REPO}) :" >> ${SCRIPT_DIR}/../output_artifacts/version.txt
-    # git log -1 --pretty=%H >> ${SCRIPT_DIR}/../output_artifacts/version.txt
+    git clone https://github.com/iree-org/iree.git && cd iree
+    git remote add fork_user https://github.com/${IREE_REMOTE_REPO}
+    git fetch fork_user
+    git checkout ${IREE_COMMIT_HASH}
+    git submodule update --init
+    export IREE_HAL_DRIVER_HIP=ON
+    export IREE_TARGET_BACKEND_ROCM=ON
+    pip install -v compiler/ runtime/
+    echo -n "IREE (${IREE_REMOTE_REPO}) :" >> ${SCRIPT_DIR}/../output_artifacts/version.txt
+    git log -1 --pretty=%H >> ${SCRIPT_DIR}/../output_artifacts/version.txt
     cd $amdshark_AI_ROOT_DIR
     rm -rf iree
 
     ## Install editable local iree turbine
-    rm -rf iree-turbine || true
-    # git clone https://github.com/iree-org/iree-turbine.git
-    # cd iree-turbine
-    # pip install -e .
+    rm -rf iree-turbine
+    git clone https://github.com/iree-org/iree-turbine.git
+    cd iree-turbine
+    pip install -e .
     cd $amdshark_AI_ROOT_DIR
 
 elif [[ $BUILD_TYPE = "tom" ]]; then
@@ -164,25 +162,22 @@ elif [[ $BUILD_TYPE = "tom" ]]; then
     pip install -f https://iree.dev/pip-release-links.html --upgrade --pre \
           iree-base-compiler iree-base-runtime --src deps \
           -e "git+https://github.com/iree-org/iree-turbine.git#egg=iree-turbine"
-    pip uninstall -y iree-base-compiler iree-base-runtime iree-turbine
-    pip install   --find-links https://iree.dev/pip-release-links.html   iree-base-compiler==3.10.0rc20260101   iree-base-runtime==3.10.0rc20260101   iree-turbine==3.10.0rc20260101
-    
-    # git clone https://github.com/iree-org/iree.git
-    # cd iree
-    #     git checkout 47fe908217caef04be21608cfcf45d44410f8dad
-    #     git submodule update --init
-    #     cmake -G Ninja -B ../iree-build/ -S . \
-    #    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-    #    -DIREE_ENABLE_ASSERTIONS=ON \
-    #    -DIREE_ENABLE_SPLIT_DWARF=ON \
-    #    -DIREE_ENABLE_THIN_ARCHIVES=ON \
-    #    -DCMAKE_C_COMPILER=clang \
-    #    -DIREE_HIP_TEST_TARGET_CHIP= \
-    #    -DCMAKE_CXX_COMPILER=clang++ \
-    #    -DIREE_BUILD_PYTHON_BINDINGS=ON \
-    #    -DIREE_HAL_DRIVER_HIP=ON -DIREE_TARGET_BACKEND_ROCM=ON \
-    #    -DIREE_ENABLE_LLD=ON \
-    #    -DPYTHON3_EXECUTABLE=$(which python3) ; cmake --build ../iree-build/
+    pip uninstall -y iree-base-compiler iree-base-runtime
+    git clone https://github.com/iree-org/iree.git
+    cd iree
+        git submodule update --init
+        cmake -G Ninja -B ../iree-build/ -S . \
+       -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+       -DIREE_ENABLE_ASSERTIONS=ON \
+       -DIREE_ENABLE_SPLIT_DWARF=ON \
+       -DIREE_ENABLE_THIN_ARCHIVES=ON \
+       -DCMAKE_C_COMPILER=clang \
+       -DIREE_HIP_TEST_TARGET_CHIP= \
+       -DCMAKE_CXX_COMPILER=clang++ \
+       -DIREE_BUILD_PYTHON_BINDINGS=ON \
+       -DIREE_HAL_DRIVER_HIP=ON -DIREE_TARGET_BACKEND_ROCM=ON \
+       -DIREE_ENABLE_LLD=ON \
+       -DPYTHON3_EXECUTABLE=$(which python3) ; cmake --build ../iree-build/
     cd -
 else
     echo "Invalid build type specified"
