@@ -162,18 +162,23 @@ def test_reorder_assignments(
 def test_build_tuning_records_from_order(
     sample_knobs: list[Optional[common.KnobAssignment]],
 ) -> None:
+    baseline_tr = candidate_ordering.TuningRecord(
+        gen_id=0,
+        candidate_id=0,
+        knob=None,
+    )
     tr1 = candidate_ordering.TuningRecord(
-        gen_id=2,
+        gen_id=3,
         candidate_id=1,
         knob=sample_knobs[2],
     )
     tr2 = candidate_ordering.TuningRecord(
-        gen_id=0,
+        gen_id=1,
         candidate_id=2,
         knob=sample_knobs[0],
     )
     tr3 = candidate_ordering.TuningRecord(
-        gen_id=1,
+        gen_id=2,
         candidate_id=3,
         knob=sample_knobs[1],
     )
@@ -182,12 +187,17 @@ def test_build_tuning_records_from_order(
         sample_knobs, sorted_order
     )
 
-    assert tuning_records == [tr1, tr2, tr3]
+    assert tuning_records == [baseline_tr, tr1, tr2, tr3]
 
 
 def test_flatten_records(
     sample_knobs: list[Optional[common.KnobAssignment]],
 ):
+    baseline_tr = candidate_ordering.TuningRecord(
+        gen_id=0,
+        candidate_id=0,
+        knob=None,
+    )
     tr1 = candidate_ordering.TuningRecord(
         gen_id=2,
         candidate_id=1,
@@ -205,7 +215,7 @@ def test_flatten_records(
         to_benchmark=True,
         benchmark_time_us=153.56,
     )
-    sample_tuning_records = [tr1, tr2]
+    sample_tuning_records = [baseline_tr, tr1, tr2]
 
     rows = candidate_ordering.flatten_records(sample_tuning_records)
 
