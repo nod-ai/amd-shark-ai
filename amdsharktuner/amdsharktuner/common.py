@@ -260,16 +260,22 @@ def is_affine_expr_function_of_dim(expr: ir.AffineExpr, position: int) -> bool:
         d1 * 2 -> False for position 0, True for position 1.
         42 (constant) -> False for any position.
     """
-    if ir.AffineDimExpr.isinstance(expr):
+    try:
+        ir.AffineDimExpr(expr)
         dim_expr = ir.AffineDimExpr(expr)
         return dim_expr.position == position
+    except ValueError:
+        pass
 
     # Check if it's a binary operation and recursively check both sides.
-    if ir.AffineBinaryExpr.isinstance(expr):
+    try:
+        ir.AffineBinaryExpr(expr)
         binary_expr = ir.AffineBinaryExpr(expr)
         return is_affine_expr_function_of_dim(
             binary_expr.lhs, position
         ) or is_affine_expr_function_of_dim(binary_expr.rhs, position)
+    except ValueError:
+        pass
 
     return False
 
