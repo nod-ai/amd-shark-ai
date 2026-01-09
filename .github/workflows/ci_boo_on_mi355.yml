@@ -8,7 +8,6 @@ name: CI - Boo on Mi355
 
 on:
   workflow_dispatch:
-  pull_request:
   schedule:
     # Run every 6 hour starting from 0h 30min on all days
     - cron: "30 */6 * * *"
@@ -55,19 +54,19 @@ jobs:
     - name: Install pip deps
       run: |
         mkdir -p output_artifacts
-       # source ${VENV_DIR}/bin/activate
-       # python -m pip install --force-reinstall \
-       #   --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
-       #   --pre torch torchaudio torchvision
-       # 
-       # ## There are two issue: 1> Need fix for 41f311e63c9021db7c26bdfe86f10513cb372c13 2> Need to update requirements file by removing upper bound of torch
-       # git clone https://github.com/pdhirajkumarprasad/iree-turbine.git -b dhirajp/for_mi350_runner
-       # cd iree-turbine
-       # pip install -r requirements.txt 
-       # pip install -r requirements-iree-unpinned.txt
-       # pip install --no-deps -e .
-       # pip freeze  > $(pwd)/../output_artifacts/version.txt
-       # cd -
+        source ${VENV_DIR}/bin/activate
+        python -m pip install --force-reinstall \
+          --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
+          --pre torch torchaudio torchvision
+        
+        ## There are two issue: 1> Need fix for 41f311e63c9021db7c26bdfe86f10513cb372c13 2> Need to update requirements file by removing upper bound of torch
+        git clone https://github.com/pdhirajkumarprasad/iree-turbine.git -b dhirajp/for_mi350_runner
+        cd iree-turbine
+        pip install -r requirements.txt 
+        pip install -r requirements-iree-unpinned.txt
+        pip install --no-deps -e .
+        pip freeze  > $(pwd)/../output_artifacts/version.txt
+        cd -
 
     - name: Run all proxy config
       run: |
@@ -78,22 +77,30 @@ jobs:
        git sparse-checkout set boo/all_proxy_config.txt boo/prod_conv_config.txt boo/gemm_config.txt boo/hipblaslt-bench.sh
        git checkout main
        cd -
-       #source ${VENV_DIR}/bin/activate
-       #export HIP_DYLIB_PATH=$(python -c "import rocm_sdk;print(rocm_sdk.find_libraries('amdhip64')[0].absolute())")
-       #export IREE_PY_RUNTIME_FLAGS="--hip_dylib_path=file:${HIP_DYLIB_PATH}"
-       #cd iree-turbine
-       #echo "Running Prod Conv shape with IREE without tuning"
-       #iree-boo-driver \
-       #     --commands-file ../amd-shark-ai-reports/boo/prod_conv_config.txt --csv ../output_artifacts/prod_conv_iree_without_tuning.csv \
-       #     --backend=torch --backend=iree_boo_experimental || true
-       #echo "Running All proxy shape with IREE without tuning"
-       #iree-boo-driver \
-       #     --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_iree_without_tuning.csv \
-       #     --backend=torch --backend=iree_boo_experimental || true
-       #echo "Running Gemm shape with IREE without tuning"
-       #iree-boo-driver \
-       #     --commands-file ../amd-shark-ai-reports/boo/gemm_config.txt --csv ../output_artifacts/gemm_iree_without_tuning.csv \
-       #     --backend=torch --backend=iree_boo_experimental || true
+       source ${VENV_DIR}/bin/activate
+       export HIP_DYLIB_PATH=$(python -c "import rocm_sdk;print(rocm_sdk.find_libraries('amdhip64')[0].absolute())")
+       export IREE_PY_RUNTIME_FLAGS="--hip_dylib_path=file:${HIP_DYLIB_PATH}"
+       cd iree-turbine
+       echo "Running Prod Conv shape with IREE without tuning"
+       iree-boo-driver \
+            --commands-file ../amd-shark-ai-reports/boo/prod_conv_config.txt --csv ../output_artifacts/prod_conv_iree_without_tuning.csv \
+            --backend=torch --backend=iree_boo_experimental || true
+       echo "Running All proxy shape with IREE without tuning"
+       iree-boo-driver \
+            --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_iree_without_tuning.csv \
+            --backend=torch --backend=iree_boo_experimental || true
+       echo "Running Gemm shape with IREE without tuning"
+       iree-boo-driver \
+            --commands-file ../amd-shark-ai-reports/boo/gemm_config.txt --csv ../output_artifacts/gemm_iree_without_tuning.csv \
+            --backend=torch  || true
+       echo "Running Prod Conv shape with MIopen"
+       iree-boo-driver \
+            --commands-file ../amd-shark-ai-reports/boo/prod_conv_config.txt --csv ../output_artifacts/prod_conv_miopen.csv \
+            --backend=torch --backend=iree_boo_experimental || true
+       echo "Running All proxy shape with MIopen"
+       iree-boo-driver \
+            --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_miopen.csv \
+            --backend=torch  || true
        cd -
     - name: Run hipblaslt-bench
       run: |
@@ -115,7 +122,7 @@ jobs:
         name: llama-logs
         path: |
           output_artifacts/*.csv
-          #output_artifacts/version.txt
+          output_artifacts/version.txt
 
   # New job to push logs to amd-shark-ai-reports repository
   push_logs:
@@ -146,7 +153,7 @@ jobs:
         date=$(date -u +'%Y-%m-%d')
         mkdir -p "amd-shark-ai-reports/boo/$date/"
         cp -v logs/*.csv "amd-shark-ai-reports/boo/$date/" || true
-        #cp -v logs/version.txt "amd-shark-ai-reports/boo/$date/"
+        cp -v logs/version.txt "amd-shark-ai-reports/boo/$date/"
         cd amd-shark-ai-reports/boo
         git pull
         git add $date
