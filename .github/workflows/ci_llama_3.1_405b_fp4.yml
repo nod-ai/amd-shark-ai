@@ -32,7 +32,7 @@ jobs:
       matrix:
         version: [3.11]
       fail-fast: false
-    runs-on: linux-mi355-1gpu-ossci-nod-ai.test
+    runs-on: linux-mi355-1gpu-ossci-nod-ai
     container:
       image: 'ghcr.io/rocm/no_rocm_image_ubuntu24_04@sha256:405945a40deaff9db90b9839c0f41d4cba4a383c1a7459b28627047bf6302a26'
       options: --ipc host
@@ -97,91 +97,91 @@ jobs:
         if: always()
         run: |
           mkdir -p output_artifacts/output_llama-405b-fp4-without-topk
-          # export PATH=$PWD/iree-build/tools/:$PATH
-          # export PYTHONPATH=$PWD/iree-build/compiler/bindings/python:$PWD/iree-build/runtime/bindings/python
+          export PATH=$PWD/iree-build/tools/:$PATH
+          export PYTHONPATH=$PWD/iree-build/compiler/bindings/python:$PWD/iree-build/runtime/bindings/python
           python3 -m amdsharktank.tools.e2e_model_test --model llama-405b-fp4-without-topk --gpu-model MI350X 2>&1 | tee output_artifacts/output_llama-405b-fp4-without-topk/e2e_llama-405b-fp4-without-topk.log
 
-  #     - name: E2E Test 405b with topk( without validate vmfb as currently validate vmfb does not support with topk option )
-  #       id: llama_405b_fp4_with_topk_test
-  #       if: always()
-  #       run: |
-  #         mkdir -p output_artifacts/output_llama-405b-fp4-with-topk
-  #         export PATH=$PWD/iree-build/tools/:$PATH
-  #         export PYTHONPATH=$PWD/iree-build/compiler/bindings/python:$PWD/iree-build/runtime/bindings/python
-  #         python3 -m amdsharktank.tools.e2e_model_test --model llama-405b-fp4-with-topk --stage benchmark --gpu-model MI350X 2>&1 | tee output_artifacts/output_llama-405b-fp4-with-topk/e2e_llama-405b-fp4-with-topk.log
-  #         python3 -m amdsharktank.tools.e2e_model_test --model llama-405b-fp4-with-topk --stage online_serving --gpu-model MI350X 2>&1 | tee -a output_artifacts/output_llama-405b-fp4-with-topk/e2e_llama-405b-fp4-with-topk.log
+      - name: E2E Test 405b with topk( without validate vmfb as currently validate vmfb does not support with topk option )
+        id: llama_405b_fp4_with_topk_test
+        if: always()
+        run: |
+          mkdir -p output_artifacts/output_llama-405b-fp4-with-topk
+          export PATH=$PWD/iree-build/tools/:$PATH
+          export PYTHONPATH=$PWD/iree-build/compiler/bindings/python:$PWD/iree-build/runtime/bindings/python
+          python3 -m amdsharktank.tools.e2e_model_test --model llama-405b-fp4-with-topk --stage benchmark --gpu-model MI350X 2>&1 | tee output_artifacts/output_llama-405b-fp4-with-topk/e2e_llama-405b-fp4-with-topk.log
+          python3 -m amdsharktank.tools.e2e_model_test --model llama-405b-fp4-with-topk --stage online_serving --gpu-model MI350X 2>&1 | tee -a output_artifacts/output_llama-405b-fp4-with-topk/e2e_llama-405b-fp4-with-topk.log
 
-  #     - name: Run IREE Model Eval (Perplexity)
-  #       if: ${{ steps.llama_405b_fp4_without_topk_test.outcome == 'success' }}
-  #       continue-on-error: true
-  #       run: |
-  #         export DATASET="amdsharktank/tests/evaluate/datasets/llama_405b_fp8_e4m3fn_iree.json"
-  #         export TOKENIZER="/amdshark-dev/llama3.1/405b/fp4/"
-  #         export IRPA="$IRPA"
+      - name: Run IREE Model Eval (Perplexity)
+        if: ${{ steps.llama_405b_fp4_without_topk_test.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          export DATASET="amdsharktank/tests/evaluate/datasets/llama_405b_fp8_e4m3fn_iree.json"
+          export TOKENIZER="/amdshark-dev/llama3.1/405b/fp4/"
+          export IRPA="$IRPA"
 
-  #         python3 -m amdsharktank.tools.eval_llm_vmfb \
-  #           --irpa=${IRPA} \
-  #           --tokenizer=${TOKENIZER} \
-  #           --dataset=${DATASET} \
-  #           --expected-err=1e-2 \
-  #           --min-context=10 \
-  #           --iree-hal-target-device=hip \
-  #           --iree-hip-target=gfx950 \
-  #           --vmfb output_artifacts/output_llama-405b-fp4-without-topk/output.vmfb \
-  #           --config output_artifacts/output_llama-405b-fp4-without-topk/config_attn.json 2>&1 | tee output_artifacts/output_llama-405b-fp4-without-topk/eval_llm_vmfb_perplexity.log
+          python3 -m amdsharktank.tools.eval_llm_vmfb \
+            --irpa=${IRPA} \
+            --tokenizer=${TOKENIZER} \
+            --dataset=${DATASET} \
+            --expected-err=1e-2 \
+            --min-context=10 \
+            --iree-hal-target-device=hip \
+            --iree-hip-target=gfx950 \
+            --vmfb output_artifacts/output_llama-405b-fp4-without-topk/output.vmfb \
+            --config output_artifacts/output_llama-405b-fp4-without-topk/config_attn.json 2>&1 | tee output_artifacts/output_llama-405b-fp4-without-topk/eval_llm_vmfb_perplexity.log
 
-  #     - name: Upload log files
-  #       if: always()
-  #       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
-  #       with:
-  #         name: llama-logs
-  #         path: |
-  #           output_artifacts/output_*/consolidated_benchmark.json
-  #           output_artifacts/output_*/*.log
-  #           output_artifacts/version.txt
+      - name: Upload log files
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: llama-logs
+          path: |
+            output_artifacts/output_*/consolidated_benchmark.json
+            output_artifacts/output_*/*.log
+            output_artifacts/version.txt
 
-  #     - name: Cleanup output artifacts
-  #       if: always()
-  #       run: |
-  #           rm -rf output_artifacts
-  #           test ! -d output_artifacts && echo "Output artifacts are removed"
+      - name: Cleanup output artifacts
+        if: always()
+        run: |
+            rm -rf output_artifacts
+            test ! -d output_artifacts && echo "Output artifacts are removed"
 
-  # # New job to push logs to amd-shark-ai-reports repository
-  # push_logs:
-  #   name: "Push log llama 405B FP4"
-  #   needs: [ test_llama_large ]
-  #   if: always()
-  #   runs-on: ubuntu-24.04
-  #   steps:
-  #   - name: Download log artifacts
-  #     uses: actions/download-artifact@v7
-  #     with:
-  #       name: llama-logs
-  #       path: logs
+  # New job to push logs to amd-shark-ai-reports repository
+  push_logs:
+    name: "Push log llama 405B FP4"
+    needs: [ test_llama_large ]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Download log artifacts
+      uses: actions/download-artifact@v7
+      with:
+        name: llama-logs
+        path: logs
 
-  #   - name: Checkout Target Repo
-  #     if: always()
-  #     uses: actions/checkout@v6
-  #     with:
-  #       repository: nod-ai/amd-shark-ai-reports
-  #       token: ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}
-  #       path: amd-shark-ai-reports
+    - name: Checkout Target Repo
+      if: always()
+      uses: actions/checkout@v6
+      with:
+        repository: nod-ai/amd-shark-ai-reports
+        token: ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}
+        path: amd-shark-ai-reports
 
-  #   - name: Push artifacts
-  #     if: always()
-  #     run: |
-  #       git config --global user.name "GitHub Actions Bot"
-  #       git config --global user.email ""
-  #       date=$(date -u +'%Y-%m-%d-%H'h)
-  #       mkdir -p "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-with-topk"
-  #       mkdir -p "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-without-topk"
-  #       cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-with-topk"
-  #       cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-without-topk"
-  #       cp -r logs/output_llama-405b-fp4-with-topk/* "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-with-topk" || true
-  #       cp -r logs/output_llama-405b-fp4-without-topk/* "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-without-topk" || true
-  #       cd amd-shark-ai-reports
-  #       git pull
-  #       git add $date
-  #       git commit -m "Add CI Llama 405B FP4 logs on $(date -u +'%Y-%m-%d-%H'h)"
-  #       git push origin main
-  #       rm -rf ../logs
+    - name: Push artifacts
+      if: always()
+      run: |
+        git config --global user.name "GitHub Actions Bot"
+        git config --global user.email ""
+        date=$(date -u +'%Y-%m-%d-%H'h)
+        mkdir -p "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-with-topk"
+        mkdir -p "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-without-topk"
+        cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-with-topk"
+        cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-without-topk"
+        cp -r logs/output_llama-405b-fp4-with-topk/* "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-with-topk" || true
+        cp -r logs/output_llama-405b-fp4-without-topk/* "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-without-topk" || true
+        cd amd-shark-ai-reports
+        git pull
+        git add $date
+        git commit -m "Add CI Llama 405B FP4 logs on $(date -u +'%Y-%m-%d-%H'h)"
+        git push origin main
+        rm -rf ../logs
