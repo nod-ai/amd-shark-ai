@@ -681,7 +681,7 @@ def test_ContractionZ3Constants_to_meta() -> None:
 
 
 def test_ContractionZ3Constants_from_meta_dict() -> None:
-    meta = {
+    meta: dict[str, str | list[str]] = {
         "m_vals": ["m0", "m1"],
         "n_vals": ["n0"],
         "k_vals": ["k0"],
