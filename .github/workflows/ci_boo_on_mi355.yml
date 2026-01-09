@@ -62,7 +62,7 @@ jobs:
         git clone https://github.com/pdhirajkumarprasad/iree-turbine.git -b dhirajp/for_mi350_runner
         cd iree-turbine
         pip install -r requirements.txt 
-        pip install -f requirements-iree-unpinned.txt
+        pip install -r requirements-iree-unpinned.txt
         pip install --no-deps -e .
         cd -
 
