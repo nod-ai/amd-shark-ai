@@ -165,6 +165,7 @@ elif [[ $BUILD_TYPE = "tom" ]]; then
     pip uninstall -y iree-base-compiler iree-base-runtime
     git clone https://github.com/iree-org/iree.git
     cd iree
+        git checkout 47fe908217caef04be21608cfcf45d44410f8dad
         git submodule update --init
         cmake -G Ninja -B ../iree-build/ -S . \
        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
