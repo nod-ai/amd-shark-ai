@@ -135,24 +135,26 @@ elif [[ $BUILD_TYPE = "source" ]]; then
 
     ## Create and install IREE compiler and runtime wheels
     rm -rf iree
-    git clone https://github.com/iree-org/iree.git && cd iree
-    git remote add fork_user https://github.com/${IREE_REMOTE_REPO}
-    git fetch fork_user
-    git checkout ${IREE_COMMIT_HASH}
-    git submodule update --init
-    export IREE_HAL_DRIVER_HIP=ON
-    export IREE_TARGET_BACKEND_ROCM=ON
-    pip install -v compiler/ runtime/
-    echo -n "IREE (${IREE_REMOTE_REPO}) :" >> ${SCRIPT_DIR}/../output_artifacts/version.txt
-    git log -1 --pretty=%H >> ${SCRIPT_DIR}/../output_artifacts/version.txt
+    pip uninstall -y iree-base-compiler iree-base-runtime iree-turbine
+    pip install   --find-links https://iree.dev/pip-release-links.html   iree-base-compiler==3.10.0rc20260101   iree-base-runtime==3.10.0rc20260101   iree-turbine==3.10.0rc20260101
+    # git clone https://github.com/iree-org/iree.git && cd iree
+    # git remote add fork_user https://github.com/${IREE_REMOTE_REPO}
+    # git fetch fork_user
+    # git checkout ${IREE_COMMIT_HASH}
+    # git submodule update --init
+    # export IREE_HAL_DRIVER_HIP=ON
+    # export IREE_TARGET_BACKEND_ROCM=ON
+    # pip install -v compiler/ runtime/
+    # echo -n "IREE (${IREE_REMOTE_REPO}) :" >> ${SCRIPT_DIR}/../output_artifacts/version.txt
+    # git log -1 --pretty=%H >> ${SCRIPT_DIR}/../output_artifacts/version.txt
     cd $amdshark_AI_ROOT_DIR
     rm -rf iree
 
     ## Install editable local iree turbine
-    rm -rf iree-turbine
-    git clone https://github.com/iree-org/iree-turbine.git
-    cd iree-turbine
-    pip install -e .
+    rm -rf iree-turbine || true
+    # git clone https://github.com/iree-org/iree-turbine.git
+    # cd iree-turbine
+    # pip install -e .
     cd $amdshark_AI_ROOT_DIR
 
 elif [[ $BUILD_TYPE = "tom" ]]; then
