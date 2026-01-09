@@ -115,7 +115,7 @@ jobs:
         name: llama-logs
         path: |
           output_artifacts/*.csv
-          output_artifacts/version.txt
+          #output_artifacts/version.txt
 
   # New job to push logs to amd-shark-ai-reports repository
   push_logs:
@@ -146,7 +146,7 @@ jobs:
         date=$(date -u +'%Y-%m-%d')
         mkdir -p "amd-shark-ai-reports/boo/$date/"
         cp -v logs/*.csv "amd-shark-ai-reports/boo/$date/" || true
-        cp -v logs/version.txt "amd-shark-ai-reports/boo/$date/"
+        #cp -v logs/version.txt "amd-shark-ai-reports/boo/$date/"
         cd amd-shark-ai-reports/boo
         git pull
         git add $date
