@@ -97,6 +97,8 @@ jobs:
        cd -
     - name: Run hipblaslt-bench
       run: |
+        sudo apt update
+        sudo apt install awscli -y
         tarFileName=`aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx950 | sort -r | head -1 |  awk '{print $NF}'` 
         echo "Installing $tarFileName"
         wget https://therock-nightly-tarball.s3.us-east-2.amazonaws.com/${tarFileName}
