@@ -7,7 +7,6 @@
 name: CI - Boo on Mi355
 
 on:
-  pull_request:
   workflow_dispatch:
   schedule:
     # Run every 6 hour starting from 0h 30min on all days
@@ -59,11 +58,11 @@ jobs:
         python -m pip install --force-reinstall \
           --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
           --pre torch torchaudio torchvision
-        
+
         ## There are two issue: 1> Need fix for 41f311e63c9021db7c26bdfe86f10513cb372c13 2> Need to update requirements file by removing upper bound of torch
         git clone https://github.com/pdhirajkumarprasad/iree-turbine.git -b dhirajp/for_mi350_runner
         cd iree-turbine
-        pip install -r requirements.txt 
+        pip install -r requirements.txt
         pip install -r requirements-iree-unpinned.txt
         pip install --no-deps -e .
         pip freeze  > $(pwd)/../output_artifacts/version.txt
@@ -107,15 +106,15 @@ jobs:
       run: |
         sudo apt update
         sudo apt install awscli -y
-        tarFileName=`aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx950 | sort -r | head -1 |  awk '{print $NF}'` 
+        tarFileName=`aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx950 | sort -r | head -1 |  awk '{print $NF}'`
         echo "Installing $tarFileName"
         wget https://therock-nightly-tarball.s3.us-east-2.amazonaws.com/${tarFileName}
         mkdir install
         tar -xf *.tar.gz -C install
         export PATH=$PWD/install/bin:$PATH
         bash amd-shark-ai-reports/boo/hipblaslt-bench.sh >& output_artifacts/gemm_hipBlaslt-bench.csv
-       
-       
+
+
     - name: Upload log files
       if: always()
       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
