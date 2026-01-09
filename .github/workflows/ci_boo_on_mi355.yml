@@ -60,7 +60,7 @@ jobs:
           --pre torch torchaudio torchvision
 
         mkdir -p output_artifacts
-        git clone https://github.com/iree-org/iree-turbine.git
+        git clone https://github.com/pdhirajkumarprasad/iree-turbine.git -b dhirajp/for_mi350_runner
         cd iree-turbine
         pip install -r requirements.txt -e .
         pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
