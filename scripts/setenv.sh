@@ -168,6 +168,7 @@ elif [[ $BUILD_TYPE = "tom" ]]; then
     git checkout 356975d29d349bbacc65aeab28c10b44f9d5d379
     pip install -r pytorch-rocm-requirements.txt
     pip install -r requirements.txt -e .
+    cd $PWD/../
     git clone https://github.com/iree-org/iree.git
     cd iree
         git checkout 47fe908217caef04be21608cfcf45d44410f8dad
