@@ -59,22 +59,19 @@ jobs:
           --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
           --pre torch torchaudio torchvision
 
-        mkdir -p output_artifacts
         git clone https://github.com/pdhirajkumarprasad/iree-turbine.git -b dhirajp/for_mi350_runner
         cd iree-turbine
-        pip install -r requirements.txt -e .
-        pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
+        pip install -r requirements.txt 
+        pip install -f requirements-iree-unpinned.txt
         pip install --no-deps -e .
-        pip freeze | grep 'iree' > $(pwd)/../output_artifacts/version.txt
-        iree-compile --version >> $(pwd)/../output_artifacts/version.txt
         cd -
 
     - name: Run all proxy config
       run: |
+       source ${VENV_DIR}/bin/activate
        export HIP_DYLIB_PATH=$(python -c "import rocm_sdk;print(rocm_sdk.find_libraries('amdhip64')[0].absolute())")
        export IREE_PY_RUNTIME_FLAGS="--hip_dylib_path=file:${HIP_DYLIB_PATH}"
        cd iree-turbine
-       source ${VENV_DIR}/bin/activate
        pip list
        iree-boo-driver conv
        
