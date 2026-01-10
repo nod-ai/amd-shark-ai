@@ -111,7 +111,8 @@ jobs:
         with:
           name: llama-logs-${{ matrix.model }}
           path: |
-            output_artifacts/output_${{ matrix.model }}
+            output_artifacts/output_*/consolidated_benchmark.json
+            output_artifacts/output_*/*.log
             output_artifacts/version.txt
 
   push_logs:
@@ -137,14 +138,29 @@ jobs:
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email ""
-
           date=$(date -u +'%Y-%m-%d')
-          mkdir -p "amd-shark-ai-reports/$date"
-
-          cp -r logs/* "amd-shark-ai-reports/$date/" || true
-
+          ls -R logs
+          mkdir -p "amd-shark-ai-reports/$date/llama_3.1-70b-fp16"
+          mkdir -p "amd-shark-ai-reports/$date/llama_3.1-70b-fp8"
+          mkdir -p "amd-shark-ai-reports/$date/llama_3.1-8b-fp16"
+          mkdir -p "amd-shark-ai-reports/$date/llama_3.1-8b-fp8"
+          mkdir -p "amd-shark-ai-reports/$date/Mistral_Nemo_Instruct_2407_FP8"
+          mkdir -p "amd-shark-ai-reports/$date/gpt_oss_20b_bfp16"
+          cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-70b-fp16/"
+          cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-70b-fp8/"
+          cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-8b-fp16/"
+          cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-8b-fp8/"
+          cp logs/version.txt "amd-shark-ai-reports/$date/Mistral_Nemo_Instruct_2407_FP8/"
+          cp logs/version.txt "amd-shark-ai-reports/$date/gpt_oss_20b_bfp16/"
+          cp -r logs/output_llama-70b-fp16/* "amd-shark-ai-reports/$date/llama_3.1-70b-fp16" || true
+          cp -r logs/output_llama-70b-fp8/* "amd-shark-ai-reports/$date/llama_3.1-70b-fp8" || true
+          cp -r logs/output_llama-8b-fp16/* "amd-shark-ai-reports/$date/llama_3.1-8b-fp16" || true
+          cp -r logs/output_llama-8b-fp8/* "amd-shark-ai-reports/$date/llama_3.1-8b-fp8" || true
+          cp -r logs/output_mistral/* "amd-shark-ai-reports/$date/Mistral_Nemo_Instruct_2407_FP8" || true
+          cp -r logs/output_gpt-oss-20b-bfp16/* "amd-shark-ai-reports/$date/gpt_oss_20b_bfp16" || true
           cd amd-shark-ai-reports
           git pull
-          git add "$date"
-          git commit -m "Add E2E logs for $date" || true
-          git push
+          git add $date
+          git commit -m "Add CI E2E logs on $(date -u +'%Y-%m-%d')"
+          git push origin main
+          rm -rf ../logs
