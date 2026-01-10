@@ -138,10 +138,12 @@ def build_tuning_records_from_order(
     knobs: list[Optional[common.KnobAssignment]], sorted_order: list[int]
 ) -> list[TuningRecord]:
     tuning_records: list[TuningRecord] = []
-    # candidate_id = 0 is the baseline and is not included in tuning_records.
+    # Insert baseline entry (always candidate_id = 0, gen_id = 0).
+    tuning_records.append(TuningRecord(gen_id=0, candidate_id=0, knob=None))
     for sorted_position, original_gen_index in enumerate(sorted_order, start=1):
         tr = TuningRecord(
-            gen_id=original_gen_index,
+            gen_id=original_gen_index
+            + 1,  # Shift by 1 to reserve gen_id=0 for baseline.
             candidate_id=sorted_position,
             knob=knobs[original_gen_index],
         )
@@ -162,6 +164,9 @@ def flatten_records(
     """
     rows = []
     for tuning_record in tuning_records:
+        # Drop the baseline entry due to missing knob info.
+        if not tuning_record.knob:
+            continue
         row = {}
         for attr, val in vars(tuning_record).items():
             if isinstance(val, common.KnobAssignment):
