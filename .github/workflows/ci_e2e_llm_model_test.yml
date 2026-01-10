@@ -102,27 +102,6 @@ jobs:
             output_artifacts/output_${{ matrix.model }}
             output_artifacts/version.txt
 
-  # New job to push logs to amd-shark-ai-reports repository
-  push_logs:
-    name: "Push log"
-    needs: [ test_llama_large ]
-    if: always()
-    runs-on: linux-mi325-1gpu-ossci-nod-ai
-    steps:
-    - name: Download log artifacts
-      uses: actions/download-artifact@v7
-      with:
-        name: llama-logs
-        path: logs
-
-    - name: Checkout Target Repo
-      if: always()
-      uses: actions/checkout@v6
-      with:
-        repository: nod-ai/amd-shark-ai-reports
-        token: ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}
-        path: amd-shark-ai-reports
-
   push_logs:
     name: "Push log"
     needs: [test_llama_large]
