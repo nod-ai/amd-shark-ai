@@ -16,10 +16,6 @@ permissions:
   contents: write
 
 concurrency:
-  # A PR number if a pull request and otherwise the commit hash. This cancels
-  # queued and in-progress runs for the same PR (presubmit) or commit
-  # (postsubmit). The workflow name is prepended to avoid conflicts between
-  # different workflows.
   group: ${{ github.workflow }}-${{ github.event.number || github.sha }}
   cancel-in-progress: true
 
@@ -34,20 +30,30 @@ jobs:
       fail-fast: false
       max-parallel: 8
       matrix:
-        python: [3.11]
         include:
           - model: llama-70b-fp16
             gpu: 0
+            python: "3.11"
+
           - model: llama-70b-fp8
             gpu: 1
+            python: "3.11"
+
           - model: gpt-oss-20b-bfp16
             gpu: 2
+            python: "3.11"
+
           - model: llama-8b-fp16
             gpu: 3
+            python: "3.11"
+
           - model: llama-8b-fp8
             gpu: 4
+            python: "3.11"
+
           - model: mistral
             gpu: 5
+            python: "3.11"
 
     defaults:
       run:
@@ -65,6 +71,12 @@ jobs:
         uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548
         with:
           python-version: ${{ matrix.python }}
+
+      - name: Debug matrix (sanity check)
+        run: |
+          echo "MODEL=${{ matrix.model }}"
+          echo "GPU=${{ matrix.gpu }}"
+          echo "PYTHON=${{ matrix.python }}"
 
       - name: Create Python venv
         run: |
