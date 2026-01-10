@@ -122,28 +122,14 @@ class ContractionOpInterfaceTuner(
         return config_list[0].knob_assignment
 
 
-class ConvolutionOpInterfaceTuner(
-    DispatchTuner, dispatch_parser.ConvolutionOpInterfaceParser
-):
-    def __init__(self, root_op: ir.Operation, tuner_ctx: common.TunerContext):
-        super().__init__(root_op, tuner_ctx)
+class ConvolutionOpInterfaceTunerBase(DispatchTuner):
+    """Base class for convolution tuners. Subclasses use specific lowering strategies."""
 
-    @classmethod
-    def supports_root_op(cls, root_op: ir.Operation) -> bool:
-        if not linalg.isa_convolution_op(root_op):
-            return False
-        convolution_dims = linalg.infer_convolution_dimensions(root_op)
-        if not convolution_dims:
-            return False
-        # Only allow 'nhwc_hwcf' convs.
-        return (
-            list(convolution_dims.batch) == [0]
-            and list(convolution_dims.output_image) == [1, 2]
-            and list(convolution_dims.output_channel) == [3]
-            and list(convolution_dims.filter_loop) == [4, 5]
-            and list(convolution_dims.input_channel) == [6]
-            and list(convolution_dims.depth) == []
-        )
+    def get_op_info(self) -> dispatch_parser.ConvolutionOpInfo:
+        assert isinstance(
+            self._op_info, dispatch_parser.ConvolutionOpInfo
+        ), "Convolution tuner must have ConvolutionOpInfo"
+        return self._op_info
 
     def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
         return constraint_generator.ConvolutionOpInterfaceConstraintGenerator(
@@ -166,6 +152,44 @@ class ConvolutionOpInterfaceTuner(
         config_list: list[common.TuningConfiguration],
     ) -> Optional[common.KnobAssignment]:
         return None
+
+
+class IGEMMConvolutionTuner(
+    ConvolutionOpInterfaceTunerBase, dispatch_parser.IGEMMConvolutionParser
+):
+    """Convolution tuner using IGEMM (Implicit GEMM) lowering strategy."""
+
+    @classmethod
+    def supports_root_op(cls, root_op: ir.Operation) -> bool:
+        if linalg.infer_convolution_dimensions(root_op) is None:
+            return False
+        return iree_codegen.get_igemm_generic_conv_details(root_op) is not None
+
+
+class InnerMNKConvolutionTuner(
+    ConvolutionOpInterfaceTunerBase, dispatch_parser.InnerMNKConvolutionParser
+):
+    """Convolution tuner using INNER_MNK lowering strategy.
+
+    Currently only supports nhwc_hwcf and nhwc_fhwc layouts.
+    """
+
+    @classmethod
+    def supports_root_op(cls, root_op: ir.Operation) -> bool:
+        convolution_dims = linalg.infer_convolution_dimensions(root_op)
+        if not convolution_dims:
+            return False
+        # TODO(Bangtian): Revisit in a separate PR to check inner dimension
+        # divisibility by MMA intrinsic sizes and ensure graceful exit on failure.
+        # Only allow 'nhwc_hwcf' convs.
+        return (
+            list(convolution_dims.batch) == [0]
+            and list(convolution_dims.output_image) == [1, 2]
+            and list(convolution_dims.output_channel) == [3]
+            and list(convolution_dims.filter_loop) == [4, 5]
+            and list(convolution_dims.input_channel) == [6]
+            and list(convolution_dims.depth) == []
+        )
 
 
 class AttentionOpInterfaceTuner(
@@ -202,14 +226,10 @@ class AttentionOpInterfaceTuner(
 
 
 def set_dispatch_tuner(
-    input_module: ir.Module, tuner_ctx: common.TunerContext
+    input_module: ir.Module,
+    tuner_ctx: common.TunerContext,
+    dispatch_tuners: list[type[DispatchTuner]],
 ) -> Optional[DispatchTuner]:
-    dispatch_tuners: list[type[DispatchTuner]] = [
-        ContractionOpInterfaceTuner,
-        ConvolutionOpInterfaceTuner,
-        AttentionOpInterfaceTuner,
-    ]
-
     root_op_list = iree_codegen.get_tuner_root_ops(input_module)
     if len(root_op_list) == 0:
         tune_logger.error(
@@ -226,8 +246,7 @@ def set_dispatch_tuner(
     dispatch_tuner: Optional[DispatchTuner] = None
     for tuner_class in dispatch_tuners:
         if tuner_class.supports_root_op(root_op):
-            tuner = tuner_class(root_op, tuner_ctx)
-            dispatch_tuner = tuner
+            dispatch_tuner = tuner_class(root_op, tuner_ctx)
             break
 
     if not dispatch_tuner:

@@ -123,7 +123,7 @@ def parse_args() -> tuple[argparse.Namespace, list[str]]:
 
     if "--codegen-pipeline" not in sys.argv:
         # Default to tile_and_fuse for BOO operations.
-        args.codegen_pipeline = libtuner.CodegenPipelines.llvmgpu_tile_and_fuse
+        args.codegen_pipeline = common.CodegenPipelines.llvmgpu_tile_and_fuse
 
     # Extract MIOpen operation arguments (parser now knows all BOO + libtuner arguments).
     _, miopen_op_args = parser.parse_known_args()

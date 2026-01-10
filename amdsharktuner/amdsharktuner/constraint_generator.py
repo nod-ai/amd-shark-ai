@@ -290,21 +290,14 @@ def generate_generic_contraction_solutions(
     igemm_details: Optional[iree_codegen.IGEMMGenericConvDetails] = None,
     conv_to_igemm_info: Optional[common.ConvToIgemmInfo] = None,
 ) -> Iterator[list[common.TuningConfiguration]]:
-    adjust_problem_size_for_pipeline(
-        contraction_dims,
-        matmul_size,
-        dispatch_kind,
-        pipeline_options_search_space,
-        codegen_pipeline,
-        igemm_details,
-    )
-
     # Apply padding for TileAndFuse pipeline to get better tile sizes.
     overpadding_applied = False
     if codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
-        # Use IGEMM maps if available (dimensions were restructured), otherwise use original indexing maps.
         padding_maps = indexing_maps
-        if igemm_details:
+        # IGEMM is required for convolutions going through TileAndFuse.
+        if dispatch_kind == common.DispatchKind.conv:
+            assert igemm_details, "igemm_details must exist for conv with TileAndFuse"
+            pipeline_options_search_space.use_igemm_convolution = [True]
             padding_maps = [
                 map_attr.value for map_attr in igemm_details.igemm_contraction_maps
             ]
@@ -361,10 +354,6 @@ def generate_generic_contraction_solutions(
         required_padding = any(
             p[-1] % i != 0 for p, i in zip((M, N, K), intrinsic_mnk_shape, strict=True)
         )
-        if required_padding:
-            tuner_ctx.logger.debug(
-                f"Required padding detected: M={M}, N={N}, K={K}, intrinsic_shape={intrinsic_mnk_shape}"
-            )
 
         def set_cdim_tile_sizes(tile_sizes, contraction_dims, csizes):
             for dim, size in zip(contraction_dims, csizes):

@@ -46,6 +46,55 @@ class CommonTypes:
         return ir.ArrayAttr.get([self.getI64(x) for x in values])
 
 
+class CodegenPipelines(str, Enum):
+    llvmgpu_vector_distribute = "llvmgpu_vector_distribute"
+    llvmgpu_tile_and_fuse = "llvmgpu_tile_and_fuse"
+
+
+class ConvLoweringStrategy(Enum):
+    """Convolution lowering strategy for code generation.
+
+    INNER_MNK: Uses innermost conv dimensions as M/N/K directly, tiling other
+               dims to 1 to reduce to matmul form (used with VectorDistribute).
+    IGEMM: Implicit GEMM transformation (used with TileAndFuse pipeline).
+
+    TODO(Bangtian): Add DIRECT strategy for direct convolution (along TileAndFuse
+    pipeline like IGEMM).
+    """
+
+    INNER_MNK = "inner_mnk"
+    IGEMM = "igemm"
+
+
+@dataclass
+class ConvDimInfo:
+    """Common convolution dimension info extracted from a convolution op.
+
+    This dataclass is reused by all convolution lowering tuners (IGEMM, INNER_MNK, etc.)
+    to share the common dimension extraction logic.
+    """
+
+    convolution_dims: linalg.ConvolutionDimensions
+    indexing_maps: list[ir.AffineMap]
+    lhs_type: ir.Type
+    rhs_type: ir.Type
+    res_type: ir.Type
+    batch_indices: list[int]
+    output_image_indices: list[int]
+    output_channel_indices: list[int]
+    filter_loop_indices: list[int]
+    input_channel_indices: list[int]
+    depth_indices: list[int]
+    strides: list[int]
+    dilations: list[int]
+    batch_sizes: list[int]
+    output_image_sizes: list[int]
+    output_channel_sizes: list[int]
+    filter_loop_sizes: list[int]
+    input_channel_sizes: list[int]
+    depth_sizes: list[int]
+
+
 class TunerContext:
     def __init__(self, logger: Optional[logging.Logger] = None):
         self.mlir_ctx: ir.Context = ir.Context()
@@ -653,7 +702,7 @@ def get_padding_conv_sizes(
     # For batch-last layout (e.g., CHWN), only pad the batch dimension to avoid
     # introducing pad op as the producer of collapse_shape op which may cause fusion problem.
     if conv_to_igemm_info.is_batch_dim_last:
-        last_batch_dim = conv_dims.batch[-1]
+        last_batch_dim = list(conv_dims.batch)[-1]
         igemm_batch_pos = conv_to_igemm_map[last_batch_dim]
 
         if (
