@@ -27,92 +27,79 @@ jobs:
   test_llama_large:
     if: ${{ github.repository_owner == 'nod-ai' || github.event_name != 'schedule' }}
     timeout-minutes: 240
-    name: "Release: LLM E2E Test"
-    strategy:
-      matrix:
-        version: [3.11]
-      fail-fast: false
+    name: "Release: LLM E2E Test (${{ matrix.model }})"
     runs-on: linux-mi325-8gpu-ossci-nod-ai
+
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        python: [3.11]
+        include:
+          - model: llama-70b-fp16
+            gpu: 0
+          - model: llama-70b-fp8
+            gpu: 1
+          - model: gpt-oss-20b-bfp16
+            gpu: 2
+          - model: llama-8b-fp16
+            gpu: 3
+          - model: llama-8b-fp8
+            gpu: 4
+          - model: mistral
+            gpu: 5
+
     defaults:
       run:
         shell: bash
+
     env:
       VENV_DIR: ${{ github.workspace }}/.venv
-    steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      ROCR_VISIBLE_DEVICES: ${{ matrix.gpu }}
+      HIP_VISIBLE_DEVICES: ${{ matrix.gpu }}
 
-      - name: "Setting up Python"
-        id: setup_python
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+
+      - name: Setup Python
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548
         with:
-          python-version: ${{matrix.version}}
+          python-version: ${{ matrix.python }}
+
       - name: Create Python venv
         run: |
-           ls -R /amdshark-dev # initial check for contents of directory
-           python -m venv ${VENV_DIR}
-           source ${VENV_DIR}/bin/activate
-      - name: Install pip deps
+          python -m venv "${VENV_DIR}"
+          source "${VENV_DIR}/bin/activate"
+
+      - name: Install dependencies
         run: |
+          source "${VENV_DIR}/bin/activate"
           bash scripts/setenv.sh --nightly
           mkdir -p output_artifacts
-          pip freeze | grep -E 'iree|amdshark' > $(pwd)/output_artifacts/version.txt
+          pip freeze | grep -E 'iree|amdshark' > output_artifacts/version.txt
 
-      - name: Llama 70b fp16
-        id: llama_70b_fp16_test
+      - name: Run E2E model test
         if: always()
         run: |
-            mkdir output_artifacts/output_llama-70b-fp16/
-            python3 -m amdsharktank.tools.e2e_model_test --model llama-70b-fp16 2>&1 | tee output_artifacts/output_llama-70b-fp16/e2e_llama_3.1-70b-fp16.log
+          source "${VENV_DIR}/bin/activate"
 
-      - name: Llama 70b fp8
-        id: llama_70b_fp8_test
-        if: always()
-        run: |
-            mkdir output_artifacts/output_llama-70b-fp8/
-            python3 -m amdsharktank.tools.e2e_model_test --model llama-70b-fp8 2>&1 | tee output_artifacts/output_llama-70b-fp8/e2e_llama_3.1-70b-fp8.log
+          OUTDIR="output_artifacts/output_${{ matrix.model }}"
+          mkdir -p "${OUTDIR}"
 
-      - name: gpt-oss 20b bfp16
-        id: gpt_oss_20b_bfp16_test
-        if: always()
-        run: |
-            mkdir output_artifacts/output_gpt-oss-20b-bfp16/
-            python3 -m amdsharktank.tools.e2e_model_test --model gpt-oss-20b-bfp16 2>&1 | tee output_artifacts/output_gpt-oss-20b-bfp16/e2e_gpt-oss-20b-bfp16.log
+          echo "[INFO] Running model: ${{ matrix.model }} on GPU ${{ matrix.gpu }}"
 
-      - name: Llama 8b fp16
-        id: llama_8b_fp16_test
-        if: always()
-        run: |
-            mkdir output_artifacts/output_llama-8b-fp16/
-            python3 -m amdsharktank.tools.e2e_model_test --model llama-8b-fp16 2>&1 | tee output_artifacts/output_llama-8b-fp16/e2e_llama_3.1-8b-fp16.log
+          python3 -m amdsharktank.tools.e2e_model_test \
+            --model "${{ matrix.model }}" \
+            2>&1 | tee "${OUTDIR}/e2e_${{ matrix.model }}.log"
 
-      - name: Llama 8b fp8
-        id: llama_8b_fp8_test
-        if: always()
-        run: |
-            mkdir output_artifacts/output_llama-8b-fp8/
-            python3 -m amdsharktank.tools.e2e_model_test --model llama-8b-fp8 2>&1 | tee output_artifacts/output_llama-8b-fp8/e2e_llama_3.1-8b-fp8.log
-
-      - name: Mistral Nemo Instruct 2407 FP8
-        id: Mistral_Nemo_Instruct_2407_FP8_test
-        if: always()
-        run: |
-            mkdir output_artifacts/output_mistral/
-            python3 -m amdsharktank.tools.e2e_model_test --model mistral 2>&1 | tee output_artifacts/output_mistral/e2e_Mistral_Nemo_Instruct_2407_FP8.log
-
-      - name: Upload log files
+      - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: llama-logs
+          name: llama-logs-${{ matrix.model }}
           path: |
-            output_artifacts/output_*/consolidated_benchmark.json
-            output_artifacts/output_*/*.log
+            output_artifacts/output_${{ matrix.model }}
             output_artifacts/version.txt
-      - name: Cleanup output artifacts
-        if: always()
-        run: |
-            rm -rf output_artifacts
-            test ! -d output_artifacts && echo "Output artifacts are removed"
 
   # New job to push logs to amd-shark-ai-reports repository
   push_logs:
