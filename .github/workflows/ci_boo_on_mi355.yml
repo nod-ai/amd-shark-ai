@@ -9,8 +9,7 @@ name: CI - Boo on Mi355
 on:
   workflow_dispatch:
   schedule:
-    # Run every 6 hour starting from 0h 30min on all days
-    - cron: "30 */6 * * *"
+    - cron: "45 10 * * *"
 
 permissions:
   contents: write
