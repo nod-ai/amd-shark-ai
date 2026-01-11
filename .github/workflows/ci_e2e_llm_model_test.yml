@@ -8,6 +8,7 @@ name: CI - E2E Model Tests
 
 on:
   workflow_dispatch:
+  pull_request:
   schedule:
     - cron: "0 12 * * *"
 
@@ -114,53 +115,169 @@ jobs:
             output_artifacts/output_*/*.log
             output_artifacts/version.txt
 
-  push_logs:
-    name: "Push log"
-    needs: [ test_llama_large ]
-    if: always()
-    runs-on: linux-mi325-1gpu-ossci-nod-ai
+
+
+  test_llama_405b_fp4:
+    if: ${{ github.repository_owner == 'nod-ai' || github.event_name != 'schedule' }}
+    timeout-minutes: 240
+    name: "Release: Llama 405B FP4 Benchmarking Tests (Host)"
+    runs-on: linux-mi355-1gpu-ossci-nod-ai
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11"]
+
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      VENV_DIR: ${{ github.workspace }}/.venv
+      IRPA: "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/fp4_preshuffled_2025_09_12.irpa"
+      TOKENIZER: "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer/tokenizer.json"
+      TOKENIZER_CONFIG: "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer/tokenizer_config.json"
+
     steps:
-    - name: Download log artifacts
-      uses: actions/download-artifact@v7
-      with:
-        name: llama-logs
-        path: logs
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
-    - name: Checkout Target Repo
-      if: always()
-      uses: actions/checkout@v6
-      with:
-        repository: nod-ai/amd-shark-ai-reports
-        token: ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}
-        path: amd-shark-ai-reports
+      - name: Setup Python
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548
+        with:
+          python-version: ${{ matrix.python }}
 
-    - name: Push artifacts
-      run: |
-        git config --global user.name "GitHub Actions Bot"
-        git config --global user.email ""
-        date=$(date -u +'%Y-%m-%d')
-        ls -R logs
-        mkdir -p "amd-shark-ai-reports/$date/llama_3.1-70b-fp16"
-        mkdir -p "amd-shark-ai-reports/$date/llama_3.1-70b-fp8"
-        mkdir -p "amd-shark-ai-reports/$date/llama_3.1-8b-fp16"
-        mkdir -p "amd-shark-ai-reports/$date/llama_3.1-8b-fp8"
-        mkdir -p "amd-shark-ai-reports/$date/Mistral_Nemo_Instruct_2407_FP8"
-        mkdir -p "amd-shark-ai-reports/$date/gpt_oss_20b_bfp16"
-        cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-70b-fp16/"
-        cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-70b-fp8/"
-        cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-8b-fp16/"
-        cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-8b-fp8/"
-        cp logs/version.txt "amd-shark-ai-reports/$date/Mistral_Nemo_Instruct_2407_FP8/"
-        cp logs/version.txt "amd-shark-ai-reports/$date/gpt_oss_20b_bfp16/"
-        cp -r logs/output_llama-70b-fp16/* "amd-shark-ai-reports/$date/llama_3.1-70b-fp16" || true
-        cp -r logs/output_llama-70b-fp8/* "amd-shark-ai-reports/$date/llama_3.1-70b-fp8" || true
-        cp -r logs/output_llama-8b-fp16/* "amd-shark-ai-reports/$date/llama_3.1-8b-fp16" || true
-        cp -r logs/output_llama-8b-fp8/* "amd-shark-ai-reports/$date/llama_3.1-8b-fp8" || true
-        cp -r logs/output_mistral/* "amd-shark-ai-reports/$date/Mistral_Nemo_Instruct_2407_FP8" || true
-        cp -r logs/output_gpt-oss-20b-bfp16/* "amd-shark-ai-reports/$date/gpt_oss_20b_bfp16" || true
-        cd amd-shark-ai-reports
-        git pull
-        git add $date
-        git commit -m "Add CI E2E logs on $(date -u +'%Y-%m-%d')"
-        git push origin main
-        rm -rf ../logs
+      - name: Create Python venv
+        run: |
+          python -m venv "${VENV_DIR}"
+          source "${VENV_DIR}/bin/activate"
+          python -m pip install --upgrade pip
+
+      - name: Install system & ROCm deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran build-essential binutils
+
+          python -m pip install \
+            --index-url https://d2awnip2yjpvqn.cloudfront.net/v2/gfx950-dcgpu/ \
+            rocm[libraries,devel]
+
+          ROCM_PATH=$(python -m rocm_sdk path --root)
+          echo "ROCM_PATH=$ROCM_PATH" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$ROCM_PATH/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+
+      - name: Setup amdshark environment
+        run: |
+          source "${VENV_DIR}/bin/activate"
+          bash scripts/setenv.sh --source
+          hf auth login --token "${{ secrets.HF_FLUX_TOKEN }}"
+
+      - name: Check runner health
+        run: |
+          rocm-smi
+          rocminfo
+          iree-run-module --list_devices
+
+      - name: E2E Test 405B FP4 (without topk)
+        if: always()
+        continue-on-error: true
+        run: |
+          source "${VENV_DIR}/bin/activate"
+          mkdir -p output_artifacts/output_llama-405b-fp4-without-topk
+
+          export PATH=$PWD/iree-build/tools/:$PATH
+          export PYTHONPATH=$PWD/iree-build/compiler/bindings/python:$PWD/iree-build/runtime/bindings/python
+          python -m amdsharktank.tools.e2e_model_test \
+            --model llama-405b-fp4-without-topk \
+            --gpu-model MI350X \
+            2>&1 | tee output_artifacts/output_llama-405b-fp4-without-topk/e2e.log
+
+      - name: E2E Test 405B FP4 (with topk)
+        if: always()
+        continue-on-error: true
+        run: |
+          source "${VENV_DIR}/bin/activate"
+
+          export PATH=$PWD/iree-build/tools/:$PATH
+          export PYTHONPATH=$PWD/iree-build/compiler/bindings/python:$PWD/iree-build/runtime/bindings/python
+          python -m amdsharktank.tools.e2e_model_test \
+            --model llama-405b-fp4-with-topk \
+            --stage benchmark \
+            --gpu-model MI350X \
+            2>&1 | tee output_artifacts/output_llama-405b-fp4-with-topk/e2e.log
+
+      - name: Run IREE Model Eval (Perplexity)
+        if: ${{ steps.llama_405b_fp4_without_topk_test.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          export DATASET="amdsharktank/tests/evaluate/datasets/llama_405b_fp8_e4m3fn_iree.json"
+          export TOKENIZER="/amdshark-dev/llama3.1/405b/fp4/"
+          export IRPA="$IRPA"
+          python3 -m amdsharktank.tools.eval_llm_vmfb \
+            --irpa=${IRPA} \
+            --tokenizer=${TOKENIZER} \
+            --dataset=${DATASET} \
+            --expected-err=1e-2 \
+            --min-context=10 \
+            --iree-hal-target-device=hip \
+            --iree-hip-target=gfx950 \
+            --vmfb output_artifacts/output_llama-405b-fp4-without-topk/output.vmfb \
+            --config output_artifacts/output_llama-405b-fp4-without-topk/config_attn.json 2>&1 | tee output_artifacts/output_llama-405b-fp4-without-topk/eval_llm_vmfb_perplexity.log
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: llama-405b-fp4-logs
+          path: |
+            output_artifacts/output_*/**/*.log
+
+  # push_logs:
+  #   name: "Push log"
+  #   needs: [ test_llama_large ]
+  #   if: always()
+  #   runs-on: linux-mi325-1gpu-ossci-nod-ai
+  #   steps:
+  #   - name: Download log artifacts
+  #     uses: actions/download-artifact@v7
+  #     with:
+  #       name: llama-logs
+  #       path: logs
+
+  #   - name: Checkout Target Repo
+  #     if: always()
+  #     uses: actions/checkout@v6
+  #     with:
+  #       repository: nod-ai/amd-shark-ai-reports
+  #       token: ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}
+  #       path: amd-shark-ai-reports
+
+  #   - name: Push artifacts
+  #     run: |
+  #       git config --global user.name "GitHub Actions Bot"
+  #       git config --global user.email ""
+  #       date=$(date -u +'%Y-%m-%d')
+  #       ls -R logs
+  #       mkdir -p "amd-shark-ai-reports/$date/llama_3.1-70b-fp16"
+  #       mkdir -p "amd-shark-ai-reports/$date/llama_3.1-70b-fp8"
+  #       mkdir -p "amd-shark-ai-reports/$date/llama_3.1-8b-fp16"
+  #       mkdir -p "amd-shark-ai-reports/$date/llama_3.1-8b-fp8"
+  #       mkdir -p "amd-shark-ai-reports/$date/Mistral_Nemo_Instruct_2407_FP8"
+  #       mkdir -p "amd-shark-ai-reports/$date/gpt_oss_20b_bfp16"
+  #       cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-70b-fp16/"
+  #       cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-70b-fp8/"
+  #       cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-8b-fp16/"
+  #       cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-8b-fp8/"
+  #       cp logs/version.txt "amd-shark-ai-reports/$date/Mistral_Nemo_Instruct_2407_FP8/"
+  #       cp logs/version.txt "amd-shark-ai-reports/$date/gpt_oss_20b_bfp16/"
+  #       cp -r logs/output_llama-70b-fp16/* "amd-shark-ai-reports/$date/llama_3.1-70b-fp16" || true
+  #       cp -r logs/output_llama-70b-fp8/* "amd-shark-ai-reports/$date/llama_3.1-70b-fp8" || true
+  #       cp -r logs/output_llama-8b-fp16/* "amd-shark-ai-reports/$date/llama_3.1-8b-fp16" || true
+  #       cp -r logs/output_llama-8b-fp8/* "amd-shark-ai-reports/$date/llama_3.1-8b-fp8" || true
+  #       cp -r logs/output_mistral/* "amd-shark-ai-reports/$date/Mistral_Nemo_Instruct_2407_FP8" || true
+  #       cp -r logs/output_gpt-oss-20b-bfp16/* "amd-shark-ai-reports/$date/gpt_oss_20b_bfp16" || true
+  #       cd amd-shark-ai-reports
+  #       git pull
+  #       git add $date
+  #       git commit -m "Add CI E2E logs on $(date -u +'%Y-%m-%d')"
+  #       git push origin main
+  #       rm -rf ../logs
