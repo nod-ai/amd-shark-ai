@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 """
-Usage: python -m pytest dispatch_constraints_test.py
+Usage: python -m pytest rocm/dispatch_constraints_test.py
 """
 
 import pytest
@@ -14,7 +14,8 @@ import z3  # type: ignore
 from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_gpu  # type: ignore
 
-from amdsharktuner import common, dispatch_constraints
+from amdsharktuner import common
+from amdsharktuner.rocm import rocm_dispatch_constraints as dispatch_constraints
 
 from amdsharktuner.test_utils import tuner_ctx
 

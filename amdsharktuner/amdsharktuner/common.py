@@ -5,22 +5,21 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 import logging
-from collections.abc import Sequence
-from dataclasses import dataclass, field, asdict
-from enum import Enum
-from types import TracebackType
-from typing import Optional, Any
-from abc import ABC
 import os
-import time
-import z3  # type: ignore
 import subprocess
 import tempfile
+import time
+from abc import ABC
+from collections.abc import Sequence
+from dataclasses import asdict, dataclass, field
+from enum import Enum
+from types import TracebackType
+from typing import Any, Optional
 
-from iree.compiler import ir  # type: ignore
-from iree.compiler.dialects import iree_codegen, iree_gpu, linalg, transform  # type: ignore
 import iree.compiler as ireec  # type: ignore
+from iree.compiler import ir  # type: ignore
 from iree.compiler._mlir_libs._mlir import ir  # type: ignore
+from iree.compiler.dialects import iree_codegen, iree_gpu, linalg, transform  # type: ignore
 
 
 class CommonTypes:
@@ -217,39 +216,6 @@ class MatmulShapeType:
     acc_type: ir.IntegerType | ir.FloatType
 
 
-@dataclass
-class LLVMGPUVectorDistributeContractionKnobs(KnobAssignment):
-    # Problem Size.
-    M: int
-    N: int
-    K: int
-
-    # Z3 numeric selections.
-    tile_m: int
-    tile_n: int
-    tile_k: int
-    wg_x: int
-    wg_y: int
-    wg_z: int
-    subgroup_m_cnt: int
-    subgroup_n_cnt: int
-    intrinsic_mn: int
-    intrinsic_k: int
-    subgroup_m: int
-    subgroup_n: int
-    subgroup_k: int
-
-
-@dataclass
-class ConvolutionKnobs(KnobAssignment):
-    pass
-
-
-@dataclass
-class AttentionKnobs(KnobAssignment):
-    pass
-
-
 def is_affine_expr_function_of_dim(expr: ir.AffineExpr, position: int) -> bool:
     """
     Return True if the expression depends on the dimension at the given position.
@@ -285,119 +251,6 @@ def get_map_result_dim_positions(map: ir.AffineMap) -> Optional[list[int]]:
         return None
 
     return [ir.AffineDimExpr(expr).position for expr in map.results]
-
-
-def get_compatible_mma_intrinsics(
-    lhs_type: ShapedType,
-    rhs_type: ShapedType,
-    res_type: ShapedType,
-    mma_intrinsics: list[iree_gpu.MMAIntrinsic | iree_gpu.VirtualMMAIntrinsic],
-    allow_virtual_mma: bool = False,
-) -> list[iree_gpu.MMAIntrinsic | iree_gpu.VirtualMMAIntrinsic]:
-    def is_compatible(
-        mma: iree_gpu.MMAIntrinsic | iree_gpu.VirtualMMAIntrinsic,
-    ) -> bool:
-        # Filter out virtual intrinsics unless explicitly allowed (for attention ops).
-        is_virtual = isinstance(mma, iree_gpu.VirtualMMAIntrinsic)
-        if is_virtual and not allow_virtual_mma:
-            return False
-
-        mma_attr = (
-            iree_gpu.VirtualMMAAttr.get(mma)
-            if is_virtual
-            else iree_gpu.MMAAttr.get(mma)
-        )
-        a_type, b_type, c_type = mma_attr.abc_element_types
-        return (
-            lhs_type.element_type == a_type
-            and rhs_type.element_type == b_type
-            and res_type.element_type == c_type
-        )
-
-    return list(filter(is_compatible, mma_intrinsics))
-
-
-# The key name for GPUPipelineOptionsAttr in the translation info config dictionary.
-GPU_PIPELINE_OPTIONS_KEY = "gpu_pipeline_options"
-# The key name for llvm_func_attrs attribute in the translation info config dictionary.
-LLVM_FUNC_ATTRS_KEY = "llvm_func_attrs"
-# The Key name for the 'amdgpu-waves-per-eu' within the llvm_func_attrs attribute.
-WAVES_PER_EU_KEY = "amdgpu-waves-per-eu"
-
-
-def get_lowering_config(
-    tuner_ctx: TunerContext,
-    **kwargs: Any,
-) -> iree_gpu.LoweringConfigAttr:
-    lowering_config_dict: dict[str, Any] = {}
-    for key, value in kwargs.items():
-        # A local variable to hold the transformed value.
-        promoted_value = value
-        match key:
-            case "workgroup" | "reduction" | "subgroup" | "promote_operands" | "padding" | "padding_conv":
-                if isinstance(value, Sequence):
-                    promoted_value = ir.ArrayAttr.get(
-                        [tuner_ctx.type.getI64(x) for x in value]
-                    )
-                elif not isinstance(value, ir.ArrayAttr):
-                    assert (
-                        False
-                    ), f"Unsupported type for key '{key}': {type(value).__name__}"
-            case "subgroup_basis":
-                if isinstance(value, list) and len(value) == 2:
-                    counts, mapping = value
-                    assert isinstance(counts, list) and isinstance(
-                        mapping, list
-                    ), f"subgroup_basis must contain two lists [counts, mapping]"
-                    counts_attr = tuner_ctx.type.getI64ArrayAttr(counts)
-                    mapping_attr = tuner_ctx.type.getI64ArrayAttr(mapping)
-                    promoted_value = ir.ArrayAttr.get([counts_attr, mapping_attr])
-
-                else:
-                    assert (
-                        False
-                    ), f"Unsupported type for key '{key}': {type(value).__name__}"
-            case "mma_kind":
-                if not isinstance(value, (iree_gpu.MMAAttr, iree_gpu.VirtualMMAAttr)):
-                    assert (
-                        False
-                    ), f"Unsupported type for key '{key}': {type(value).__name__}"
-            case _:
-                assert False, f"Unhandled key in lowering configuration: {key}"
-
-        lowering_config_dict[key] = promoted_value
-    lowering_config_attrs = ir.DictAttr.get(lowering_config_dict)
-    return iree_gpu.LoweringConfigAttr.get(lowering_config_attrs)
-
-
-# Generate a config dictionary used in translation_info attribute.
-def get_translation_info_config(
-    pipeline_options: iree_gpu.PipelineOptionsAttr, waves_per_eu: int
-) -> ir.DictAttr:
-    """
-    Example IR
-    translation_info = #iree_codegen.translation_info<
-                    pipeline = LLVMGPUVectorDistribute workgroup_size = [512, 1, 1] subgroup_size = 64,
-                    {gpu_pipeline_options = #iree_gpu.pipeline_options<...>,
-                     llvm_func_attrs = {"amdgpu-waves-per-eu" = "3"}
-                    }
-                >
-    """
-    waves_per_eu_str = str(waves_per_eu)
-
-    # Create the waves_per_eu dictionary attribute.
-    waves_per_eu_dict = ir.DictAttr.get(
-        {WAVES_PER_EU_KEY: ir.StringAttr.get(waves_per_eu_str)}
-    )
-
-    config_dict = ir.DictAttr.get(
-        {
-            GPU_PIPELINE_OPTIONS_KEY: pipeline_options,
-            LLVM_FUNC_ATTRS_KEY: waves_per_eu_dict,
-        }
-    )
-
-    return config_dict
 
 
 def combine_tuning_specs(
@@ -536,37 +389,6 @@ def determine_td_specs_to_link(
     return [current_td_spec]
 
 
-def get_attention_decomposition_config(
-    tuner_ctx: TunerContext,
-    qk_lowering_config: iree_gpu.LoweringConfigAttr,
-    pv_lowering_config: iree_gpu.LoweringConfigAttr,
-) -> ir.DictAttr:
-    """
-    Constructs the decomposition config for an attention op, embedding
-    separate lowering configs for QK and PV matmuls.
-    """
-
-    ctx = tuner_ctx.mlir_ctx
-    qk_attrs_dict = {
-        "attention_qk_matmul": ir.UnitAttr.get(ctx),
-        "lowering_config": qk_lowering_config,
-    }
-    qk_attr_dict = ir.DictAttr.get(qk_attrs_dict, context=ctx)
-
-    pv_attrs_dict = {
-        "attention_pv_matmul": ir.UnitAttr.get(ctx),
-        "lowering_config": pv_lowering_config,
-    }
-    pv_attr_dict = ir.DictAttr.get(pv_attrs_dict, context=ctx)
-
-    decomposition_config_dict = {
-        "qk_attrs": qk_attr_dict,
-        "pv_attrs": pv_attr_dict,
-    }
-
-    return ir.DictAttr.get(decomposition_config_dict, context=ctx)
-
-
 def get_target_info(input_module: ir.Module) -> iree_gpu.TargetInfo:
     # Get GPU target information from the executable variant operation.
     variant_op_list = iree_codegen.get_executable_variant_ops(input_module)
@@ -578,7 +400,58 @@ def get_target_info(input_module: ir.Module) -> iree_gpu.TargetInfo:
     return iree_gpu.TargetInfo.get_gpu_target_info(target)
 
 
-# The following two functions are from IREE side for padding utility:
+# The key name for GPUPipelineOptionsAttr in the translation info config dictionary.
+GPU_PIPELINE_OPTIONS_KEY = "gpu_pipeline_options"
+# The key name for llvm_func_attrs attribute in the translation info config dictionary.
+LLVM_FUNC_ATTRS_KEY = "llvm_func_attrs"
+
+
+def get_lowering_config(
+    tuner_ctx: TunerContext,
+    **kwargs: Any,
+) -> iree_gpu.LoweringConfigAttr:
+    lowering_config_dict: dict[str, Any] = {}
+    for key, value in kwargs.items():
+        # A local variable to hold the transformed value.
+        promoted_value = value
+        match key:
+            case "workgroup" | "reduction" | "subgroup" | "promote_operands" | "padding" | "padding_conv":
+                if isinstance(value, Sequence):
+                    promoted_value = ir.ArrayAttr.get(
+                        [tuner_ctx.type.getI64(x) for x in value]
+                    )
+                elif not isinstance(value, ir.ArrayAttr):
+                    assert (
+                        False
+                    ), f"Unsupported type for key '{key}': {type(value).__name__}"
+            case "subgroup_basis":
+                if isinstance(value, list) and len(value) == 2:
+                    counts, mapping = value
+                    assert isinstance(counts, list) and isinstance(
+                        mapping, list
+                    ), f"subgroup_basis must contain two lists [counts, mapping]"
+                    counts_attr = tuner_ctx.type.getI64ArrayAttr(counts)
+                    mapping_attr = tuner_ctx.type.getI64ArrayAttr(mapping)
+                    promoted_value = ir.ArrayAttr.get([counts_attr, mapping_attr])
+
+                else:
+                    assert (
+                        False
+                    ), f"Unsupported type for key '{key}': {type(value).__name__}"
+            case "mma_kind":
+                if not isinstance(value, (iree_gpu.MMAAttr, iree_gpu.VirtualMMAAttr)):
+                    assert (
+                        False
+                    ), f"Unsupported type for key '{key}': {type(value).__name__}"
+            case _:
+                assert False, f"Unhandled key in lowering configuration: {key}"
+
+        lowering_config_dict[key] = promoted_value
+    lowering_config_attrs = ir.DictAttr.get(lowering_config_dict)
+    return iree_gpu.LoweringConfigAttr.get(lowering_config_attrs)
+
+
+# The following two functions are from IREE for padding utility:
 # https://github.com/iree-org/iree/blob/8ae91ebb0e555e660b8a6898f6071476f7a1f20b/compiler/src/iree/compiler/Codegen/Dialect/GPU/TargetUtils/ConfigUtils.cpp#L631-L671
 def compute_next_aligned_bound(original_bound: int, alignment: int) -> int:
     """Pads a bound up to the next multiple of alignment if needed.
@@ -616,104 +489,6 @@ def get_dim_bounds(
             result.append(dim)
 
     return result
-
-
-# Implemented the logic from IREE side:
-# https://github.com/iree-org/iree/blob/8ae91ebb0e555e660b8a6898f6071476f7a1f20b/compiler/src/iree/compiler/Codegen/Dialect/GPU/TargetUtils/ConfigUtils.cpp#L382-L467
-def get_padding_conv_sizes(
-    bounds: list[int],
-    padding_sizes: list[int],
-    igemm_loop_iterators: list[str],
-    conv_to_igemm_info: ConvToIgemmInfo,
-) -> Optional[list[int]]:
-    """
-    Computes padding_conv by mapping padding from IGEMM space to convolution space.
-
-    Args:
-        bounds: Loop bounds for each dimension.
-        padding_sizes: Padding sizes in IGEMM dimension space (M, N, K).
-        igemm_loop_iterators: IGEMM loop iterator type strings ('"reduction"' or '"parallel"').
-        conv_to_igemm_info: Convolution to IGEMM transformation info.
-
-    Returns:
-        Padding sizes in convolution dimension space, or None if no padding
-        is needed along original convolution dimensions.
-    """
-    # Skip padding convolution for NCHW layout (spatial dimensions are last).
-    if conv_to_igemm_info.is_spatial_dim_last:
-        return None
-
-    conv_to_igemm_map = conv_to_igemm_info.conv_to_igemm_dim_map
-    padded_igemm_dims = set()
-    conv_dims = conv_to_igemm_info.conv_dims
-    input_channel_dims = set(conv_dims.input_channel)
-
-    padding_conv_sizes = [0] * len(conv_to_igemm_map)
-
-    # For batch-last layout (e.g., CHWN), only pad the batch dimension to avoid
-    # introducing pad op as the producer of collapse_shape op which may cause fusion problem.
-    if conv_to_igemm_info.is_batch_dim_last:
-        last_batch_dim = conv_dims.batch[-1]
-        igemm_batch_pos = conv_to_igemm_map[last_batch_dim]
-
-        if (
-            padding_sizes[igemm_batch_pos]
-            and bounds[igemm_batch_pos] % padding_sizes[igemm_batch_pos] == 0
-        ):
-            return None
-
-        padding_conv_sizes[last_batch_dim] = padding_sizes[igemm_batch_pos]
-        return padding_conv_sizes
-
-    for conv_dim, igemm_pos in conv_to_igemm_map.items():
-        if igemm_loop_iterators[igemm_pos] == '"reduction"':
-            # Skip filter loop dimensions (reduction dims that aren't input channels).
-            # Only pad input channel dims. If we need to pad filter dims, then we
-            # would rather just do padding on the IGEMM instead.
-            if conv_dim not in input_channel_dims:
-                continue
-
-            # Skip conv padding for input channel dims if already divisible by padding size.
-            if (
-                padding_sizes[igemm_pos]
-                and bounds[igemm_pos] % padding_sizes[igemm_pos] == 0
-            ):
-                padded_igemm_dims.add(igemm_pos)
-                continue
-
-            # Multiple input channel dims for a single IGEMMPos is not supported.
-            if igemm_pos in padded_igemm_dims:
-                return None
-
-            input_channel_size = conv_to_igemm_info.input_channel_dim_to_size.get(
-                conv_dim, 0
-            )
-            is_input_channel_size_small = (
-                padding_sizes[igemm_pos] // input_channel_size > 2
-            )
-
-            # If the input channel dimension is much smaller than the padding size,
-            # skip padding along that dimension while still padding the others.
-            if is_input_channel_size_small:
-                padding_conv_sizes[conv_dim] = 0
-            else:
-                padding_conv_sizes[conv_dim] = padding_sizes[igemm_pos]
-
-            padded_igemm_dims.add(igemm_pos)
-            continue
-
-        # Multiple padded parallel dims mapping to the same IGEMM dim is not supported.
-        if padding_sizes[igemm_pos] and igemm_pos in padded_igemm_dims:
-            return None
-
-        padding_conv_sizes[conv_dim] = padding_sizes[igemm_pos]
-        padded_igemm_dims.add(igemm_pos)
-
-    # Ensure that all dimensions have been padded.
-    if len(padded_igemm_dims) != len(padding_sizes):
-        return None
-
-    return padding_conv_sizes
 
 
 def calculate_padded_dimensions(
