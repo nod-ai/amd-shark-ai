@@ -1,15 +1,15 @@
-import random
-import logging
 import csv
-from typing import Optional, Any
+import logging
+import random
 from dataclasses import dataclass
-from pathlib import Path
 from enum import Enum
-from typing import Optional, Callable
+from pathlib import Path
+from typing import Any, Callable, Optional
 
 from iree.compiler.dialects import iree_gpu  # type: ignore
 
 from . import common
+from .rocm import rocm_common
 
 
 class CandidateOrderKind(str, Enum):
@@ -36,7 +36,7 @@ def arith_intensity(x: int, y: int, z: int) -> float:
 
 def llvm_gpu_vector_distribute_contraction_sort_key(
     target_info: iree_gpu.TargetInfo,
-    knob: common.LLVMGPUVectorDistributeContractionKnobs,
+    knob: rocm_common.LLVMGPUVectorDistributeContractionKnobs,
 ) -> tuple[bool, bool, float]:
     return (
         not is_pow2(knob.tile_k),
@@ -50,7 +50,7 @@ def llvm_gpu_vector_distribute_contraction_sort_key(
 
 
 SORT_KEY_MAP: dict[type[common.KnobAssignment | None], Callable | None] = {
-    common.LLVMGPUVectorDistributeContractionKnobs: llvm_gpu_vector_distribute_contraction_sort_key,
+    rocm_common.LLVMGPUVectorDistributeContractionKnobs: llvm_gpu_vector_distribute_contraction_sort_key,
     type(None): None,
     # TODO: Add key() for conv, attention, and other dispatch kinds.
 }

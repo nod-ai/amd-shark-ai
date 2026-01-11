@@ -16,38 +16,40 @@ and implement a complete tuning loop for a specific model.
 """
 
 
-import math
-import sys
-import shutil
-import logging
 import argparse
-import tempfile
+import csv
+import hashlib
+import logging
+import math
 import os
 import random
+import shutil
+import sys
+import tempfile
 import time
-import csv
+from abc import ABC, abstractmethod
 from collections import defaultdict
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from tqdm import tqdm
-import hashlib
-from dataclasses import dataclass, field
-from typing import Type, Optional, Callable, Protocol
-from abc import ABC, abstractmethod
+from typing import Callable, Optional, Protocol, Type
 
-import iree.runtime as ireert  # type: ignore
+from tqdm import tqdm
+
 import iree.compiler as ireec  # type: ignore
+import iree.runtime as ireert  # type: ignore
 from iree.compiler import ir  # type: ignore
-from iree.compiler.dialects import iree_gpu, iree_codegen  # type: ignore
+from iree.compiler.dialects import iree_codegen, iree_gpu  # type: ignore
+
 from . import (
     candidate_gen,
     candidate_ordering,
     common,
-    dispatch_constraints,
     dispatch_parser,
     process_utils,
 )
+from .rocm import rocm_dispatch_constraints
 
 
 # Default random seed.
@@ -878,7 +880,7 @@ def generate_candidate_specs(
         mlir_text = candidate_gen.strip_compilation_info(path_config.template_mlir)
         mlir_module = dispatch_parser.parse_mlir(mlir_text, tuning_client.tuner_context)
         logging.debug("Captured messages from candidate_gen.py:")
-        pipeline_options_search_space = dispatch_constraints.PipelineOptionsSearchSpace(
+        pipeline_options_search_space = rocm_dispatch_constraints.PipelineOptionsSearchSpace(
             prefetch_num_stages=args.prefetch_num_stages_options,
             no_reduce_shared_memory_bank_conflicts=args.no_reduce_shared_memory_bank_conflicts_options,
         )
@@ -887,8 +889,27 @@ def generate_candidate_specs(
             with open(args.starter_td_spec, "r") as f:
                 starter_td_spec = ir.Module.parse(f.read())
 
+        # Get target info first.
+        tuning_client.target_info = common.get_target_info(mlir_module)
+        assert tuning_client.target_info, "Failed to query target info."
+
+        # Get appropriate tuners for this target and pipeline.
+        codegen_pipeline = get_iree_codegen_pipeline(args.codegen_pipeline)
+        dispatch_tuners = candidate_gen.get_dispatch_tuners(
+            target_arch=tuning_client.target_info.arch,
+            codegen_pipeline=codegen_pipeline,
+        )
+        if not dispatch_tuners:
+            candidate_gen_logger.warning(
+                f"No tuners available for target '{tuning_client.target_info.arch}' "
+                f"with pipeline '{codegen_pipeline}'. No candidates will be generated."
+            )
+            return []
+
         dispatch_tuner = candidate_gen.set_dispatch_tuner(
-            input_module=mlir_module, tuner_ctx=tuning_client.tuner_context
+            input_module=mlir_module,
+            tuner_ctx=tuning_client.tuner_context,
+            dispatch_tuners=dispatch_tuners,
         )
         if not dispatch_tuner:
             candidate_gen_logger.warning(
@@ -896,8 +917,6 @@ def generate_candidate_specs(
             )
             return []
 
-        tuning_client.target_info = common.get_target_info(mlir_module)
-        assert tuning_client.target_info, "Failed to query target info."
         solution_gen_start_time = time.perf_counter()
         solutions_iter = candidate_gen.generate_solutions(
             dispatch_tuner=dispatch_tuner,
@@ -906,7 +925,6 @@ def generate_candidate_specs(
             num_subgroups=args.num_subgroups,
             allowed_waves_per_eu=args.waves_per_eu_options,
             pipeline_options_search_space=pipeline_options_search_space,
-            codegen_pipeline=get_iree_codegen_pipeline(args.codegen_pipeline),
         )
         if args.enable_random_seed:
             random.seed()
