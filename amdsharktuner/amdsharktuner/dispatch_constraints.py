@@ -63,7 +63,7 @@ def match_layout(
     )
 
 
-def get_mma_intrinsic_constraints(
+def get_mma_intrinsic_constraints_list(
     lhs_type: common.ShapedType,
     rhs_type: common.ShapedType,
     res_type: common.ShapedType,
@@ -75,7 +75,7 @@ def get_mma_intrinsic_constraints(
     rhs_layout: MMASingleSubgroupLayout | None = None,
     acc_layout: MMASingleSubgroupLayout | None = None,
     allow_virtual_mma: bool = False,
-) -> z3.BoolRef:
+) -> list[z3.BoolRef]:
     compatible_intrinsics = common.get_compatible_mma_intrinsics(
         lhs_type, rhs_type, res_type, mma_intrinsics, allow_virtual_mma
     )
@@ -133,6 +133,36 @@ def get_mma_intrinsic_constraints(
             base_constraints += match_layout(acc_layout, mma_layout)
 
         constraints.append(z3.And(*base_constraints))
+
+    return constraints
+
+
+def get_mma_intrinsic_constraints(
+    lhs_type: common.ShapedType,
+    rhs_type: common.ShapedType,
+    res_type: common.ShapedType,
+    intrinsic_m: z3.ArithRef,
+    intrinsic_n: z3.ArithRef,
+    intrinsic_k: z3.ArithRef,
+    mma_intrinsics: list[iree_gpu.MMAIntrinsic | iree_gpu.VirtualMMAIntrinsic],
+    lhs_layout: MMASingleSubgroupLayout | None = None,
+    rhs_layout: MMASingleSubgroupLayout | None = None,
+    acc_layout: MMASingleSubgroupLayout | None = None,
+    allow_virtual_mma: bool = False,
+) -> z3.BoolRef:
+    constraints = get_mma_intrinsic_constraints_list(
+        lhs_type=lhs_type,
+        rhs_type=rhs_type,
+        res_type=res_type,
+        intrinsic_m=intrinsic_m,
+        intrinsic_n=intrinsic_n,
+        intrinsic_k=intrinsic_k,
+        mma_intrinsics=mma_intrinsics,
+        lhs_layout=lhs_layout,
+        rhs_layout=rhs_layout,
+        acc_layout=acc_layout,
+        allow_virtual_mma=allow_virtual_mma,
+    )
 
     return z3.Or(*constraints)
 
@@ -226,17 +256,7 @@ def generate_vector_distribute_constraints(
         subgroup_size == target_subgroup_size,
         wg_threads <= gpu_target_info.max_thread_count_per_workgroup,
     ]
-    constraints += [
-        get_mma_intrinsic_constraints(
-            lhs_type,
-            rhs_type,
-            res_type,
-            intrinsic_mn,
-            intrinsic_mn,
-            intrinsic_k,
-            gpu_target_info.mma_intrinsics,
-        )
-    ]
+
     subgroup_k_count = 1
     m = m_vars[-1]
     n = n_vars[-1]
@@ -316,17 +336,6 @@ def generate_tile_and_fuse_constraints(
     constraints += [
         subgroup_size == target_subgroup_size,
         wg_threads <= gpu_target_info.max_thread_count_per_workgroup,
-    ]
-    constraints += [
-        get_mma_intrinsic_constraints(
-            lhs_type,
-            rhs_type,
-            res_type,
-            intrinsic_mn,
-            intrinsic_mn,
-            intrinsic_k,
-            gpu_target_info.mma_intrinsics,
-        )
     ]
 
     constraints += [
