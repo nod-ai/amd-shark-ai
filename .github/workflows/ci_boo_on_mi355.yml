@@ -167,18 +167,18 @@ jobs:
         token: ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}
         path: amd-shark-ai-reports
 
-    # - name: Push artifacts
-    #   if: always()
-    #   run: |
-    #     git config --global user.name "GitHub Actions Bot"
-    #     git config --global user.email ""
-    #     date=$(date -u +'%Y-%m-%d')
-    #     mkdir -p "amd-shark-ai-reports/boo/$date/"
-    #     cp -v logs/*.csv "amd-shark-ai-reports/boo/$date/" || true
-    #     cp -v logs/version.txt "amd-shark-ai-reports/boo/$date/"
-    #     cd amd-shark-ai-reports/boo
-    #     git pull
-    #     git add $date
-    #     git commit -m "Add conv report on $(date -u +'%Y-%m-%d')"
-    #     git push origin main
-    #     rm -rf ../logs
+    - name: Push artifacts
+      if: always()
+      run: |
+        git config --global user.name "GitHub Actions Bot"
+        git config --global user.email ""
+        date=$(date -u +'%Y-%m-%d')
+        mkdir -p "amd-shark-ai-reports/boo/$date/"
+        cp -v logs/*.csv "amd-shark-ai-reports/boo/$date/" || true
+        cp -v logs/version.txt "amd-shark-ai-reports/boo/$date/"
+        cd amd-shark-ai-reports/boo
+        git pull
+        git add $date
+        git commit -m "Add conv report on $(date -u +'%Y-%m-%d')"
+        git push origin main
+        rm -rf ../logs
