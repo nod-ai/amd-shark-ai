@@ -142,14 +142,14 @@ jobs:
   # New job to push logs to amd-shark-ai-reports repository
   push_logs:
     name: "Push log for conv run"
-    needs: [ test_llama_large ]
+    needs: [ test_boo ]
     if: always()
     runs-on: ubuntu-24.04
     steps:
     - name: Download log artifacts
       uses: actions/download-artifact@v7
       with:
-        name: llama-logs
+        name: boo-logs
         path: logs
 
     - name: Checkout Target Repo
