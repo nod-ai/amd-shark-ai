@@ -152,4 +152,5 @@ jobs:
       working-directory: ${{ env.LIBSHORTFIN_DIR }}
       run: |
         eval "$(pyenv init - bash)"
-        pytest -s --durations=10 --timeout=30
+        AMD_LOG_LEVEL=3 pytest -s --durations=10 --timeout=30 -k test_process_results >& ../shortfinX_failure.log
+        du -sh ../shortfinX_failure.log
