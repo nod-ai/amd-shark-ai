@@ -66,7 +66,9 @@ jobs:
         git clone https://github.com/pdhirajkumarprasad/iree-turbine.git -b dhirajp/for_mi350_runner
         cd iree-turbine
         pip install -r requirements.txt
-        pip install -r requirements-iree-unpinned.txt
+        # pip install -r requirements-iree-unpinned.txt
+        # pip uninstall iree-base-compiler iree-base-runtime
+        pip install   --find-links https://iree.dev/pip-release-links.html   iree-base-compiler==3.10.0rc20260105   iree-base-runtime==3.10.0rc20260105 --upgrade
         pip install --no-deps -e .
         pip freeze  > $(pwd)/../output_artifacts/version.txt
         cd -
