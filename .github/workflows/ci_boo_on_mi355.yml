@@ -4,11 +4,17 @@
 # See https://llvm.org/LICENSE.txt for license information.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
+
+# This CI runs the following:
+#
+# 1. proxy with untuned boo and native pytorch
+# 2. prod with untuned boo and native pytorch
+# 3. gemms with untuned boo and native pytorch
+
 name: CI - Boo on Mi355
 
 on:
   workflow_dispatch:
-  pull_request:
   schedule:
     - cron: "45 10 * * *"
 
@@ -71,7 +77,7 @@ jobs:
 
         ## With latest iree we are seeing error as AttributeError: type object 'iree.compiler._mlir_libs._mlir.ir.IntegerType' has no attribute 'isinstance',
         ## due to this https://github.com/iree-org/iree/commit/6a927feeef80304fffbf550910538f5d5b94678f llvm-integration in iree we are seeing error
-        ## So using using an iree version before this commit below
+        ## So using using an iree compile and runtime version before this commit below
         ## TODO:: After above fix remove below line and uncomment the pip install -r requirements-iree-unpinned.txt and pip uninstall iree-base-compiler iree-base-runtime above
         pip install   --find-links https://iree.dev/pip-release-links.html   iree-base-compiler==3.10.0rc20260105   iree-base-runtime==3.10.0rc20260105 --upgrade
         pip install --no-deps -e .
@@ -97,7 +103,7 @@ jobs:
             --commands-file ../amd-shark-ai-reports/boo/prod_conv_config.txt --csv ../output_artifacts/prod_conv_miopen.csv \
             --backend=torch || true
 
-       echo "============ 2. Running Prod Conv shape with IREE without tuning ========="
+       echo "============ 2. Running Prod Conv shape with IREE without tuning ================="
        iree-boo-driver \
             --commands-file ../amd-shark-ai-reports/boo/prod_conv_config.txt --csv ../output_artifacts/prod_conv_iree_without_tuning.csv \
             --backend=iree_boo_experimental || true
@@ -107,17 +113,17 @@ jobs:
             --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_miopen.csv \
             --backend=torch || true
 
-       echo "============ 4. Running All proxy shape with IREE without tuning ========="
+       echo "============ 4. Running All proxy shape with IREE without tuning ================="
        iree-boo-driver \
             --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_iree_without_tuning.csv \
             --backend=iree_boo_experimental || true
 
-       echo "============ 5. Running Gemm shape(MIOpen) =============="
+       echo "============ 5. Running Gemm shape(MIOpen) ======================================="
        iree-boo-driver \
             --commands-file ../amd-shark-ai-reports/boo/gemm_config.txt --csv ../output_artifacts/gemm_miopen.csv \
             --backend=torch  || true
 
-       echo "============ 6. Running Gemm shape with IREE without tuning =============="
+       echo "============ 6. Running Gemm shape with IREE without tuning ======================"
        iree-boo-driver \
             --commands-file ../amd-shark-ai-reports/boo/gemm_config.txt --csv ../output_artifacts/gemm_iree_without_tuning.csv \
             --backend=iree_boo_experimental  || true
@@ -134,7 +140,8 @@ jobs:
         mkdir install
         tar -xf *.tar.gz -C install
         export PATH=$PWD/install/bin:$PATH
-        echo "============ 6. Running Gemm Shape with hipblaslt =============="
+
+        echo "============= 7. Running Gemm Shape with hipblaslt =============================="
         bash amd-shark-ai-reports/boo/hipblaslt-bench.sh >& output_artifacts/gemm_hipBlaslt-bench.csv
 
     - name: Upload log files
