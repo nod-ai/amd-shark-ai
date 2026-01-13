@@ -8,6 +8,7 @@ name: CI - Boo on Mi355
 
 on:
   workflow_dispatch:
+  pull_request:
   schedule:
     - cron: "45 10 * * *"
 
@@ -126,6 +127,7 @@ jobs:
         mkdir install
         tar -xf *.tar.gz -C install
         export PATH=$PWD/install/bin:$PATH
+        echo "============ 6. Running Gemm Shape with hipblaslt =============="
         bash amd-shark-ai-reports/boo/hipblaslt-bench.sh >& output_artifacts/gemm_hipBlaslt-bench.csv
 
     - name: Upload log files
