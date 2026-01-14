@@ -58,7 +58,7 @@ else
     pip uninstall -y wave-lang
     pip install wave-lang
     pip uninstall -y iree-base-compiler iree-base-runtime
-    pip install   --find-links https://iree.dev/pip-release-links.html   iree-base-compiler==3.10.0rc20260114   iree-base-runtime==3.10.0rc20260114  iree-turbine==3.10.0rc20260114
+    pip install   --find-links https://iree.dev/pip-release-links.html   iree-base-compiler==3.10.0rc20260113   iree-base-runtime==3.10.0rc20260113  iree-turbine==3.10.0rc20260113
     # pip install -f https://github.com/iree-org/wave/releases/expanded_assets/dev-wheels wave-lang --no-index
 fi
 
