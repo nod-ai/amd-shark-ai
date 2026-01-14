@@ -75,6 +75,7 @@ jobs:
         cd iree-turbine
         pip install -r requirements.txt
         pip install -r requirements-iree-pinned.txt
+        pip uninstall -y torch torchvision torchaudio
         pip install "torch>=2.5" torchvision torchaudio
         # pip uninstall iree-base-compiler iree-base-runtime
 
