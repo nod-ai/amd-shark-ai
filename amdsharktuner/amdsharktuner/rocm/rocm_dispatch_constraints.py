@@ -17,6 +17,7 @@ from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_codegen, iree_gpu  # type: ignore
 
 from .. import common
+from . import rocm_common
 
 
 @dataclass
@@ -76,7 +77,7 @@ def get_mma_intrinsic_constraints_list(
     acc_layout: MMASingleSubgroupLayout | None = None,
     allow_virtual_mma: bool = False,
 ) -> list[z3.BoolRef]:
-    compatible_intrinsics = common.get_compatible_mma_intrinsics(
+    compatible_intrinsics = rocm_common.get_compatible_mma_intrinsics(
         lhs_type, rhs_type, res_type, mma_intrinsics, allow_virtual_mma
     )
     assert len(compatible_intrinsics) > 0, "No compatible intrinsics found"
@@ -742,7 +743,7 @@ def generate_compilation_infos(
     compilation_infos = []
     for pipeline_options in pipeline_options_list:
         for waves_per_eu in allowed_waves_per_eu:
-            config_dict = common.get_translation_info_config(
+            config_dict = rocm_common.get_translation_info_config(
                 pipeline_options, waves_per_eu
             )
             translation_info = iree_codegen.TranslationInfoAttr.get(

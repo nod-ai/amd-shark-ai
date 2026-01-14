@@ -5,3 +5,6 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 """ROCm-specific tuning implementations for amdsharktuner."""
+
+from . import rocm_common
+from . import rocm_dispatch_constraints

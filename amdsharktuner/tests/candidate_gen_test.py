@@ -12,6 +12,7 @@ from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_codegen, iree_gpu, transform  # type: ignore
 
 from amdsharktuner import candidate_gen, common
+from amdsharktuner.rocm import rocm_common
 
 from amdsharktuner.test_utils import tuner_ctx
 
@@ -77,7 +78,9 @@ def test_get_td_spec_contraction(tuner_ctx: common.TunerContext) -> None:
         iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
     )
     pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_num_stages=2)
-    config_dict = common.get_translation_info_config(pipeline_options, waves_per_eu=8)
+    config_dict = rocm_common.get_translation_info_config(
+        pipeline_options, waves_per_eu=8
+    )
     translation_info = iree_codegen.TranslationInfoAttr.get(
         pipeline_attr, None, [16, 16, 1], 16, config_dict
     )
@@ -160,7 +163,9 @@ def test_get_td_spec_convolution(tuner_ctx: common.TunerContext) -> None:
         iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
     )
     pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_num_stages=0)
-    config_dict = common.get_translation_info_config(pipeline_options, waves_per_eu=2)
+    config_dict = rocm_common.get_translation_info_config(
+        pipeline_options, waves_per_eu=2
+    )
     translation_info = iree_codegen.TranslationInfoAttr.get(
         pipeline_attr, None, [256, 1, 1], 64, config_dict
     )
