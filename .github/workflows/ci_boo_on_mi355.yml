@@ -71,7 +71,7 @@ jobs:
         ## There are two issue: 1> Need fix for 41f311e63c9021db7c26bdfe86f10513cb372c13 2> Need to update requirements file by removing upper bound of torch
         ## TODO: Replace this after above fix.
         #git clone https://github.com/pdhirajkumarprasad/iree-turbine.git -b dhirajp/for_mi350_runner
-        git clone https://github.com/iree/iree-turbine.git
+        git clone https://github.com/iree-org/iree-turbine.git
         cd iree-turbine
         pip install -r requirements.txt
         pip install -r requirements-iree-pinned.txt
