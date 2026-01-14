@@ -75,9 +75,8 @@ jobs:
         git clone https://github.com/iree-org/iree-turbine.git
         cd iree-turbine
         pip install -r requirements.txt
+        pip install -r pytorch-rocm-requirements.txt
         pip install -r requirements-iree-pinned.txt
-        pip uninstall -y torch torchvision torchaudio
-        pip install "torch>=2.5" torchvision torchaudio
         # pip uninstall iree-base-compiler iree-base-runtime
 
         ## With latest iree we are seeing error as AttributeError: type object 'iree.compiler._mlir_libs._mlir.ir.IntegerType' has no attribute 'isinstance',
