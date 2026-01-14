@@ -70,17 +70,18 @@ jobs:
 
         ## There are two issue: 1> Need fix for 41f311e63c9021db7c26bdfe86f10513cb372c13 2> Need to update requirements file by removing upper bound of torch
         ## TODO: Replace this after above fix.
-        git clone https://github.com/pdhirajkumarprasad/iree-turbine.git -b dhirajp/for_mi350_runner
+        #git clone https://github.com/pdhirajkumarprasad/iree-turbine.git -b dhirajp/for_mi350_runner
+        git clone https://github.com/iree/iree-turbine.git
         cd iree-turbine
         pip install -r requirements.txt
-        # pip install -r requirements-iree-unpinned.txt
+        pip install -r requirements-iree-pinned.txt
         # pip uninstall iree-base-compiler iree-base-runtime
 
         ## With latest iree we are seeing error as AttributeError: type object 'iree.compiler._mlir_libs._mlir.ir.IntegerType' has no attribute 'isinstance',
         ## due to this https://github.com/iree-org/iree/commit/6a927feeef80304fffbf550910538f5d5b94678f llvm-integration in iree we are seeing error
         ## So using using an iree compile and runtime version before this commit below
         ## TODO:: After above fix remove below line and uncomment the pip install -r requirements-iree-unpinned.txt and pip uninstall iree-base-compiler iree-base-runtime above
-        pip install   --find-links https://iree.dev/pip-release-links.html   iree-base-compiler==3.10.0rc20260112   iree-base-runtime==3.10.0rc20260112 --upgrade
+        # pip install   --find-links https://iree.dev/pip-release-links.html   iree-base-compiler==3.10.0rc20260105   iree-base-runtime==3.10.0rc20260105 --upgrade
         pip install --no-deps -e .
         pip freeze  > $(pwd)/../output_artifacts/version.txt
         cd -
