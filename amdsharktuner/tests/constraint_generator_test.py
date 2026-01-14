@@ -658,6 +658,86 @@ def test_adjust_problem_size_for_pipeline_with_igemm_details(
         assert conv_size.K == [1152]
 
 
+def test_ContractionZ3Constants_to_meta() -> None:
+    matmul_size = common.ContractionSizes(M=[1, 2], N=[1], K=[1], B=[1])
+    orig = constraint_generator.ContractionZ3Constants.from_sizes(matmul_size)
+    meta = orig.to_meta()
+    expected = {
+        "m_vals": ["m0", "m1"],
+        "n_vals": ["n0"],
+        "k_vals": ["k0"],
+        "subgroup_m_vals": ["subgroup_m0", "subgroup_m1"],
+        "subgroup_n_vals": ["subgroup_n0"],
+        "subgroup_size": "subgroup_size",
+        "intrinsic_mn": "intrinsic_mn",
+        "intrinsic_k": "intrinsic_k",
+        "wg_x": "wg_x",
+        "wg_y": "wg_y",
+        "wg_z": "wg_z",
+        "sg_m_cnt": "sg_m_cnt",
+        "sg_n_cnt": "sg_n_cnt",
+    }
+    assert meta == expected
+
+
+def test_ContractionZ3Constants_from_meta_dict() -> None:
+    meta: dict[str, str | list[str]] = {
+        "m_vals": ["m0", "m1"],
+        "n_vals": ["n0"],
+        "k_vals": ["k0"],
+        "subgroup_m_vals": ["subgroup_m0", "subgroup_m1"],
+        "subgroup_n_vals": ["subgroup_n0"],
+        "subgroup_size": "subgroup_size",
+        "intrinsic_mn": "intrinsic_mn",
+        "intrinsic_k": "intrinsic_k",
+        "wg_x": "wg_x",
+        "wg_y": "wg_y",
+        "wg_z": "wg_z",
+        "sg_m_cnt": "sg_m_cnt",
+        "sg_n_cnt": "sg_n_cnt",
+    }
+
+    ctx = constraint_generator.z3.Context()
+    recon = constraint_generator.ContractionZ3Constants.from_meta(meta=meta, ctx=ctx)
+
+    assert recon.m_vals == [constraint_generator.z3.Int(f"m{i}", ctx) for i in range(2)]
+    assert recon.n_vals == [constraint_generator.z3.Int(f"n0", ctx)]
+    assert recon.k_vals == [constraint_generator.z3.Int(f"k0", ctx)]
+    assert recon.subgroup_m_vals == [
+        constraint_generator.z3.Int(f"subgroup_m{i}", ctx) for i in range(2)
+    ]
+    assert recon.subgroup_n_vals == [constraint_generator.z3.Int(f"subgroup_n0", ctx)]
+
+    assert recon.subgroup_size == constraint_generator.z3.Int("subgroup_size", ctx)
+    assert recon.intrinsic_mn == constraint_generator.z3.Int("intrinsic_mn", ctx)
+    assert recon.intrinsic_k == constraint_generator.z3.Int("intrinsic_k", ctx)
+    assert recon.wg_x == constraint_generator.z3.Int("wg_x", ctx)
+    assert recon.wg_y == constraint_generator.z3.Int("wg_y", ctx)
+    assert recon.wg_z == constraint_generator.z3.Int("wg_z", ctx)
+    assert recon.sg_m_cnt == constraint_generator.z3.Int("sg_m_cnt", ctx)
+    assert recon.sg_n_cnt == constraint_generator.z3.Int("sg_n_cnt", ctx)
+
+
+def test_Z3Constants_meta_roundtrip() -> None:
+    matmul_size = common.ContractionSizes(M=[1], N=[1], K=[1], B=[1])
+    orig = constraint_generator.ContractionZ3Constants.from_sizes(matmul_size)
+    meta = orig.to_meta()
+
+    ctx = constraint_generator.z3.Context()
+    recon = constraint_generator.ContractionZ3Constants.from_meta(meta=meta, ctx=ctx)
+
+    for f in constraint_generator.fields(orig):
+        orig_field = getattr(orig, f.name)
+        recon_field = getattr(recon, f.name)
+
+        if isinstance(orig_field, list):
+            assert [v.decl().name() for v in orig_field] == [
+                v.decl().name() for v in recon_field
+            ]
+        else:
+            assert orig_field.decl().name() == recon_field.decl().name()
+
+
 def test_get_z3_solutions() -> None:
     matmul_size = common.ContractionSizes(M=[1], N=[1], K=[1], B=[1])
     z3_constants = constraint_generator.ContractionZ3Constants.from_sizes(matmul_size)
