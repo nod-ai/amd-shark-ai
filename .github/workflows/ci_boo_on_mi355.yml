@@ -15,7 +15,6 @@ name: CI - Boo on Mi355
 
 on:
   workflow_dispatch:
-  pull_request:
   schedule:
     - cron: "45 10 * * *"
 
@@ -64,26 +63,23 @@ jobs:
       run: |
         mkdir -p output_artifacts
         source ${VENV_DIR}/bin/activate
-        which python && python --version
         python -m pip install --force-reinstall \
           --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
           --pre torch torchaudio torchvision
 
         ## There are two issue: 1> Need fix for 41f311e63c9021db7c26bdfe86f10513cb372c13 2> Need to update requirements file by removing upper bound of torch
         ## TODO: Replace this after above fix.
-        #git clone https://github.com/pdhirajkumarprasad/iree-turbine.git -b dhirajp/for_mi350_runner
-        git clone https://github.com/iree-org/iree-turbine.git
+        git clone https://github.com/pdhirajkumarprasad/iree-turbine.git -b dhirajp/for_mi350_runner
         cd iree-turbine
         pip install -r requirements.txt
-        pip install -r pytorch-rocm-requirements.txt
-        pip install -r requirements-iree-pinned.txt
+        # pip install -r requirements-iree-unpinned.txt
         # pip uninstall iree-base-compiler iree-base-runtime
 
         ## With latest iree we are seeing error as AttributeError: type object 'iree.compiler._mlir_libs._mlir.ir.IntegerType' has no attribute 'isinstance',
         ## due to this https://github.com/iree-org/iree/commit/6a927feeef80304fffbf550910538f5d5b94678f llvm-integration in iree we are seeing error
         ## So using using an iree compile and runtime version before this commit below
         ## TODO:: After above fix remove below line and uncomment the pip install -r requirements-iree-unpinned.txt and pip uninstall iree-base-compiler iree-base-runtime above
-        # pip install   --find-links https://iree.dev/pip-release-links.html   iree-base-compiler==3.10.0rc20260105   iree-base-runtime==3.10.0rc20260105 --upgrade
+        pip install   --find-links https://iree.dev/pip-release-links.html   iree-base-compiler==3.10.0rc20260105   iree-base-runtime==3.10.0rc20260105 --upgrade
         pip install --no-deps -e .
         pip freeze  > $(pwd)/../output_artifacts/version.txt
         cd -
@@ -101,37 +97,42 @@ jobs:
        export HIP_DYLIB_PATH=$(python -c "import rocm_sdk;print(rocm_sdk.find_libraries('amdhip64')[0].absolute())")
        export IREE_PY_RUNTIME_FLAGS="--hip_dylib_path=file:${HIP_DYLIB_PATH}"
        cd iree-turbine
-       iree-boo-driver conv --backend=iree_boo_experimental  --verbose
 
-       # echo "============ 1. Running Prod Conv shape without tuning(MIOpen) ==================="
-       # iree-boo-driver \
-       #      --commands-file ../amd-shark-ai-reports/boo/prod_conv_config.txt --csv ../output_artifacts/prod_conv_miopen.csv \
-       #      --backend=torch || true
+       echo "============ 1. Running Prod Conv shape without tuning(MIOpen) ==================="
+       export MIOPEN_FIND_ENFORCE=3
+       iree-boo-driver \
+            --commands-file ../amd-shark-ai-reports/boo/prod_conv_config.txt --csv ../output_artifacts/prod_conv_miopen.csv \
+            --backend=torch || true
 
-       # echo "============ 2. Running Prod Conv shape with IREE without tuning ================="
-       # iree-boo-driver \
-       #      --commands-file ../amd-shark-ai-reports/boo/prod_conv_config.txt --csv ../output_artifacts/prod_conv_iree_without_tuning.csv \
-       #      --backend=iree_boo_experimental || true
+       echo "============ 2. Running Prod Conv shape with IREE without tuning ================="
+       MIOPEN_FIND_ENFORCE=""
+       iree-boo-driver \
+            --commands-file ../amd-shark-ai-reports/boo/prod_conv_config.txt --csv ../output_artifacts/prod_conv_iree_without_tuning.csv \
+            --backend=iree_boo_experimental || true
 
-       # echo "============ 3. Running All proxy shape without tuning(MIOpen) ==================="
-       # iree-boo-driver \
-       #      --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_miopen.csv \
-       #      --backend=torch || true
+       echo "============ 3. Running All proxy shape without tuning(MIOpen) ==================="
+       MIOPEN_FIND_ENFORCE=3
+       iree-boo-driver \
+            --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_miopen.csv \
+            --backend=torch || true
 
-       # echo "============ 4. Running All proxy shape with IREE without tuning ================="
-       # iree-boo-driver \
-       #      --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_iree_without_tuning.csv \
-       #      --backend=iree_boo_experimental || true
+       echo "============ 4. Running All proxy shape with IREE without tuning ================="
+       MIOPEN_FIND_ENFORCE=""
+       iree-boo-driver \
+            --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_iree_without_tuning.csv \
+            --backend=iree_boo_experimental || true
 
-       # echo "============ 5. Running Gemm shape(MIOpen) ======================================="
-       # iree-boo-driver \
-       #      --commands-file ../amd-shark-ai-reports/boo/gemm_config.txt --csv ../output_artifacts/gemm_miopen.csv \
-       #      --backend=torch  || true
+       echo "============ 5. Running Gemm shape(MIOpen) ======================================="
+       MIOPEN_FIND_ENFORCE=3
+       iree-boo-driver \
+            --commands-file ../amd-shark-ai-reports/boo/gemm_config.txt --csv ../output_artifacts/gemm_miopen.csv \
+            --backend=torch  || true
 
-       # echo "============ 6. Running Gemm shape with IREE without tuning ======================"
-       # iree-boo-driver \
-       #      --commands-file ../amd-shark-ai-reports/boo/gemm_config.txt --csv ../output_artifacts/gemm_iree_without_tuning.csv \
-       #      --backend=iree_boo_experimental  || true
+       echo "============ 6. Running Gemm shape with IREE without tuning ======================"
+       MIOPEN_FIND_ENFORCE=""
+       iree-boo-driver \
+            --commands-file ../amd-shark-ai-reports/boo/gemm_config.txt --csv ../output_artifacts/gemm_iree_without_tuning.csv \
+            --backend=iree_boo_experimental  || true
 
        cd -
 
