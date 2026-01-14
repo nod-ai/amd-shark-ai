@@ -56,7 +56,12 @@ if (($IREE_UNPINNED)); then
 else
     pip install --no-compile -r "$SRC_DIR/requirements-iree-pinned.txt"
     pip uninstall -y wave-lang
-    pip install -f https://github.com/iree-org/wave/releases/expanded_assets/dev-wheels wave-lang --no-index
+    pip install wave-lang
+    ## TODO:: After the issue mentioned in the pr https://github.com/nod-ai/amd-shark-ai/pull/2770 is solved, make use of latest iree
+    pip install --find-links https://iree.dev/pip-release-links.html iree-turbine==3.10.0rc20260113
+    pip uninstall -y iree-base-compiler iree-base-runtime
+    pip install --find-links https://iree.dev/pip-release-links.html iree-base-compiler==3.10.0rc20260106   iree-base-runtime==3.10.0rc20260106
+    # pip install -f https://github.com/iree-org/wave/releases/expanded_assets/dev-wheels wave-lang --no-index
 fi
 
 pip install --no-compile -r "$SRC_DIR/amdsharktank/requirements-tests.txt"
