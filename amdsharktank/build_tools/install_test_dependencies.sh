@@ -56,7 +56,9 @@ if (($IREE_UNPINNED)); then
 else
     pip install --no-compile -r "$SRC_DIR/requirements-iree-pinned.txt"
     pip uninstall -y wave-lang
-    pip install wave-lang
+    pip install -f https://github.com/iree-org/wave/releases/expanded_assets/dev-wheels wave-lang --no-index
+    pip uninstall -y iree-base-compiler iree-base-runtime
+    pip install iree-base-compiler==3.10.0rc20260112 iree-base-runtime==3.10.0rc20260112
     # pip install -f https://github.com/iree-org/wave/releases/expanded_assets/dev-wheels wave-lang --no-index
 fi
 
