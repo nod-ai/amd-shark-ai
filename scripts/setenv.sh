@@ -111,11 +111,13 @@ elif [[ $BUILD_TYPE = "source" ]]; then
     pip install -v amdsharktank/ shortfin/
 
     ## Install wave
-    rm -rf wave
-    git clone https://github.com/iree-org/wave.git
-    cd wave
-    pip install -r requirements.txt -e .
-    echo -n "Wave : " >> ${SCRIPT_DIR}/../output_artifacts/version.txt
+    rm -rf wave || true
+    # git clone https://github.com/iree-org/wave.git
+    # cd wave
+    # pip install -r requirements.txt -e .
+    # echo -n "Wave : " >> ${SCRIPT_DIR}/../output_artifacts/version.txt
+    pip install wave-lang
+    # pip uninstall -y iree-base-compiler iree-base-runtime
     git log -1 --pretty=%H >> ${SCRIPT_DIR}/../output_artifacts/version.txt
     cd $amdshark_AI_ROOT_DIR
 
