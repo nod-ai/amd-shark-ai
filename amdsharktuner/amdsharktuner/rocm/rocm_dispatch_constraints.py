@@ -1,4 +1,4 @@
-# Copyright 2024 Advanced Micro Devices, Inc.
+# Copyright 2026 Advanced Micro Devices, Inc.
 #
 # Licensed under the Apache License v2.0 with LLVM Exceptions.
 # See https://llvm.org/LICENSE.txt for license information.
@@ -16,7 +16,7 @@ from iree.compiler import ir  # type: ignore
 
 from iree.compiler.dialects import iree_codegen, iree_gpu  # type: ignore
 
-from . import common
+from .. import common
 
 
 @dataclass

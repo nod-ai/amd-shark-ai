@@ -18,9 +18,9 @@ from iree.compiler.dialects import func, iree_codegen, iree_gpu, linalg  # type:
 from amdsharktuner import (
     common,
     constraint_generator,
-    dispatch_constraints,
     dispatch_parser,
 )
+from amdsharktuner.rocm import rocm_dispatch_constraints
 
 from amdsharktuner.test_utils import tuner_ctx
 
@@ -145,7 +145,7 @@ def test_generate_solutions(
             gpu_target_info=gpu_target_info,
             codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
             num_subgroups=4,
-            pipeline_options_search_space=dispatch_constraints.PipelineOptionsSearchSpace(),
+            pipeline_options_search_space=rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
         )
 
         assert list(configs), "Expected at least one valid solution"
@@ -204,7 +204,7 @@ def test_generate_attention_solutions(
             dispatch_kind=common.DispatchKind.attention,
             codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
             num_subgroups=4,
-            pipeline_options_search_space=dispatch_constraints.PipelineOptionsSearchSpace(),
+            pipeline_options_search_space=rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
         )
     )
 
@@ -272,7 +272,7 @@ def test_generate_solutions_tile_and_fuse_contraction_padding(
                 codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
                 num_subgroups=4,
                 allowed_waves_per_eu=[2],
-                pipeline_options_search_space=dispatch_constraints.PipelineOptionsSearchSpace(),
+                pipeline_options_search_space=rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
             )
         )
 
@@ -511,7 +511,7 @@ def test_adjust_problem_size_for_pipeline(
         k=[3],
         batch=[0],
     )
-    pipeline_options_space = dispatch_constraints.PipelineOptionsSearchSpace(
+    pipeline_options_space = rocm_dispatch_constraints.PipelineOptionsSearchSpace(
         prefetch_num_stages=[2],
         no_reduce_shared_memory_bank_conflicts=[True, False],
         use_igemm_convolution=[None],
@@ -613,7 +613,7 @@ def test_adjust_problem_size_for_pipeline_with_igemm_details(
             B=list(conv_op_info.matmul_size.B),
         )
 
-        pipeline_options_space = dispatch_constraints.PipelineOptionsSearchSpace(
+        pipeline_options_space = rocm_dispatch_constraints.PipelineOptionsSearchSpace(
             use_igemm_convolution=[None],
         )
 

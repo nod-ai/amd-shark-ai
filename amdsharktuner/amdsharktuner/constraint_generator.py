@@ -13,7 +13,8 @@ from dataclasses import dataclass, fields
 from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_codegen, iree_gpu, linalg  # type: ignore
 
-from . import common, dispatch_constraints, dispatch_parser, process_utils
+from . import common, dispatch_parser, process_utils
+from .rocm import rocm_dispatch_constraints
 
 
 TScalar = TypeVar("TScalar", int, z3.ExprRef)
@@ -215,7 +216,7 @@ def adjust_problem_size_for_pipeline(
     contraction_dims: common.ContractionDimensions,
     matmul_size: common.ContractionSizes,
     dispatch_kind: common.DispatchKind,
-    pipeline_options_search_space: dispatch_constraints.PipelineOptionsSearchSpace,
+    pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace,
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline,
     igemm_details: Optional[iree_codegen.IGEMMGenericConvDetails] = None,
 ):
@@ -277,7 +278,7 @@ def generate_generic_contraction_z3_constraints(
     z3_constants = ContractionZ3Constants.from_sizes(matmul_size)
 
     mma_intrinsic_constraints_list = (
-        dispatch_constraints.get_mma_intrinsic_constraints_list(
+        rocm_dispatch_constraints.get_mma_intrinsic_constraints_list(
             lhs_type,
             rhs_type,
             res_type,
@@ -290,27 +291,29 @@ def generate_generic_contraction_z3_constraints(
 
     match codegen_pipeline:
         case iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute:
-            constraints = dispatch_constraints.generate_vector_distribute_constraints(
-                matmul_size,
-                lhs_type,
-                rhs_type,
-                res_type,
-                [z3_constants.m_vals, z3_constants.n_vals, z3_constants.k_vals],
-                num_subgroups,
-                z3_constants.subgroup_size,
-                [z3_constants.intrinsic_mn, z3_constants.intrinsic_k],
-                [z3_constants.wg_x, z3_constants.wg_y, z3_constants.wg_z],
-                z3_constants.sg_m_cnt,
-                z3_constants.sg_n_cnt,
-                gpu_target_info,
-                dispatch_kind,
+            constraints = (
+                rocm_dispatch_constraints.generate_vector_distribute_constraints(
+                    matmul_size,
+                    lhs_type,
+                    rhs_type,
+                    res_type,
+                    [z3_constants.m_vals, z3_constants.n_vals, z3_constants.k_vals],
+                    num_subgroups,
+                    z3_constants.subgroup_size,
+                    [z3_constants.intrinsic_mn, z3_constants.intrinsic_k],
+                    [z3_constants.wg_x, z3_constants.wg_y, z3_constants.wg_z],
+                    z3_constants.sg_m_cnt,
+                    z3_constants.sg_n_cnt,
+                    gpu_target_info,
+                    dispatch_kind,
+                )
             )
             constraints += [
                 v == 0
                 for v in z3_constants.subgroup_m_vals + z3_constants.subgroup_n_vals
             ]
         case iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
-            constraints = dispatch_constraints.generate_tile_and_fuse_constraints(
+            constraints = rocm_dispatch_constraints.generate_tile_and_fuse_constraints(
                 matmul_size,
                 lhs_type,
                 rhs_type,
@@ -395,7 +398,7 @@ def generate_generic_contraction_solutions(
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
     num_subgroups: int = 4,
     allowed_waves_per_eu: list[int] = [2],
-    pipeline_options_search_space: dispatch_constraints.PipelineOptionsSearchSpace = dispatch_constraints.PipelineOptionsSearchSpace(),
+    pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
     igemm_details: Optional[iree_codegen.IGEMMGenericConvDetails] = None,
     conv_to_igemm_info: Optional[common.ConvToIgemmInfo] = None,
 ) -> Iterator[list[common.TuningConfiguration]]:
@@ -479,7 +482,7 @@ def generate_generic_contraction_solutions(
             z3_assignment.intrinsic_mn,
             z3_assignment.intrinsic_k,
         )
-        mma_attr = dispatch_constraints.getMMAAttr(
+        mma_attr = rocm_dispatch_constraints.getMMAAttr(
             res_type.element_type,
             *intrinsic_mnk_shape,
             lhs_type.element_type,
@@ -586,7 +589,7 @@ def generate_generic_contraction_solutions(
         subgroup_basis_counts[n_dim] = z3_assignment.sg_n_cnt
         subgroup_basis_mapping = list(range(num_loops))
 
-        compilation_infos = dispatch_constraints.generate_compilation_infos(
+        compilation_infos = rocm_dispatch_constraints.generate_compilation_infos(
             tuner_ctx,
             mma_attr,
             workgroup_tile_sizes,
@@ -645,7 +648,7 @@ def generate_attention_solutions(
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
     num_subgroups: int = 4,
     allowed_waves_per_eu: list[int] = [2],
-    pipeline_options_search_space: dispatch_constraints.PipelineOptionsSearchSpace = dispatch_constraints.PipelineOptionsSearchSpace(),
+    pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
 ) -> Iterator[list[common.TuningConfiguration]]:
     if (
         dispatch_kind != common.DispatchKind.attention
@@ -686,21 +689,23 @@ def generate_attention_solutions(
     )
 
     solver = z3.Solver()
-    constraints = dispatch_constraints.generate_attention_vector_distribute_constraints(
-        op_info.qk_matmul,
-        op_info.pv_matmul,
-        op_info.transposed_q,
-        op_info.transposed_k,
-        op_info.transposed_v,
-        [m_var, n_var, k_var],
-        num_subgroups,
-        subgroup_size,
-        [qk_intrinsic_mn, qk_intrinsic_k],
-        [pv_intrinsic_mn, pv_intrinsic_k],
-        sg_m_cnt,
-        sg_n_cnt,
-        can_reuse_qk_output_for_pv_input,
-        gpu_target_info,
+    constraints = (
+        rocm_dispatch_constraints.generate_attention_vector_distribute_constraints(
+            op_info.qk_matmul,
+            op_info.pv_matmul,
+            op_info.transposed_q,
+            op_info.transposed_k,
+            op_info.transposed_v,
+            [m_var, n_var, k_var],
+            num_subgroups,
+            subgroup_size,
+            [qk_intrinsic_mn, qk_intrinsic_k],
+            [pv_intrinsic_mn, pv_intrinsic_k],
+            sg_m_cnt,
+            sg_n_cnt,
+            can_reuse_qk_output_for_pv_input,
+            gpu_target_info,
+        )
     )
 
     solver.add(z3.simplify(z3.And(constraints)))
@@ -718,7 +723,7 @@ def generate_attention_solutions(
             lookup(qk_intrinsic_mn),
             lookup(qk_intrinsic_k),
         )
-        qk_mma_attr = dispatch_constraints.getMMAAttr(
+        qk_mma_attr = rocm_dispatch_constraints.getMMAAttr(
             op_info.qk_matmul.acc_type,
             *qk_intrinsic_mnk_shape,
             op_info.qk_matmul.lhs_type,
@@ -731,7 +736,7 @@ def generate_attention_solutions(
             lookup(pv_intrinsic_mn),
             lookup(pv_intrinsic_k),
         )
-        pv_mma_attr = dispatch_constraints.getMMAAttr(
+        pv_mma_attr = rocm_dispatch_constraints.getMMAAttr(
             op_info.pv_matmul.acc_type,
             *pv_intrinsic_mnk_shape,
             op_info.pv_matmul.lhs_type,
@@ -802,7 +807,7 @@ def generate_attention_solutions(
         pipeline_options_search_space.prefetch_num_stages = [2 if layouts_match else 0]
 
         promote_operands = [0, 1, 2]
-        compilation_infos = dispatch_constraints.generate_compilation_infos(
+        compilation_infos = rocm_dispatch_constraints.generate_compilation_infos(
             tuner_ctx,
             None,
             workgroup_tile_sizes,
