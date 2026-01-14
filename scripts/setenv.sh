@@ -116,7 +116,7 @@ elif [[ $BUILD_TYPE = "source" ]]; then
     # cd wave
     # pip install -r requirements.txt -e .
     # echo -n "Wave : " >> ${SCRIPT_DIR}/../output_artifacts/version.txt
-    pip uninstall --y wave-lang
+    pip install wave-lang
     git log -1 --pretty=%H >> ${SCRIPT_DIR}/../output_artifacts/version.txt
     cd $amdshark_AI_ROOT_DIR
 
