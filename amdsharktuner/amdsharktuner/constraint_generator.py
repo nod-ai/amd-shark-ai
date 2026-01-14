@@ -14,7 +14,7 @@ from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_codegen, iree_gpu, linalg  # type: ignore
 
 from . import common, dispatch_parser, process_utils
-from .rocm import rocm_dispatch_constraints
+from .rocm import rocm_common, rocm_dispatch_constraints
 
 
 TScalar = TypeVar("TScalar", int, z3.ExprRef)
@@ -574,7 +574,7 @@ def generate_generic_contraction_solutions(
                 igemm_iterator_types = [
                     str(it) for it in igemm_details.igemm_loop_iterators
                 ]
-                padding_conv = common.get_padding_conv_sizes(
+                padding_conv = rocm_common.get_padding_conv_sizes(
                     bounds,
                     padding_tile_sizes,
                     igemm_iterator_types,
@@ -613,7 +613,7 @@ def generate_generic_contraction_solutions(
                 codegen_pipeline
                 == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
             ):
-                knob_assignment = common.LLVMGPUVectorDistributeContractionKnobs(
+                knob_assignment = rocm_common.LLVMGPUVectorDistributeContractionKnobs(
                     M=int(math.prod(M)),
                     N=int(math.prod(N)),
                     K=int(math.prod(K)),
@@ -794,7 +794,7 @@ def generate_attention_solutions(
             tuner_ctx=tuner_ctx, **pv_config
         )
 
-        decomposition_config = common.get_attention_decomposition_config(
+        decomposition_config = rocm_common.get_attention_decomposition_config(
             tuner_ctx, qk_lowering_config, pv_lowering_config
         )
 

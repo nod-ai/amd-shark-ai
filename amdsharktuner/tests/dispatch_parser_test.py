@@ -15,6 +15,7 @@ from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import func, iree_codegen, iree_gpu, linalg  # type: ignore
 
 from amdsharktuner import common, dispatch_parser
+from amdsharktuner.rocm import rocm_common
 
 from amdsharktuner.test_utils import tuner_ctx
 
@@ -261,7 +262,7 @@ def test_get_mmt_tile_sizes(tuner_ctx: common.TunerContext) -> None:
         iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
     )
     pipeline_options = iree_gpu.PipelineOptionsAttr.get()
-    config_dict = common.get_translation_info_config(pipeline_options, 0)
+    config_dict = rocm_common.get_translation_info_config(pipeline_options, 0)
     translation_info = iree_codegen.TranslationInfoAttr.get(
         pipeline_attr, None, [], 0, config_dict
     )
@@ -287,7 +288,7 @@ def test_get_conv_tile_sizes(tuner_ctx: common.TunerContext) -> None:
         iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
     )
     pipeline_options = iree_gpu.PipelineOptionsAttr.get()
-    config_dict = common.get_translation_info_config(pipeline_options, 1)
+    config_dict = rocm_common.get_translation_info_config(pipeline_options, 1)
     translation_info = iree_codegen.TranslationInfoAttr.get(
         pipeline_attr, None, [256, 1, 1], 64, config_dict
     )

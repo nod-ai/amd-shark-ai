@@ -12,11 +12,12 @@ from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_gpu  # type: ignore
 
 from amdsharktuner import candidate_ordering, common
+from amdsharktuner.rocm import rocm_common
 
 
 @pytest.fixture
 def sample_knobs() -> list[Optional[common.KnobAssignment]]:
-    knob_1 = common.LLVMGPUVectorDistributeContractionKnobs(
+    knob_1 = rocm_common.LLVMGPUVectorDistributeContractionKnobs(
         M=2048,
         N=10240,
         K=1280,
@@ -34,7 +35,7 @@ def sample_knobs() -> list[Optional[common.KnobAssignment]]:
         subgroup_n=0,
         subgroup_k=0,
     )
-    knob_2 = common.LLVMGPUVectorDistributeContractionKnobs(
+    knob_2 = rocm_common.LLVMGPUVectorDistributeContractionKnobs(
         M=2048,
         N=10240,
         K=1280,
@@ -52,7 +53,7 @@ def sample_knobs() -> list[Optional[common.KnobAssignment]]:
         subgroup_n=0,
         subgroup_k=0,
     )
-    knob_3 = common.LLVMGPUVectorDistributeContractionKnobs(
+    knob_3 = rocm_common.LLVMGPUVectorDistributeContractionKnobs(
         M=2048,
         N=10240,
         K=1280,
