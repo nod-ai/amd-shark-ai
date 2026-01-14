@@ -64,6 +64,7 @@ jobs:
       run: |
         mkdir -p output_artifacts
         source ${VENV_DIR}/bin/activate
+        which python && python --version
         python -m pip install --force-reinstall \
           --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
           --pre torch torchaudio torchvision
