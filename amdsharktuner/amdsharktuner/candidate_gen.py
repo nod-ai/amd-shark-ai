@@ -10,206 +10,74 @@
 import logging
 from pathlib import Path
 from typing import Optional, Iterator
-from abc import abstractmethod
 
 import iree.compiler as ireec  # type: ignore
 from iree.compiler import ir  # type: ignore
-from iree.compiler.dialects import iree_codegen, iree_gpu, linalg  # type: ignore
+from iree.compiler.dialects import iree_codegen, iree_gpu  # type: ignore
 
 from . import (
     common,
-    constraint_generator,
-    dispatch_parser,
     process_utils,
     spec_builder,
 )
-from .rocm import rocm_dispatch_constraints
+from .rocm import rocm_common, rocm_dispatch_constraints, rocm_tuners
+from .tuner_base import DispatchTuner
 
 tune_logger = logging.getLogger("tune")
 
 
-class DispatchTuner(dispatch_parser.DispatchParser):
-    @classmethod
-    @abstractmethod
-    def supports_root_op(cls, root_op: ir.Operation) -> bool:
-        """Check if this tuner can handle the given root operation."""
-        pass
+def get_dispatch_tuners(
+    target_arch: str,
+    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline,
+) -> list[type[DispatchTuner]]:
+    """Get dispatch tuners for the given target architecture and pipeline."""
+    # TODO(Bangtian): Use `target.getBackend() == "rocm"` once backend name is exposed
+    # in TargetInfo. Currently using "gfx" prefix matching as a workaround.
+    is_rocm_arch = target_arch.startswith("gfx")
+    if not is_rocm_arch:
+        tune_logger.warning(
+            f"Target architecture '{target_arch}' is not a ROCm architecture. "
+            f"Only ROCm (gfx*) architectures are currently supported."
+        )
+        return []
 
-    @abstractmethod
-    def get_td_spec(
-        self,
-        config_list: list[common.TuningConfiguration],
-    ) -> ir.Module:
-        """
-        Generates a transform dialect spec from a list of TuningConfiguration objects.
-
-        Each TuningConfiguration specifies a name (e.g., "compilation_info") and
-        its corresponding MLIR attribute (e.g., CompilationInfoAttr) to be applied
-        to the dispatch root operation.
-        """
-        pass
-
-    @abstractmethod
-    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
-        """Returns a ConstraintGenerator associated with this dispatch root op."""
-        pass
-
-    @classmethod
-    @abstractmethod
-    def get_dispatch_kind(cls) -> common.DispatchKind:
-        """Returns dispatch kind"""
-        pass
-
-    @abstractmethod
-    def get_knob_assignment(
-        self,
-        config_list: list[common.TuningConfiguration],
-    ) -> Optional[common.KnobAssignment]:
-        """
-        Return a KnobAssignment that records the feature values of a single candidate,
-        retrieved from the `knob_assignment` attribute of its TuningConfiguration.
-        """
-        pass
-
-
-class ContractionOpInterfaceTuner(
-    DispatchTuner, dispatch_parser.ContractionOpInterfaceParser
-):
-    def __init__(self, root_op: ir.Operation, tuner_ctx: common.TunerContext):
-        super().__init__(root_op, tuner_ctx)
-
-    @classmethod
-    def supports_root_op(cls, root_op: ir.Operation) -> bool:
-        if not linalg.isa_contraction_op(root_op):
-            return False
-
-        # Check if contraction has valid dimensions.
-        contraction_dims = linalg.infer_contraction_dimensions(root_op)
-        if not contraction_dims:
-            logging.warning("No contraction dimensions found for operation")
-            return False
-
-        if not contraction_dims.m or not contraction_dims.n or not contraction_dims.k:
-            logging.warning(
-                f"Contraction operation with dimensions M={list(contraction_dims.m)}, "
-                f"N={list(contraction_dims.n)}, K={list(contraction_dims.k)} "
-                f"is not supported by the tuner yet"
-            )
-            return False
-
-        return True
-
-    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
-        return constraint_generator.ContractionOpInterfaceConstraintGenerator(
-            self.get_op_info()
+    # Allow tuning on untested architectures with a warning, since the tuning
+    # logic may still work even if we haven't validated it.
+    if target_arch not in rocm_common.ROCM_ARCHITECTURES:
+        tune_logger.warning(
+            f"Target architecture '{target_arch}' is not in the tested list. "
+            f"Tested ROCm architectures: {rocm_common.ROCM_ARCHITECTURES}. "
+            f"Proceeding with tuning anyway."
         )
 
-    def get_td_spec(
-        self,
-        config_list: list[common.TuningConfiguration],
-    ) -> ir.Module:
-        builder = spec_builder.ContractionSpecBuilder(self.get_op_info())
-        return builder.build_td_spec(self._tuner_ctx, config_list)
+    if (
+        codegen_pipeline
+        == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
+    ):
+        return [
+            rocm_tuners.ROCmContractionVectorDistributeTuner,
+            rocm_tuners.ROCmConvolutionVectorDistributeTuner,
+            rocm_tuners.ROCmAttentionVectorDistributeTuner,
+        ]
 
-    @classmethod
-    def get_dispatch_kind(cls) -> common.DispatchKind:
-        return common.DispatchKind.contraction
+    if codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
+        return [
+            rocm_tuners.ROCmContractionTileAndFuseTuner,
+            rocm_tuners.ROCmConvolutionTileAndFuseTuner,
+        ]
 
-    def get_knob_assignment(
-        self,
-        config_list: list[common.TuningConfiguration],
-    ) -> Optional[common.KnobAssignment]:
-        return config_list[0].knob_assignment
-
-
-class ConvolutionOpInterfaceTuner(
-    DispatchTuner, dispatch_parser.ConvolutionOpInterfaceParser
-):
-    def __init__(self, root_op: ir.Operation, tuner_ctx: common.TunerContext):
-        super().__init__(root_op, tuner_ctx)
-
-    @classmethod
-    def supports_root_op(cls, root_op: ir.Operation) -> bool:
-        if not linalg.isa_convolution_op(root_op):
-            return False
-        convolution_dims = linalg.infer_convolution_dimensions(root_op)
-        if not convolution_dims:
-            return False
-        # Only allow 'nhwc_hwcf' convs.
-        return (
-            list(convolution_dims.batch) == [0]
-            and list(convolution_dims.output_image) == [1, 2]
-            and list(convolution_dims.output_channel) == [3]
-            and list(convolution_dims.filter_loop) == [4, 5]
-            and list(convolution_dims.input_channel) == [6]
-            and list(convolution_dims.depth) == []
-        )
-
-    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
-        return constraint_generator.ConvolutionOpInterfaceConstraintGenerator(
-            self.get_op_info()
-        )
-
-    def get_td_spec(
-        self,
-        config_list: list[common.TuningConfiguration],
-    ) -> ir.Module:
-        builder = spec_builder.ConvolutionSpecBuilder(self.get_op_info())
-        return builder.build_td_spec(self._tuner_ctx, config_list)
-
-    @classmethod
-    def get_dispatch_kind(cls) -> common.DispatchKind:
-        return common.DispatchKind.conv
-
-    def get_knob_assignment(
-        self,
-        config_list: list[common.TuningConfiguration],
-    ) -> Optional[common.KnobAssignment]:
-        return None
-
-
-class AttentionOpInterfaceTuner(
-    DispatchTuner, dispatch_parser.AttentionOpInterfaceParser
-):
-    def __init__(self, root_op: ir.Operation, tuner_ctx: common.TunerContext):
-        super().__init__(root_op, tuner_ctx)
-
-    @classmethod
-    def supports_root_op(cls, root_op: ir.Operation) -> bool:
-        return iree_codegen.isa_attention_op(root_op)
-
-    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
-        return constraint_generator.AttentionOpInterfaceConstraintGenerator(
-            self.get_op_info()
-        )
-
-    def get_td_spec(
-        self,
-        config_list: list[common.TuningConfiguration],
-    ) -> ir.Module:
-        builder = spec_builder.AttentionSpecBuilder(self.get_op_info())
-        return builder.build_td_spec(self._tuner_ctx, config_list)
-
-    @classmethod
-    def get_dispatch_kind(cls) -> common.DispatchKind:
-        return common.DispatchKind.attention
-
-    def get_knob_assignment(
-        self,
-        config_list: list[common.TuningConfiguration],
-    ) -> Optional[common.KnobAssignment]:
-        return None
+    tune_logger.warning(
+        f"Unsupported codegen pipeline '{codegen_pipeline}' for ROCm tuning."
+    )
+    return []
 
 
 def set_dispatch_tuner(
-    input_module: ir.Module, tuner_ctx: common.TunerContext
+    input_module: ir.Module,
+    tuner_ctx: common.TunerContext,
+    dispatch_tuners: list[type[DispatchTuner]],
 ) -> Optional[DispatchTuner]:
-    dispatch_tuners: list[type[DispatchTuner]] = [
-        ContractionOpInterfaceTuner,
-        ConvolutionOpInterfaceTuner,
-        AttentionOpInterfaceTuner,
-    ]
-
+    """Find and instantiate a suitable dispatch tuner for the input module."""
     root_op_list = iree_codegen.get_tuner_root_ops(input_module)
     if len(root_op_list) == 0:
         tune_logger.error(
@@ -248,7 +116,7 @@ def generate_solutions(
     pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
 ) -> Iterator[list[common.TuningConfiguration]]:
-    if target_info.arch not in ["gfx942", "gfx950", "gfx1100", "gfx1201"]:
+    if target_info.arch not in rocm_common.ROCM_ARCHITECTURES:
         print(f"Warning: Untested architecture '{target_info.arch}'.")
 
     constraint_generator = dispatch_tuner.get_constraint_generator()
@@ -256,7 +124,6 @@ def generate_solutions(
     return constraint_generator.generate_solutions(
         tuner_context,
         target_info,
-        codegen_pipeline,
         num_subgroups=num_subgroups,
         allowed_waves_per_eu=allowed_waves_per_eu,
         pipeline_options_search_space=pipeline_options_search_space,

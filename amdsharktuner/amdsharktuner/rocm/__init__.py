@@ -8,3 +8,8 @@
 
 from . import rocm_common
 from . import rocm_dispatch_constraints
+from . import rocm_solutions
+
+# Note: rocm_tuners and rocm_constraint_generators are not imported here to avoid
+# circular imports. They import from candidate_gen which imports this module.
+# Use direct imports when needed: from amdsharktuner.rocm import rocm_tuners

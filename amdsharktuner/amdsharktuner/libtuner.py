@@ -887,17 +887,23 @@ def generate_candidate_specs(
             with open(args.starter_td_spec, "r") as f:
                 starter_td_spec = ir.Module.parse(f.read())
 
+        tuning_client.target_info = common.get_target_info(mlir_module)
+        assert tuning_client.target_info, "Failed to query target info."
+
+        dispatch_tuners = candidate_gen.get_dispatch_tuners(
+            tuning_client.target_info.arch,
+            get_iree_codegen_pipeline(args.codegen_pipeline),
+        )
         dispatch_tuner = candidate_gen.set_dispatch_tuner(
-            input_module=mlir_module, tuner_ctx=tuning_client.tuner_context
+            input_module=mlir_module,
+            tuner_ctx=tuning_client.tuner_context,
+            dispatch_tuners=dispatch_tuners,
         )
         if not dispatch_tuner:
             candidate_gen_logger.warning(
                 "Failed to set up dispatch tuner. No candidates will be generated."
             )
             return []
-
-        tuning_client.target_info = common.get_target_info(mlir_module)
-        assert tuning_client.target_info, "Failed to query target info."
         solution_gen_start_time = time.perf_counter()
         solutions_iter = candidate_gen.generate_solutions(
             dispatch_tuner=dispatch_tuner,
