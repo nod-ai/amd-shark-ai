@@ -9,6 +9,7 @@ Usage: python -m pytest constraint_generator_test.py
 """
 
 import pytest
+import z3  # type: ignore
 
 # TODO: remove after https://github.com/llvm/llvm-project/pull/117918 is resolved.
 import amdsharktuner
@@ -20,7 +21,11 @@ from amdsharktuner import (
     constraint_generator,
     dispatch_parser,
 )
-from amdsharktuner.rocm import rocm_dispatch_constraints
+from amdsharktuner.rocm import (
+    rocm_constraint_generators,
+    rocm_dispatch_constraints,
+    rocm_solutions,
+)
 
 from amdsharktuner.test_utils import tuner_ctx
 
@@ -124,7 +129,9 @@ def test_generate_solutions(
 
         parser = dispatch_parser.ContractionOpInterfaceParser(root_op, tuner_ctx)
         op_info = parser.get_op_info()
-        gen = constraint_generator.ContractionOpInterfaceConstraintGenerator(op_info)
+        gen = rocm_constraint_generators.ROCmContractionVectorDistributeConstraintGenerator(
+            op_info
+        )
 
         assert gen.op_info.dims.batch == []
         assert gen.op_info.dims.m == [0]
@@ -143,7 +150,6 @@ def test_generate_solutions(
         configs = gen.generate_solutions(
             tuner_context=tuner_ctx,
             gpu_target_info=gpu_target_info,
-            codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
             num_subgroups=4,
             pipeline_options_search_space=rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
         )
@@ -197,12 +203,11 @@ def test_generate_attention_solutions(
     )
 
     solutions = list(
-        constraint_generator.generate_attention_solutions(
+        rocm_solutions.generate_attention_solutions(
             tuner_ctx=tuner_ctx,
             gpu_target_info=gpu_target_info,
             op_info=op_info,
             dispatch_kind=common.DispatchKind.attention,
-            codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
             num_subgroups=4,
             pipeline_options_search_space=rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
         )
@@ -250,7 +255,9 @@ def test_generate_solutions_tile_and_fuse_contraction_padding(
 
         parser = dispatch_parser.ContractionOpInterfaceParser(root_op, tuner_ctx)
         op_info = parser.get_op_info()
-        gen = constraint_generator.ContractionOpInterfaceConstraintGenerator(op_info)
+        gen = rocm_constraint_generators.ROCmContractionTileAndFuseConstraintGenerator(
+            op_info
+        )
 
         assert gen.op_info.dims.batch == []
         assert gen.op_info.dims.m == [0]
@@ -269,7 +276,6 @@ def test_generate_solutions_tile_and_fuse_contraction_padding(
             gen.generate_solutions(
                 tuner_context=tuner_ctx,
                 gpu_target_info=gpu_target_info,
-                codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
                 num_subgroups=4,
                 allowed_waves_per_eu=[2],
                 pipeline_options_search_space=rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
@@ -322,7 +328,9 @@ def test_generate_solutions_tile_and_fuse_conv_padding(
 
         parser = dispatch_parser.ConvolutionOpInterfaceParser(root_op, tuner_ctx)
         op_info = parser.get_op_info()
-        gen = constraint_generator.ConvolutionOpInterfaceConstraintGenerator(op_info)
+        gen = rocm_constraint_generators.ROCmConvolutionTileAndFuseConstraintGenerator(
+            op_info
+        )
 
         assert gen.op_info.dims.batch == []
         assert gen.op_info.dims.m == [0, 1, 2]
@@ -342,7 +350,6 @@ def test_generate_solutions_tile_and_fuse_conv_padding(
             gen.generate_solutions(
                 tuner_context=tuner_ctx,
                 gpu_target_info=gpu_target_info,
-                codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
                 num_subgroups=4,
             )
         )
@@ -393,7 +400,9 @@ def test_generate_solutions_tile_and_fuse_conv_small_unaligned(
 
         parser = dispatch_parser.ConvolutionOpInterfaceParser(root_op, tuner_ctx)
         op_info = parser.get_op_info()
-        gen = constraint_generator.ConvolutionOpInterfaceConstraintGenerator(op_info)
+        gen = rocm_constraint_generators.ROCmConvolutionTileAndFuseConstraintGenerator(
+            op_info
+        )
 
         assert gen.op_info.dims.batch == []
         assert gen.op_info.dims.m == [0, 1, 2]
@@ -413,7 +422,6 @@ def test_generate_solutions_tile_and_fuse_conv_small_unaligned(
             gen.generate_solutions(
                 tuner_context=tuner_ctx,
                 gpu_target_info=gpu_target_info,
-                codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
                 num_subgroups=4,
             )
         )
@@ -454,7 +462,9 @@ def test_generate_solutions_tile_and_fuse_matmul_small_unaligned(
 
         parser = dispatch_parser.ContractionOpInterfaceParser(root_op, tuner_ctx)
         op_info = parser.get_op_info()
-        gen = constraint_generator.ContractionOpInterfaceConstraintGenerator(op_info)
+        gen = rocm_constraint_generators.ROCmContractionTileAndFuseConstraintGenerator(
+            op_info
+        )
 
         assert gen.op_info.dims.batch == []
         assert gen.op_info.dims.m == [0]
@@ -473,7 +483,6 @@ def test_generate_solutions_tile_and_fuse_matmul_small_unaligned(
             gen.generate_solutions(
                 tuner_context=tuner_ctx,
                 gpu_target_info=gpu_target_info,
-                codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
                 num_subgroups=4,
             )
         )
@@ -517,12 +526,12 @@ def test_adjust_problem_size_for_pipeline(
         use_igemm_convolution=[None],
     )
 
-    constraint_generator.adjust_problem_size_for_pipeline(
+    rocm_solutions.adjust_problem_size_for_pipeline(
         contraction_dims=contraction_dims,
         matmul_size=matmul_size,
         dispatch_kind=common.DispatchKind.contraction,
         pipeline_options_search_space=pipeline_options_space,
-        codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
+        codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
     )
     assert pipeline_options_space.use_igemm_convolution == [None]
     assert matmul_size.K == [128]
@@ -538,7 +547,7 @@ def test_adjust_problem_size_for_pipeline(
         n=[3],
         k=[4, 5, 6],
     )
-    constraint_generator.adjust_problem_size_for_pipeline(
+    rocm_solutions.adjust_problem_size_for_pipeline(
         contraction_dims=conv_dims,
         matmul_size=conv_size,
         dispatch_kind=common.DispatchKind.conv,
@@ -549,7 +558,7 @@ def test_adjust_problem_size_for_pipeline(
     assert conv_size.K == [3, 3, 512]
     assert conv_dims.k == [4, 5, 6]
 
-    constraint_generator.adjust_problem_size_for_pipeline(
+    rocm_solutions.adjust_problem_size_for_pipeline(
         contraction_dims=conv_dims,
         matmul_size=conv_size,
         dispatch_kind=common.DispatchKind.conv,
@@ -617,7 +626,7 @@ def test_adjust_problem_size_for_pipeline_with_igemm_details(
             use_igemm_convolution=[None],
         )
 
-        constraint_generator.adjust_problem_size_for_pipeline(
+        rocm_solutions.adjust_problem_size_for_pipeline(
             contraction_dims=conv_dims,
             matmul_size=conv_size,
             dispatch_kind=common.DispatchKind.conv,
@@ -697,25 +706,23 @@ def test_ContractionZ3Constants_from_meta_dict() -> None:
         "sg_n_cnt": "sg_n_cnt",
     }
 
-    ctx = constraint_generator.z3.Context()
+    ctx = z3.Context()
     recon = constraint_generator.ContractionZ3Constants.from_meta(meta=meta, ctx=ctx)
 
-    assert recon.m_vals == [constraint_generator.z3.Int(f"m{i}", ctx) for i in range(2)]
-    assert recon.n_vals == [constraint_generator.z3.Int(f"n0", ctx)]
-    assert recon.k_vals == [constraint_generator.z3.Int(f"k0", ctx)]
-    assert recon.subgroup_m_vals == [
-        constraint_generator.z3.Int(f"subgroup_m{i}", ctx) for i in range(2)
-    ]
-    assert recon.subgroup_n_vals == [constraint_generator.z3.Int(f"subgroup_n0", ctx)]
+    assert recon.m_vals == [z3.Int(f"m{i}", ctx) for i in range(2)]
+    assert recon.n_vals == [z3.Int(f"n0", ctx)]
+    assert recon.k_vals == [z3.Int(f"k0", ctx)]
+    assert recon.subgroup_m_vals == [z3.Int(f"subgroup_m{i}", ctx) for i in range(2)]
+    assert recon.subgroup_n_vals == [z3.Int(f"subgroup_n0", ctx)]
 
-    assert recon.subgroup_size == constraint_generator.z3.Int("subgroup_size", ctx)
-    assert recon.intrinsic_mn == constraint_generator.z3.Int("intrinsic_mn", ctx)
-    assert recon.intrinsic_k == constraint_generator.z3.Int("intrinsic_k", ctx)
-    assert recon.wg_x == constraint_generator.z3.Int("wg_x", ctx)
-    assert recon.wg_y == constraint_generator.z3.Int("wg_y", ctx)
-    assert recon.wg_z == constraint_generator.z3.Int("wg_z", ctx)
-    assert recon.sg_m_cnt == constraint_generator.z3.Int("sg_m_cnt", ctx)
-    assert recon.sg_n_cnt == constraint_generator.z3.Int("sg_n_cnt", ctx)
+    assert recon.subgroup_size == z3.Int("subgroup_size", ctx)
+    assert recon.intrinsic_mn == z3.Int("intrinsic_mn", ctx)
+    assert recon.intrinsic_k == z3.Int("intrinsic_k", ctx)
+    assert recon.wg_x == z3.Int("wg_x", ctx)
+    assert recon.wg_y == z3.Int("wg_y", ctx)
+    assert recon.wg_z == z3.Int("wg_z", ctx)
+    assert recon.sg_m_cnt == z3.Int("sg_m_cnt", ctx)
+    assert recon.sg_n_cnt == z3.Int("sg_n_cnt", ctx)
 
 
 def test_Z3Constants_meta_roundtrip() -> None:
@@ -723,7 +730,7 @@ def test_Z3Constants_meta_roundtrip() -> None:
     orig = constraint_generator.ContractionZ3Constants.from_sizes(matmul_size)
     meta = orig.to_meta()
 
-    ctx = constraint_generator.z3.Context()
+    ctx = z3.Context()
     recon = constraint_generator.ContractionZ3Constants.from_meta(meta=meta, ctx=ctx)
 
     for f in constraint_generator.fields(orig):
@@ -742,13 +749,11 @@ def test_get_z3_solutions() -> None:
     matmul_size = common.ContractionSizes(M=[1], N=[1], K=[1], B=[1])
     z3_constants = constraint_generator.ContractionZ3Constants.from_sizes(matmul_size)
 
-    solver = constraint_generator.z3.Solver()
+    solver = z3.Solver()
     for v in z3_constants.symbols:
         if v is not z3_constants.wg_x:
             solver.add(v == 0)
-    solver.add(
-        constraint_generator.z3.Or(z3_constants.wg_x == 0, z3_constants.wg_x == 1)
-    )
+    solver.add(z3.Or(z3_constants.wg_x == 0, z3_constants.wg_x == 1))
 
     z3_constraint_set = constraint_generator.ConstraintSet(
         solver=solver, z3_constants=z3_constants
