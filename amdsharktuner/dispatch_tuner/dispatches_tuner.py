@@ -7,6 +7,7 @@ from datetime import datetime
 import logging
 import shutil
 import sys
+import pandas as pd
 
 random.seed(42) 
 redo_list = [
@@ -65,10 +66,25 @@ def setup_logging() -> logging.Logger:
     return logging.getLogger()
 
 
-def append_line(path: Path, line: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as f:
-        f.write(line.rstrip("\n") + "\n")
+def ensure_mlir_record(path: Path) -> pd.DataFrame:
+    if path.exists():
+        return pd.read_csv(path)
+    df = pd.DataFrame(columns=["sku", "mlir", "succuss", "time"])
+    df.to_csv(path, index=False)
+    return df
+
+
+def add_mlir_record_row(path: Path, sku: str, mlir: str, succuss: bool, time_val):
+    df = ensure_mlir_record(path)
+
+    # Only add if (sku, mlir) not already present
+    exists = ((df["sku"] == sku) & (df["mlir"] == mlir)).any()
+    if exists:
+        return
+
+    new_row = {"sku": sku, "mlir": mlir, "succuss": succuss, "time": time_val}
+    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+    df.to_csv(path, index=False)
 
 
 def main():
@@ -78,10 +94,8 @@ def main():
     
     logger = setup_logging()
     base_path = Path(os.path.dirname(os.path.abspath(__file__)))
-    success_list_path = base_path / "success_list.log"
-    failed_list_path = base_path / "failed_list.log"
-    append_line(success_list_path, f"{arch}")
-    append_line(failed_list_path, f"{arch}")
+    mlir_record_path = base_path / "mlir_record.csv"
+    ensure_mlir_record(mlir_record_path)
     
     logger.debug(f"Arch: {arch}")
     mlir_benchmark_folder_path = (base_path / "dump").expanduser().resolve()
@@ -163,7 +177,13 @@ def main():
                     f"{finished_at.isoformat(timespec='seconds')} - "
                     f"{bench.name}: completed in {elapsed_min:.2f} min"
                 )
-                append_line(success_list_path, f"{bench.name} - {codegen_pipeline} - {elapsed_min:.2f} mins")
+                add_mlir_record_row(
+                    mlir_record_path,
+                    sku=arch,
+                    mlir=bench.name,
+                    succuss=True,
+                    time_val=elapsed_min,
+                )
                 if elapsed < 60:
                     time.sleep(60 - elapsed) # Make sure next tuning folder is a new folder
 
@@ -190,7 +210,13 @@ def main():
             else:
                 fail += 1
                 failed_files.append(f"{bench.name} - {codegen_pipeline}")
-                append_line(success_list_path, f"{bench.name} - {codegen_pipeline}")
+                add_mlir_record_row(
+                    mlir_record_path,
+                    sku=arch,
+                    mlir=bench.name,
+                    succuss=False,
+                    time_val=None,
+                )
                 logger.warning(f"{finished_at.isoformat(timespec='seconds')} - {bench.name}: 'FAIL({rc})' in {elapsed:.2f}")
 
     # --- summary logging ---
