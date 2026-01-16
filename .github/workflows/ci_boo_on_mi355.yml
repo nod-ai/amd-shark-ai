@@ -15,6 +15,7 @@ name: CI - Boo on Mi355
 
 on:
   workflow_dispatch:
+  pull_request:
   schedule:
     - cron: "45 10 * * *"
 
@@ -90,21 +91,21 @@ jobs:
        export IREE_PY_RUNTIME_FLAGS="--hip_dylib_path=file:${HIP_DYLIB_PATH}"
        cd iree-turbine
        export MIOPEN_FIND_ENFORCE=3
+       iree-boo-driver conv --verbose
+       # echo "============ 1. Running Prod Conv shape with MIOpen and IREE without tuning ==================="
+       # iree-boo-driver \
+       #      --commands-file ../amd-shark-ai-reports/boo/prod_conv_config.txt --csv ../output_artifacts/prod_conv_miopen_iree.csv \
+       #      --backend=torch --backend=iree_boo_experimental || true
 
-       echo "============ 1. Running Prod Conv shape with MIOpen and IREE without tuning ==================="
-       iree-boo-driver \
-            --commands-file ../amd-shark-ai-reports/boo/prod_conv_config.txt --csv ../output_artifacts/prod_conv_miopen_iree.csv \
-            --backend=torch --backend=iree_boo_experimental || true
+       # echo "============ 2. Running All proxy shape with MIOpen and IREE without tuning ==================="
+       # iree-boo-driver \
+       #      --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_miopen_iree.csv \
+       #      --backend=torch --backend=iree_boo_experimental || true
 
-       echo "============ 2. Running All proxy shape with MIOpen and IREE without tuning ==================="
-       iree-boo-driver \
-            --commands-file ../amd-shark-ai-reports/boo/all_proxy_config.txt --csv ../output_artifacts/all_proxy_miopen_iree.csv \
-            --backend=torch --backend=iree_boo_experimental || true
-
-       echo "============ 3. Running Gemm shape with MIOpen and IREE without tuning ======================================="
-       iree-boo-driver \
-            --commands-file ../amd-shark-ai-reports/boo/gemm_config.txt --csv ../output_artifacts/gemm_miopen_iree.csv \
-            --backend=torch --backend=iree_boo_experimental || true
+       # echo "============ 3. Running Gemm shape with MIOpen and IREE without tuning ======================================="
+       # iree-boo-driver \
+       #      --commands-file ../amd-shark-ai-reports/boo/gemm_config.txt --csv ../output_artifacts/gemm_miopen_iree.csv \
+       #      --backend=torch --backend=iree_boo_experimental || true
 
        cd -
 
