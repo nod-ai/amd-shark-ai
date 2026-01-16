@@ -306,18 +306,23 @@ def get_compatible_mfma_intrinsics(
             if str(res_type.element_type) == 'bf16' or str(res_type.element_type) == 'f32':
                 return True
         
+        # For f16 inputs with f32 accumulator, allow f16 result (hardware can cast)
+        if str(a_type) == 'f16' and str(b_type) == 'f16' and str(c_type) == 'f32':
+            if str(res_type.element_type) == 'f16' or str(res_type.element_type) == 'f32':
+                return True
+        
         # Otherwise, result type must match accumulator type
         return res_type.element_type == c_type
 
     return list(filter(is_compatible, mma_intrinsics))
-
-
 # The key name for GPUPipelineOptionsAttr in the translation info config dictionary.
 GPU_PIPELINE_OPTIONS_KEY = "gpu_pipeline_options"
 # The key name for llvm_func_attrs attribute in the translation info config dictionary.
 LLVM_FUNC_ATTRS_KEY = "llvm_func_attrs"
 # The Key name for the 'amdgpu-waves-per-eu' within the llvm_func_attrs attribute.
 WAVES_PER_EU_KEY = "amdgpu-waves-per-eu"
+# The key name for denormal fp math f32 attribute in the translation info config dictionary.
+DENORMAL_FP_MATH_F32_KEY = "iree_codegen.denormal_fp_math_f32"
 
 
 def get_lowering_config(
@@ -367,30 +372,42 @@ def get_lowering_config(
 
 # Generate a config dictionary used in translation_info attribute.
 def get_translation_info_config(
-    pipeline_options: iree_gpu.PipelineOptionsAttr, waves_per_eu: int
+    pipeline_options: iree_gpu.PipelineOptionsAttr,
+    waves_per_eu: int,
+    denorm_flushing: Optional[bool] = None,
 ) -> ir.DictAttr:
     """
     Example IR
     translation_info = #iree_codegen.translation_info<
                     pipeline = LLVMGPUVectorDistribute workgroup_size = [512, 1, 1] subgroup_size = 64,
                     {gpu_pipeline_options = #iree_gpu.pipeline_options<...>,
-                     llvm_func_attrs = {"amdgpu-waves-per-eu" = "3"}
+                     llvm_func_attrs = {"amdgpu-waves-per-eu" = "3"},
+                     iree_codegen.denormal_fp_math_f32 = #iree_codegen.denormal_fp_math<"preserve-sign">
                     }
                 >
     """
     waves_per_eu_str = str(waves_per_eu)
 
-    # Create the waves_per_eu dictionary attribute.
-    waves_per_eu_dict = ir.DictAttr.get(
-        {WAVES_PER_EU_KEY: ir.StringAttr.get(waves_per_eu_str)}
-    )
+    # Build the llvm_func_attrs dictionary.
+    llvm_func_attrs_dict: dict[str, ir.Attribute] = {
+        WAVES_PER_EU_KEY: ir.StringAttr.get(waves_per_eu_str)
+    }
+    llvm_func_attrs = ir.DictAttr.get(llvm_func_attrs_dict)
 
-    config_dict = ir.DictAttr.get(
-        {
-            GPU_PIPELINE_OPTIONS_KEY: pipeline_options,
-            LLVM_FUNC_ATTRS_KEY: waves_per_eu_dict,
-        }
-    )
+    # Build the main config dictionary.
+    config_dict_entries: dict[str, ir.Attribute] = {
+        GPU_PIPELINE_OPTIONS_KEY: pipeline_options,
+        LLVM_FUNC_ATTRS_KEY: llvm_func_attrs,
+    }
+
+    # Add denormal_fp_math_f32 attribute if denorm_flushing is specified.
+    # When denorm_flushing is True, use "preserve-sign" to flush denormals to zero.
+    # When denorm_flushing is False/None, don't add the attribute (uses default IEEE behavior).
+    if denorm_flushing is True:
+        denorm_attr = ir.Attribute.parse('#iree_codegen.denormal_fp_math<"preserve-sign">')
+        config_dict_entries[DENORMAL_FP_MATH_F32_KEY] = denorm_attr
+
+    config_dict = ir.DictAttr.get(config_dict_entries)
 
     return config_dict
 
