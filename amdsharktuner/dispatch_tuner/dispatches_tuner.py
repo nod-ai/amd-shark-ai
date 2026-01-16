@@ -82,8 +82,12 @@ def add_mlir_record_row(path: Path, sku: str, mlir: str, succuss: bool, time_val
     if exists:
         return
 
-    new_row = {"sku": sku, "mlir": mlir, "succuss": succuss, "time": time_val}
-    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+    df.loc[len(df)] = {
+        "sku": sku,
+        "mlir": mlir,
+        "succuss": succuss,
+        "time": time_val,
+    }
     df.to_csv(path, index=False)
 
 
@@ -122,30 +126,28 @@ def main():
     var_list = [DEVICE, TUNING_TASKS, NUM_CAN, TIMING_METHOD, SORT_METHOD, REP]
     logger.info(f"Tuning Vars: {var_list}")
 
-    for i, bench in enumerate(mlir_benchmark_files, start=1):
-        mlir_filename = bench.stem
-        logger.info(f"Checking file {i} / {len(mlir_benchmark_files)}")
+    tuning_tasks = TUNING_TASKS
+    for j, codegen_pipeline in enumerate(tuning_tasks, start=1):
+        for i, bench in enumerate(mlir_benchmark_files, start=1):
+            mlir_filename = bench.stem
+            logger.info(f"Checking file {i} / {len(mlir_benchmark_files)}")
 
-        # Check list
-        if mlir_filename in ok_list:
-            logger.debug(f"Skipping file {mlir_filename} in OK list")
-            continue
-        if mlir_filename in failed_list:
-            logger.debug(f"Skipping file {mlir_filename} in failed list")
-            continue
+            # Check list
+            if mlir_filename in ok_list:
+                logger.debug(f"Skipping file {mlir_filename} in OK list")
+                continue
+            if mlir_filename in failed_list:
+                logger.debug(f"Skipping file {mlir_filename} in failed list")
+                continue
 
-        # Check file
-        if not bench.exists():
-            logger.warning(f"Can't find {bench}, skipping")
-            fail += 1
-            failed_files.append(bench.name)
-            continue
+            # Check file
+            if not bench.exists():
+                logger.warning(f"Can't find {bench}, skipping")
+                fail += 1
+                failed_files.append(bench.name)
+                continue
 
-        # logger.info("=" * 80)
-        # logger.info("=" * 80)
-        tuning_tasks = TUNING_TASKS
-        for j, codegen_pipeline in enumerate(tuning_tasks, start=1):
-            logger.info(f"Tuning {i} ({j}/{len(tuning_tasks)}) / {len(mlir_benchmark_files)}: {bench.name} - {codegen_pipeline}")
+            logger.info(f"Tuning mlir {i} / {len(mlir_benchmark_files)}: {bench.name} - {codegen_pipeline}")
             file_start = time.perf_counter()
             logger.debug(f"File {bench} started at {start_dt.isoformat(timespec='seconds')}")
             cmd = [
