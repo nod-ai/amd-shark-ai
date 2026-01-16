@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_39c0551dd0d10c3f_bitcast_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-01-14 22:10 +0000
+            created at 2026-01-16 09:13 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -194,7 +194,7 @@
     <p class="run"><span class="n"><a id="t112" href="#t112">112</a></span><span class="t">        <span class="nam">spec_sig</span> <span class="op">=</span> <span class="fst">f"</span><span class="fst">L</span><span class="op">{</span><span class="nam">a_ident</span><span class="op">}</span><span class="fst">_R</span><span class="op">{</span><span class="nam">b_ident</span><span class="op">}</span><span class="fst">_</span><span class="op">{</span><span class="nam">accum_type_str</span><span class="op">}</span><span class="fst">"</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t113" href="#t113">113</a></span><span class="t">        <span class="nam">template_file</span> <span class="op">=</span> <span class="str">"batch_matmul_transpose_b.mlir"</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t114" href="#t114">114</a></span><span class="t">        <span class="nam">target_function_name</span> <span class="op">=</span> <span class="fst">f"</span><span class="fst">amdsharktank_batch_matmul_transpose_b_</span><span class="op">{</span><span class="nam">spec_sig</span><span class="op">}</span><span class="fst">"</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t115" href="#t115">115</a></span><span class="t">        <span class="nam">cst_zero</span> <span class="op">=</span> <span class="str">"0"</span> <span class="key">if</span> <span class="nam">IntegerType</span><span class="op">.</span><span class="nam">isinstance</span><span class="op">(</span><span class="nam">accum_type</span><span class="op">)</span> <span class="key">else</span> <span class="str">"0."</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t115" href="#t115">115</a></span><span class="t">        <span class="nam">cst_zero</span> <span class="op">=</span> <span class="str">"0"</span> <span class="key">if</span> <span class="nam">isinstance</span><span class="op">(</span><span class="nam">accum_type</span><span class="op">,</span> <span class="nam">IntegerType</span><span class="op">)</span> <span class="key">else</span> <span class="str">"0."</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t116" href="#t116">116</a></span><span class="t">        <span class="com"># Template params.</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t117" href="#t117">117</a></span><span class="t">        <span class="nam">c_asm_type</span> <span class="op">=</span> <span class="fst">f"</span><span class="fst">tensor&lt;</span><span class="op">{</span><span class="str">'x'</span><span class="op">.</span><span class="nam">join</span><span class="op">(</span><span class="str">'?'</span> <span class="key">if</span> <span class="nam">d</span> <span class="key">is</span> <span class="key">None</span> <span class="key">else</span> <span class="nam">str</span><span class="op">(</span><span class="nam">d</span><span class="op">)</span> <span class="key">for</span> <span class="nam">d</span> <span class="key">in</span> <span class="nam">result_desc</span><span class="op">.</span><span class="nam">spec_dims</span><span class="op">)</span><span class="op">}</span><span class="fst">x</span><span class="op">{</span><span class="nam">accum_type</span><span class="op">}</span><span class="fst">></span><span class="fst">"</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t118" href="#t118">118</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -219,7 +219,7 @@
             <a class="nav" href="z_39c0551dd0d10c3f_bitcast_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-01-14 22:10 +0000
+            created at 2026-01-16 09:13 +0000
         </p>
     </div>
 </footer>
