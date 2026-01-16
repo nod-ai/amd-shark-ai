@@ -209,6 +209,8 @@ def main():
                         logging.error(f"Fail to copy {csv_file} -> {dst_dir}")
             else:
                 fail += 1
+                if elapsed < 60:
+                    time.sleep(60 - elapsed) # Make sure next tuning folder is a new folder
                 failed_files.append(f"{bench.name} - {codegen_pipeline}")
                 add_mlir_record_row(
                     mlir_record_path,
