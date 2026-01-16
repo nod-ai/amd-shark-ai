@@ -66,16 +66,11 @@ jobs:
         source ${VENV_DIR}/bin/activate
         python -m pip install --force-reinstall \
           --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
-          --pre torch torchaudio torchvision
+          --pre torch
 
-        ## There are two issue: 1> Need fix for 41f311e63c9021db7c26bdfe86f10513cb372c13 2> Need to update requirements file by removing upper bound of torch
-        git clone https://github.com/iree-org/iree-turbine.git
-        cd iree-turbine
-        pip install -r requirements.txt
-        pip install -r requirements-iree-unpinned.txt
-        pip install --no-deps -e .
+        pip install "git+https://github.com/iree-org/iree-turbine.git"
+        pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
         pip freeze  > $(pwd)/../output_artifacts/version.txt
-        cd -
 
     - name: Run all proxy config
       run: |
