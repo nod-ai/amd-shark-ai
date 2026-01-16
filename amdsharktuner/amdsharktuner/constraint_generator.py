@@ -631,6 +631,25 @@ def generate_generic_contraction_solutions(
                     subgroup_n=subgroup_tile_sizes[1],
                     subgroup_k=subgroup_tile_sizes[2],
                 )
+            elif (codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse):
+                knob_assignment = rocm_common.LLVMGPUTileAndFuseContractionKnobs(
+                    M=int(math.prod(M)),
+                    N=int(math.prod(N)),
+                    K=int(math.prod(K)),
+                    tile_m=workgroup_tile_sizes[0],
+                    tile_n=workgroup_tile_sizes[1],
+                    tile_k=reduction_tile_sizes[2],
+                    wg_x=z3_assignment.wg_x,
+                    wg_y=z3_assignment.wg_y,
+                    wg_z=z3_assignment.wg_z,
+                    subgroup_m_cnt=z3_assignment.sg_m_cnt,
+                    subgroup_n_cnt=z3_assignment.sg_n_cnt,
+                    intrinsic_mn=z3_assignment.intrinsic_mn,
+                    intrinsic_k=z3_assignment.intrinsic_k,
+                    subgroup_m=subgroup_tile_sizes[0],
+                    subgroup_n=subgroup_tile_sizes[1],
+                    subgroup_k=subgroup_tile_sizes[2],
+                )
             yield [
                 common.TuningConfiguration(
                     name="compilation_info",

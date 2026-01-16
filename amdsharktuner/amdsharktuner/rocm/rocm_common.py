@@ -41,6 +41,29 @@ class LLVMGPUVectorDistributeContractionKnobs(common.KnobAssignment):
 
 
 @dataclass
+class LLVMGPUTileAndFuseContractionKnobs(common.KnobAssignment):
+    # Problem Size.
+    M: int
+    N: int
+    K: int
+
+    # Z3 numeric selections.
+    tile_m: int
+    tile_n: int
+    tile_k: int
+    wg_x: int
+    wg_y: int
+    wg_z: int
+    subgroup_m_cnt: int
+    subgroup_n_cnt: int
+    intrinsic_mn: int
+    intrinsic_k: int
+    subgroup_m: int
+    subgroup_n: int
+    subgroup_k: int
+
+
+@dataclass
 class ConvolutionKnobs(common.KnobAssignment):
     pass
 

@@ -21,7 +21,7 @@ failed_list = [
 ]
 
 DEVICE="hip://0,hip://1,hip://2,hip://3,hip://4,hip://5,hip://6,hip://7"
-TUNING_TASKS=["llvmgpu_vector_distribute", "llvmgpu_tile_and_fuse"]
+TUNING_TASKS=["llvmgpu_tile_and_fuse", "llvmgpu_vector_distribute"]
 NUM_CAN=10000
 TIMING_METHOD="rocprof"
 SORT_METHOD="heuristic"
