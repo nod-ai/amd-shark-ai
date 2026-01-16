@@ -9,7 +9,7 @@ import shutil
 import sys
 import pandas as pd
 
-random.seed(42) 
+
 redo_list = [
 
 ]
@@ -170,19 +170,12 @@ def main():
             elapsed = time.perf_counter() - file_start
         
             # Handle result
+            elapsed_min = elapsed / 60.0
             if rc == 0:
                 ok += 1
-                elapsed_min = elapsed / 60.0
                 logger.info(
                     f"{finished_at.isoformat(timespec='seconds')} - "
-                    f"{bench.name}: completed in {elapsed_min:.2f} min"
-                )
-                add_mlir_record_row(
-                    mlir_record_path,
-                    sku=arch,
-                    mlir=bench.name,
-                    succuss=True,
-                    time_val=elapsed_min,
+                    f"{bench.name}: completed in {elapsed_min:.2f} mins"
                 )
                 if elapsed < 60:
                     time.sleep(60 - elapsed) # Make sure next tuning folder is a new folder
@@ -212,14 +205,15 @@ def main():
                 if elapsed < 60:
                     time.sleep(60 - elapsed) # Make sure next tuning folder is a new folder
                 failed_files.append(f"{bench.name} - {codegen_pipeline}")
-                add_mlir_record_row(
-                    mlir_record_path,
-                    sku=arch,
-                    mlir=bench.name,
-                    succuss=False,
-                    time_val=None,
-                )
-                logger.warning(f"{finished_at.isoformat(timespec='seconds')} - {bench.name}: 'FAIL({rc})' in {elapsed:.2f}")
+                logger.warning(f"{finished_at.isoformat(timespec='seconds')} - {bench.name}: 'FAIL({rc})' in {elapsed:.2f}s")
+        
+            add_mlir_record_row(
+                mlir_record_path,
+                sku=arch,
+                mlir=bench.name,
+                succuss=True if rc == 0 else False,
+                time_val=elapsed_min,
+            )
 
     # --- summary logging ---
     if failed_files:
