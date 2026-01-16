@@ -84,7 +84,6 @@ jobs:
        source ${VENV_DIR}/bin/activate
        export HIP_DYLIB_PATH=$(python -c "import rocm_sdk;print(rocm_sdk.find_libraries('amdhip64')[0].absolute())")
        export IREE_PY_RUNTIME_FLAGS="--hip_dylib_path=file:${HIP_DYLIB_PATH}"
-       cd iree-turbine
        export MIOPEN_FIND_ENFORCE=3
 
        echo "============ 1. Running Prod Conv shape with MIOpen and IREE without tuning ==================="
