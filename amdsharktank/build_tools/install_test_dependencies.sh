@@ -57,7 +57,7 @@ else
     pip install --no-compile -r "$SRC_DIR/requirements-iree-pinned.txt"
     pip uninstall -y wave-lang
     pip install wave-lang
-    pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime iree-turbine
+    # pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime iree-turbine
 fi
 
 pip install --no-compile -r "$SRC_DIR/amdsharktank/requirements-tests.txt"
