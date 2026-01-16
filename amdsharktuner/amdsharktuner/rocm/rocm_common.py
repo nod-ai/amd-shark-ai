@@ -16,6 +16,9 @@ from .. import common
 # The Key name for the 'amdgpu-waves-per-eu' within the llvm_func_attrs attribute.
 WAVES_PER_EU_KEY = "amdgpu-waves-per-eu"
 
+# List of tested ROCm architectures.
+ROCM_ARCHITECTURES = ["gfx942", "gfx950", "gfx1100", "gfx1201"]
+
 
 @dataclass
 class LLVMGPUVectorDistributeContractionKnobs(common.KnobAssignment):
