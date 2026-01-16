@@ -367,6 +367,7 @@ def generate_attention_solutions(
     num_subgroups: int = 4,
     allowed_waves_per_eu: list[int] = [2],
     pipeline_options_search_space: dispatch_constraints.PipelineOptionsSearchSpace = dispatch_constraints.PipelineOptionsSearchSpace(),
+    allowed_promote_operands: list[list[int]] = [[0, 1, 2], [1, 2]],
 ) -> Iterator[list[common.TuningConfiguration]]:
     if (
         dispatch_kind != common.DispatchKind.attention
@@ -522,49 +523,52 @@ def generate_attention_solutions(
         layouts_match = bool(model[can_reuse_qk_output_for_pv_input])
         pipeline_options_search_space.prefetch_num_stages = [2 if layouts_match else 0]
 
-        promote_operands = [0, 1, 2]
-        compilation_infos = dispatch_constraints.generate_compilation_infos(
-            tuner_ctx,
-            None,
-            workgroup_tile_sizes,
-            reduction_tile_sizes,
-            [0, 0, 0],
-            (workgroup_size, 1, 1),
-            lookup(subgroup_size),
-            subgroup_basis_counts,
-            subgroup_basis_mapping,
-            promote_operands,
-            codegen_pipeline,
-            pipeline_options_search_space,
-            allowed_waves_per_eu,
-            padding=None,
-        )
         solver.add(z3.simplify(z3.Not(z3.And(list(x == model[x] for x in all_vars)))))
-        
-        # Log the solution parameters in a more readable format
-        tuner_ctx.logger.info(
-            f"Z3 Solution #{i+1}: "
-            f"workgroup=[1,{lookup(m_var)},{lookup(n_var)},0,0] "
-            f"reduction=[0,0,0,0,{lookup(k_var)}] "
-            f"sg_m_cnt={lookup(sg_m_cnt)} "
-            f"wg_size={lookup(sg_m_cnt) * lookup(sg_n_cnt) * lookup(subgroup_size)} "
-            f"subgroup_size={lookup(subgroup_size)} "
-            f"qk_intrinsic={lookup(qk_intrinsic_mn)}x{lookup(qk_intrinsic_mn)}x{lookup(qk_intrinsic_k)} "
-            f"pv_intrinsic={lookup(pv_intrinsic_mn)}x{lookup(pv_intrinsic_mn)}x{lookup(pv_intrinsic_k)}"
-        )
-        
+
         i += 1
 
-        for compilation_info in compilation_infos:
-            config_list = [
-                common.TuningConfiguration(
-                    name="compilation_info", configuration=compilation_info
-                ),
-                common.TuningConfiguration(
-                    name="decomposition_config", configuration=decomposition_config
-                ),
-            ]
-            yield config_list
+        # Iterate through allowed promote_operands configurations
+        # (e.g., [[0, 1, 2]] promotes Q, K, V; [[1, 2]] skips promoting Q)
+        for promote_operands in allowed_promote_operands:
+            # Log the solution parameters in a more readable format
+            tuner_ctx.logger.info(
+                f"Z3 Solution #{i}: "
+                f"workgroup=[1,{lookup(m_var)},{lookup(n_var)},0,0] "
+                f"reduction=[0,0,0,0,{lookup(k_var)}] "
+                f"sg_m_cnt={lookup(sg_m_cnt)} "
+                f"wg_size={lookup(sg_m_cnt) * lookup(sg_n_cnt) * lookup(subgroup_size)} "
+                f"subgroup_size={lookup(subgroup_size)} "
+                f"qk_intrinsic={lookup(qk_intrinsic_mn)}x{lookup(qk_intrinsic_mn)}x{lookup(qk_intrinsic_k)} "
+                f"pv_intrinsic={lookup(pv_intrinsic_mn)}x{lookup(pv_intrinsic_mn)}x{lookup(pv_intrinsic_k)} "
+                f"promote_operands={promote_operands}"
+            )
+            compilation_infos = dispatch_constraints.generate_compilation_infos(
+                tuner_ctx,
+                None,
+                workgroup_tile_sizes,
+                reduction_tile_sizes,
+                [0, 0, 0],
+                (workgroup_size, 1, 1),
+                lookup(subgroup_size),
+                subgroup_basis_counts,
+                subgroup_basis_mapping,
+                promote_operands,
+                codegen_pipeline,
+                pipeline_options_search_space,
+                allowed_waves_per_eu,
+                padding=None,
+            )
+
+            for compilation_info in compilation_infos:
+                config_list = [
+                    common.TuningConfiguration(
+                        name="compilation_info", configuration=compilation_info
+                    ),
+                    common.TuningConfiguration(
+                        name="decomposition_config", configuration=decomposition_config
+                    ),
+                ]
+                yield config_list
 
 
 class ConstraintGenerator(ABC):
