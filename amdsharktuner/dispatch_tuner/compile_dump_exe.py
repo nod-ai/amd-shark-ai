@@ -9,13 +9,13 @@ import subprocess
 from pathlib import Path
 
 
-def run_iree_compile(mlir_file, dump_dir):
+def run_iree_compile(mlir_file, dump_dir, arch):
     """Run iree-compile command on the MLIR file."""
     cmd = [
         "iree-compile",
         str(mlir_file),
         "--iree-hal-target-device=hip",
-        "--iree-hip-target=gfx942",
+        f"--iree-hip-target={arch}",
         f"--iree-hal-dump-executable-files-to={dump_dir}",
         "--iree-config-add-tuner-attributes",
         "-o", "/dev/null"
@@ -48,15 +48,19 @@ def copy_benchmark_file(input_name, src_dir, dst_dir):
         print(f"Warning: Benchmark file not found for {input_name}")
         return False
 
+import sys
 
 def main():
     # parser = argparse.ArgumentParser(description="Process MLIR files with iree-compile")
     # parser.add_argument("input_dir", help="Path to folder containing MLIR files")
     # parser.add_argument("output_folder", help="Path to folder containing MLIR files")
     # args = parser.parse_args()
+    if len(sys.argv) < 2:
+        raise SystemExit("Usage: python compile_dump_exe.py <arch>\nExample: python compile_dump_exe.py gfx942")
+    arch = sys.argv[1]
 
-    # input_dir = Path(args.input_dir)
-    input_dir = Path("~/iree-kernel-benchmark/dump_dispatch/problem_mlir_dump").expanduser().resolve()
+    base_path = Path(os.path.dirname(os.path.abspath(__file__)))
+    input_dir = base_path / "problem_mlir_dump"
     
     print(f"Processing MLIR files in: {input_dir}")
     
@@ -65,8 +69,7 @@ def main():
     print(f"Found {len(mlir_files)} MLIR files to process")
     
     # Ensure output directory exists
-    base_path = os.path.dirname(os.path.abspath(__file__))
-    output_dir = Path(base_path) / "dump"
+    output_dir = Path(base_path) / "bench_dump"
     dump_dir = output_dir / "tmp"
     output_dir.mkdir(exist_ok=True)
     dump_dir.mkdir(exist_ok=True)
@@ -84,7 +87,7 @@ def main():
             print(f"[{i} / {len(mlir_files)}]")
             continue
         # Run iree-compile
-        if run_iree_compile(mlir_file, dump_dir):
+        if run_iree_compile(mlir_file, dump_dir, arch):
             # Copy benchmark file
             if copy_benchmark_file(input_name, dump_dir, output_dir):
                 success_count += 1

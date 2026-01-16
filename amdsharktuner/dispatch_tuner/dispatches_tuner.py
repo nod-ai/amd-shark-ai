@@ -98,9 +98,9 @@ def main():
     ensure_mlir_record(mlir_record_path)
     
     logger.debug(f"Arch: {arch}")
-    mlir_benchmark_folder_path = (base_path / "dump").expanduser().resolve()
+    mlir_benchmark_folder_path = (base_path / "bench_dump").expanduser().resolve()
     logger.debug(f"In MLIR_benchmark folder {mlir_benchmark_folder_path}: ")
-    mlir_benchmark_files = sorted(mlir_benchmark_folder_path.glob("*.bench"))
+    mlir_benchmark_files = sorted(mlir_benchmark_folder_path.glob("*.mlir"))
     for f in mlir_benchmark_files:
         logger.debug(f"{f.stem}")
 
@@ -232,7 +232,7 @@ def main():
 
     logger.info("-" * 80)
     logger.info(f"SUMMARY: Success: {ok} | Fail: {fail}")
-    logger.info(f"SUMMARY: Total elapsed: {total_elapsed:.2f}s")
+    logger.info(f"SUMMARY: Total elapsed: {total_elapsed/60/60:.2f}hrs")
     logger.info("-" * 80)
 
 
