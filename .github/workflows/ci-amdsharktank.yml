@@ -54,7 +54,7 @@ jobs:
           python-version: ${{matrix.python-version}}
 
       - name: Cache Pip Packages
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         id: cache-pip
         with:
           path: ${{ env.PIP_CACHE_DIR }}
@@ -122,7 +122,7 @@ jobs:
 
       - name: Coverage comment
         id: coverage_comment
-        uses: py-cov-action/python-coverage-comment-action@e623398c19eb3853a5572d4a516e10b15b5cefbc # v3.39
+        uses: py-cov-action/python-coverage-comment-action@7188638f871f721a365d644f505d1ff3df20d683 # v3.40
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MERGE_COVERAGE_FILES: true
@@ -162,7 +162,7 @@ jobs:
           python-version: ${{matrix.python-version}}
 
       - name: Cache Pip Packages
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         id: cache-pip
         with:
           path: ${{ env.PIP_CACHE_DIR }}
@@ -263,7 +263,7 @@ jobs:
           python-version: ${{matrix.python-version}}
 
       - name: Cache Pip Packages
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         id: cache-pip
         with:
           path: ${{ env.PIP_CACHE_DIR }}

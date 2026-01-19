@@ -154,7 +154,7 @@ jobs:
         echo "SHORTFIN_ENABLE_TRACING=OFF" >> $GITHUB_ENV
     - name: Setup cache
       if: ${{ inputs.build_type == 'dev' }}
-      uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+      uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
       with:
         path: ${{ env.CACHE_DIR }}
         key: build-packages-${{ matrix.package }}-${{ matrix.platform }}-${{ matrix.python-version }}-v1-${{ github.sha }}
