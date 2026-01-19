@@ -1,0 +1,159 @@
+# Copyright 2025 Advanced Micro Devices, Inc.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions.
+# See https://llvm.org/LICENSE.txt for license information.
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
+
+# This CI runs the following:
+#
+# 1. proxy with untuned boo and native pytorch
+# 2. prod with untuned boo and native pytorch
+# 3. gemms with untuned boo and native pytorch
+
+name: CI - Boo on Mi355
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "45 10 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  # A PR number if a pull request and otherwise the commit hash. This cancels
+  # queued and in-progress runs for the same PR (presubmit) or commit
+  # (postsubmit). The workflow name is prepended to avoid conflicts between
+  # different workflows.
+  group: ${{ github.workflow }}-${{ github.event.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  test_boo:
+    if: ${{ github.repository_owner == 'nod-ai' || github.event_name != 'schedule' }}
+    timeout-minutes: 240
+    name: "Boo on Mi355"
+    strategy:
+      matrix:
+        version: [3.12]
+      fail-fast: false
+    runs-on: linux-mi355-1gpu-ossci-nod-ai
+    defaults:
+      run:
+        shell: bash
+    env:
+      VENV_DIR: ${{ github.workspace }}/.venv
+      OFFLINE_SERVING: DISABLED
+    steps:
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+    - name: "Setting up Python"
+      id: setup_python
+      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+      with:
+        python-version: ${{matrix.version}}
+
+    - name: Create Python venv
+      run: |
+        python -m venv ${VENV_DIR}
+        source ${VENV_DIR}/bin/activate
+
+    - name: Install pip deps
+      run: |
+        mkdir -p output_artifacts
+        source ${VENV_DIR}/bin/activate
+        python -m pip install --force-reinstall \
+          --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
+          --pre torch
+
+        pip install "git+https://github.com/iree-org/iree-turbine.git"
+        pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
+        pip freeze  > $(pwd)/output_artifacts/version.txt
+
+    - name: Run all proxy config
+      run: |
+       echo "Getting config files"
+       git clone --filter=blob:none --no-checkout https://x-access-token:${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}@github.com/nod-ai/amd-shark-ai-reports.git
+       cd amd-shark-ai-reports
+       git sparse-checkout init --cone
+       git sparse-checkout set boo/all_proxy_config.txt boo/prod_conv_config.txt boo/gemm_config.txt boo/hipblaslt-bench.sh
+       git checkout main
+       cd -
+       source ${VENV_DIR}/bin/activate
+       export MIOPEN_FIND_ENFORCE=3
+
+       echo "============ 1. Running Prod Conv shape with MIOpen and IREE without tuning ==================="
+       iree-boo-driver \
+            --commands-file amd-shark-ai-reports/boo/prod_conv_config.txt --csv output_artifacts/prod_conv_miopen_iree.csv \
+            --backend=torch --backend=iree_boo_experimental || true
+
+       echo "============ 2. Running All proxy shape with MIOpen and IREE without tuning ==================="
+       iree-boo-driver \
+            --commands-file amd-shark-ai-reports/boo/all_proxy_config.txt --csv output_artifacts/all_proxy_miopen_iree.csv \
+            --backend=torch --backend=iree_boo_experimental || true
+
+       echo "============ 3. Running Gemm shape with MIOpen and IREE without tuning ======================================="
+       iree-boo-driver \
+            --commands-file amd-shark-ai-reports/boo/gemm_config.txt --csv output_artifacts/gemm_miopen_iree.csv \
+            --backend=torch --backend=iree_boo_experimental || true
+
+    - name: Run hipblaslt-bench
+      run: |
+        sudo apt update
+        sudo apt install awscli -y
+        tarFileName=`aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx950 | sort -r | head -1 |  awk '{print $NF}'`
+        echo "Installing $tarFileName"
+        wget https://therock-nightly-tarball.s3.us-east-2.amazonaws.com/${tarFileName}
+        mkdir install
+        tar -xf *.tar.gz -C install
+        export PATH=$PWD/install/bin:$PATH
+
+        echo "============= 4. Running Gemm Shape with hipblaslt =============================="
+        bash amd-shark-ai-reports/boo/hipblaslt-bench.sh >& output_artifacts/gemm_hipBlaslt-bench.csv
+
+    - name: Upload log files
+      if: always()
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+      with:
+        name: boo-logs
+        path: |
+          output_artifacts/*.csv
+          output_artifacts/version.txt
+
+  # New job to push logs to amd-shark-ai-reports repository
+  push_logs:
+    name: "Push log for conv run"
+    needs: [ test_boo ]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Download log artifacts
+      uses: actions/download-artifact@v7
+      with:
+        name: boo-logs
+        path: logs
+
+    - name: Checkout Target Repo
+      if: always()
+      uses: actions/checkout@v6
+      with:
+        repository: nod-ai/amd-shark-ai-reports
+        token: ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}
+        path: amd-shark-ai-reports
+
+    - name: Push artifacts
+      if: always()
+      run: |
+        git config --global user.name "GitHub Actions Bot"
+        git config --global user.email ""
+        date=$(date -u +'%Y-%m-%d')
+        mkdir -p "amd-shark-ai-reports/boo/$date/"
+        cp -v logs/*.csv "amd-shark-ai-reports/boo/$date/" || true
+        cp -v logs/version.txt "amd-shark-ai-reports/boo/$date/"
+        cd amd-shark-ai-reports/boo
+        git pull
+        git add $date
+        git commit -m "Add conv report on $(date -u +'%Y-%m-%d')"
+        git push origin main
+        rm -rf ../logs

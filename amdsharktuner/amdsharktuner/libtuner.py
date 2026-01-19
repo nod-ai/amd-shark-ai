@@ -44,10 +44,10 @@ from . import (
     candidate_gen,
     candidate_ordering,
     common,
-    dispatch_constraints,
     dispatch_parser,
     process_utils,
 )
+from .rocm import rocm_dispatch_constraints
 
 
 # Default random seed.
@@ -878,7 +878,7 @@ def generate_candidate_specs(
         mlir_text = candidate_gen.strip_compilation_info(path_config.template_mlir)
         mlir_module = dispatch_parser.parse_mlir(mlir_text, tuning_client.tuner_context)
         logging.debug("Captured messages from candidate_gen.py:")
-        pipeline_options_search_space = dispatch_constraints.PipelineOptionsSearchSpace(
+        pipeline_options_search_space = rocm_dispatch_constraints.PipelineOptionsSearchSpace(
             prefetch_num_stages=args.prefetch_num_stages_options,
             no_reduce_shared_memory_bank_conflicts=args.no_reduce_shared_memory_bank_conflicts_options,
         )

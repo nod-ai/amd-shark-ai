@@ -19,11 +19,11 @@ from iree.compiler.dialects import iree_codegen, iree_gpu, linalg  # type: ignor
 from . import (
     common,
     constraint_generator,
-    dispatch_constraints,
     dispatch_parser,
     process_utils,
     spec_builder,
 )
+from .rocm import rocm_dispatch_constraints
 
 tune_logger = logging.getLogger("tune")
 
@@ -245,7 +245,7 @@ def generate_solutions(
     tuner_context: common.TunerContext,
     num_subgroups: int = 4,  # GPU spec, used to determine candidate generation constraints.
     allowed_waves_per_eu: list[int] = [2],
-    pipeline_options_search_space: dispatch_constraints.PipelineOptionsSearchSpace = dispatch_constraints.PipelineOptionsSearchSpace(),
+    pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
 ) -> Iterator[list[common.TuningConfiguration]]:
     if target_info.arch not in ["gfx942", "gfx950", "gfx1100", "gfx1201"]:
