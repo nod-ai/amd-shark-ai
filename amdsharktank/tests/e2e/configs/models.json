@@ -207,7 +207,7 @@
           "4x2048xi64",
           "4xi64",
           "4x64xi64",
-          "261x5242880xf8E4M3FNUZ"
+          "261x5242880xf16"
         ],
         "seq_len": 2048
       },
@@ -218,7 +218,7 @@
           "4xi64",
           "4xi64",
           "4x65xi64",
-          "261x5242880xf8E4M3FNUZ"
+          "261x5242880xf16"
         ],
         "seq_len": 2048
       }
@@ -231,8 +231,7 @@
     "extra_export_flags_list": [
       "--use-hf",
       "--attention-kernel",
-      "amdsharktank",
-      "--kv-cache-dtype=float8_e4m3fnuz"
+      "amdsharktank"
     ],
     "output_dir": "../amdshark-ai/output_artifacts/",
     "prefill_gold_mi325x": 1530.90,
