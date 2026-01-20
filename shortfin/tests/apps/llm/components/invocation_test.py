@@ -437,7 +437,6 @@ def _validate_prefill_args_w_start_pos(
 
 
 class TestPrefillTask:
-    @pytest.mark.xfail(reason="Cache Allocation Failure Issue: _____")
     def test_get_args(self, lsys, prefill_task: PrefillTask, staggered_exec_req_list):
         async def _test():
             args = await prefill_task.prepare_args(
@@ -454,7 +453,6 @@ class TestPrefillTask:
 
         lsys.run(_test())
 
-    @pytest.mark.xfail(reason="Cache Allocation Failure Issue: _____")
     def test_process_results(
         self,
         fiber,
@@ -499,7 +497,6 @@ class TestPrefillTask:
 
         lsys.run(_test())
 
-    @pytest.mark.xfail(reason="Cache Allocation Failure Issue: _____")
     def test_process_results_w_indices(
         self,
         fiber,
@@ -541,7 +538,6 @@ class TestPrefillTask:
 
 
 class TestPrefillTaskWithStartPos:
-    @pytest.mark.xfail(reason="Cache Allocation Failure Issue: _____")
     def test_get_args(
         self, lsys, prefill_task_w_start_pos: PrefillTask, staggered_exec_req_list
     ):
@@ -635,7 +631,6 @@ def get_chunked_task_inputs(
 
 
 class TestChunkedPrefillTask:
-    @pytest.mark.xfail(reason="Cache Allocation Failure Issue: _____")
     def test_prepare_args_basic(
         self, lsys, cache_ref_count, device_array_cache, page_pool
     ):
@@ -687,7 +682,6 @@ class TestChunkedPrefillTask:
 
         lsys.run(_test())
 
-    @pytest.mark.xfail(reason="Cache Allocation Failure Issue: _____")
     def test_prepare_args_shorter_chunk_longer_history(
         self, lsys, cache_ref_count, device_array_cache, page_pool
     ):
@@ -818,7 +812,6 @@ def _validate_decode_args(
 
 
 class TestDecodeTask:
-    @pytest.mark.xfail(reason="Cache Allocation Failure Issue: _____")
     def test_get_args(self, lsys, decode_task: DecodeTask, staggered_exec_req_list):
         async def _test():
             args = await decode_task.prepare_args(
@@ -835,7 +828,6 @@ class TestDecodeTask:
 
         lsys.run(_test())
 
-    @pytest.mark.xfail(reason="Cache Allocation Failure Issue: _____")
     def test_process_results(
         self,
         fiber,
@@ -875,7 +867,6 @@ class TestDecodeTask:
 
         lsys.run(_test())
 
-    @pytest.mark.xfail(reason="Cache Allocation Failure Issue: _____")
     def test_process_results_w_indices(
         self,
         fiber,
@@ -917,7 +908,6 @@ class TestDecodeTask:
 
 
 class TestLlmInvocationProcess:
-    @pytest.mark.xfail(reason="Cache Allocation Failure Issue: _____")
     def test_run_none_indices(
         self,
         lsys,
