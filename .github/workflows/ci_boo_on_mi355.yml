@@ -16,7 +16,7 @@ name: CI - Boo on Mi355
 on:
   workflow_dispatch:
   schedule:
-    - cron: "45 10 * * *"
+    - cron: "45 11 * * *"
 
 permissions:
   contents: write
