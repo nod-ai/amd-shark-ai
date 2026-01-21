@@ -77,7 +77,7 @@ jobs:
        git clone --filter=blob:none --no-checkout https://x-access-token:${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}@github.com/nod-ai/amd-shark-ai-reports.git
        cd amd-shark-ai-reports
        git sparse-checkout init --cone
-       git sparse-checkout set boo/all_proxy_config.txt boo/prod_conv_config.txt boo/gemm_config.txt boo/hipblaslt-bench.sh
+       git sparse-checkout set boo/all_proxy_config.txt boo/prod_conv_config.txt boo/gemm_config.txt boo/hipblaslt-bench.sh boo/all_proxy_config_nchw.txt boo/prod_conv_config_nchw.txt
        git checkout main
        cd -
        source ${VENV_DIR}/bin/activate
@@ -96,6 +96,16 @@ jobs:
        echo "============ 3. Running Gemm shape with MIOpen and IREE without tuning ======================================="
        iree-boo-driver \
             --commands-file amd-shark-ai-reports/boo/gemm_config.txt --csv output_artifacts/gemm_miopen_iree.csv \
+            --backend=torch --backend=iree_boo_experimental || true
+
+       echo "============ 4. Running Prod Conv shape with NCHW layout with MIOpen and IREE without tuning ==================="
+       iree-boo-driver \
+            --commands-file amd-shark-ai-reports/boo/prod_conv_config_nchw.txt --csv output_artifacts/prod_conv_miopen_iree_nchw.csv \
+            --backend=torch --backend=iree_boo_experimental || true
+
+       echo "============ 5. Running All proxy shape with NCHW layout with MIOpen and IREE without tuning ==================="
+       iree-boo-driver \
+            --commands-file amd-shark-ai-reports/boo/all_proxy_config_nchw.txt --csv output_artifacts/all_proxy_miopen_iree_nchw.csv \
             --backend=torch --backend=iree_boo_experimental || true
 
     - name: Run hipblaslt-bench
