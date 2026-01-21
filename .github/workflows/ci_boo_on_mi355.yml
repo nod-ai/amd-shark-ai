@@ -68,24 +68,12 @@ jobs:
           --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
           --pre torch
 
-
-        dpkg -l | grep rocm 
-        exit 1
-        echo "ROCM"
-        rocm-smi
-        file /opt/rocm
-        file /etc/alternatives/rocm
-        exit 1
-        
-
         pip install "git+https://github.com/iree-org/iree-turbine.git"
         pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
         pip freeze  > $(pwd)/output_artifacts/version.txt
-        rocminfo
 
     - name: Run all proxy config
       run: |
-       rocminfo
        echo "Getting config files"
        git clone --filter=blob:none --no-checkout https://x-access-token:${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}@github.com/nod-ai/amd-shark-ai-reports.git
        cd amd-shark-ai-reports
@@ -94,8 +82,7 @@ jobs:
        git checkout main
        cd -
        source ${VENV_DIR}/bin/activate
-       rocminfo
-       exit 1
+       export ROCR_VISIBLE_DEVICES=0
        export MIOPEN_FIND_ENFORCE=3
 
        echo "============ 1. Running Prod Conv shape with MIOpen and IREE without tuning ==================="
