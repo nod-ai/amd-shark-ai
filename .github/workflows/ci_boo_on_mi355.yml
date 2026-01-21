@@ -69,6 +69,7 @@ jobs:
           --pre torch
         echo "ROCM"
         file /opt/rocm
+        file /etc/alternatives/rocm
         exit 1
         
 
