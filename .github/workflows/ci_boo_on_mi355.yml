@@ -105,7 +105,7 @@ jobs:
 
        echo "============ 5. Running All proxy shape with NCHW layout with MIOpen and IREE without tuning ==================="
        iree-boo-driver \
-            --commands-file amd-shark-ai-reports/boo/all_proxy_config.txt --csv output_artifacts/all_proxy_miopen_iree_nchw.csv \
+            --commands-file amd-shark-ai-reports/boo/all_proxy_config_nchw.txt --csv output_artifacts/all_proxy_miopen_iree_nchw.csv \
             --backend=torch --backend=iree_boo_experimental || true
 
     - name: Run hipblaslt-bench
