@@ -67,6 +67,10 @@ jobs:
         python -m pip install --force-reinstall \
           --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
           --pre torch
+
+
+        dpkg -l | grep rocm 
+        exit 1
         echo "ROCM"
         rocm-smi
         file /opt/rocm
