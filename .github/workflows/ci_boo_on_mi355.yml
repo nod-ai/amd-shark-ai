@@ -68,6 +68,7 @@ jobs:
           --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
           --pre torch
         echo "ROCM"
+        rocm-smi
         file /opt/rocm
         file /etc/alternatives/rocm
         exit 1
