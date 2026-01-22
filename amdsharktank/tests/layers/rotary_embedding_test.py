@@ -4,7 +4,6 @@
 # See https://llvm.org/LICENSE.txt for license information.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-import itertools
 import math
 import pytest
 import torch
@@ -18,7 +17,11 @@ from parameterized import parameterized_class
 from amdsharktank import ops
 from amdsharktank.layers import CachedRotaryLayer, build_rotary_layer
 from amdsharktank.types import AnyTensor, ReplicatedTensor
-from amdsharktank.utils.iree import device_array_to_host, tensor_to_device_array
+from amdsharktank.utils.iree import (
+    iree_to_torch,
+    tensor_to_device_array,
+    with_iree_device_context,
+)
 from amdsharktank.utils.testing import TempDirTestBase, assert_tensor_close
 
 
@@ -178,25 +181,32 @@ class TestRotaryEmbedding(TempDirTestBase):
             iree.runtime.get_device(f"hip://{d}") for d in range(max(devices) + 1)
         ]
         instance = iree.runtime.VmInstance()
-        hal = iree.runtime.create_hal_module(instance=instance, devices=iree_devices)
 
-        vm_module = iree.runtime.VmModule.mmap(instance, str(vmfb_path.absolute()))
-        modules = [hal, vm_module]
-        context = iree.runtime.VmContext(instance=instance, modules=modules)
+        def run_module_with_devices(devices):
 
-        forward = modules[-1].lookup_function("rotary_embedding")
+            hal = iree.runtime.create_hal_module(
+                instance=instance, devices=iree_devices
+            )
 
-        invoker = iree.runtime.FunctionInvoker(
-            vm_context=context,
-            device=iree_devices[0],
-            vm_function=forward,
-        )
+            vm_module = iree.runtime.VmModule.mmap(instance, str(vmfb_path.absolute()))
+            modules = [hal, vm_module]
+            context = iree.runtime.VmContext(instance=instance, modules=modules)
 
-        _xq = xq.shards[0] if pipelined else xq
-        func_input = tensor_to_device_array(_xq, iree_devices[0])
-        result_compiled = invoker(func_input)
-        result_compiled = device_array_to_host(result_compiled).clone().detach()
-        return result_compiled
+            forward = modules[-1].lookup_function("rotary_embedding")
+
+            invoker = iree.runtime.FunctionInvoker(
+                vm_context=context,
+                device=iree_devices[0],
+                vm_function=forward,
+            )
+
+            _xq = xq.shards[0] if pipelined else xq
+            func_input = tensor_to_device_array(_xq, iree_devices[0])
+            result_compiled = invoker(func_input)
+            result = iree_to_torch(result_compiled, to_host=True)
+            return result
+
+        return with_iree_device_context(run_module_with_devices, iree_devices)
 
     def test_rotary_table_eager_unsharded(self):
         rotary_layer = self.create_rotary_layer()
@@ -217,12 +227,17 @@ class TestRotaryEmbedding(TempDirTestBase):
         rotary_layer = self.create_rotary_layer()
 
         result_compiled = self.export_compile_run_layer(rotary_layer, self.xq)
-        self.validate(result_compiled, self.xq)
+        self.validate(*result_compiled, self.xq)
 
         result_eager = rotary_layer(xt=self.xq)
         self.validate(result_eager, self.xq)
 
-        assert_tensor_close(result_eager, result_compiled, atol=1e-4, rtol=1e-4)
+        torch.testing.assert_close(
+            ops.unshard(result_eager),
+            ops.unshard(*result_compiled),
+            atol=1e-4,
+            rtol=1e-4,
+        )
 
     @pytest.mark.skipif("config.getoption('iree_hal_target_device') != 'hip'")
     def test_rotary_table_iree_replicated(self):
@@ -234,9 +249,14 @@ class TestRotaryEmbedding(TempDirTestBase):
             xq = ReplicatedTensor(ts=[self.xq], devices=devices)
 
             result_compiled = self.export_compile_run_layer(rotary_layer, xq)
-            self.validate(result_compiled, xq)
+            self.validate(*result_compiled, xq)
 
             result_eager = rotary_layer(xt=xq)
             self.validate(result_eager, xq)
 
-            assert_tensor_close(result_eager, result_compiled, atol=1e-4, rtol=1e-4)
+            torch.testing.assert_close(
+                ops.unshard(result_eager).as_torch(),
+                ops.unshard(*result_compiled),
+                atol=1e-4,
+                rtol=1e-4,
+            )

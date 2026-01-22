@@ -4,6 +4,7 @@
 # See https://llvm.org/LICENSE.txt for license information.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
+import gc
 import torch
 import os
 from amdsharktank.layers.rotary_embedding_hf import RotaryEmbeddingLayer
@@ -25,7 +26,11 @@ from amdsharktank.utils.iree import (
 )
 from amdsharktank import ops
 from amdsharktank.utils.logging import get_logger
-from amdsharktank.utils.testing import TempDirTestBase, assert_tensor_close
+from amdsharktank.utils.testing import (
+    TempDirTestBase,
+    assert_tensor_close,
+    is_hip_condition,
+)
 import iree.compiler
 from iree.turbine.aot import (
     FxProgramsBuilder,
@@ -351,7 +356,7 @@ class TestRotaryOpenWeightEager:
         heads: int,
         dims: int,
     ):
-
+        gc.collect()
         torch.manual_seed(1234)
         bs, length, heads, dims = bs, length, heads, dims
 
@@ -427,7 +432,6 @@ class RotaryWrapper(torch.nn.Module):
         return self.inner(q, k, pos)
 
 
-@pytest.mark.usefixtures("iree_flags", "device")
 class TestRotaryOpenWeightIree(TempDirTestBase):
     def setUp(self):
         super().setUp()
@@ -445,6 +449,7 @@ class TestRotaryOpenWeightIree(TempDirTestBase):
             for (bs, length, heads, dims) in _SHAPE_CASES
         ]
     )
+    @pytest.mark.skipif(f"not ({is_hip_condition})", reason="Test requires HIP device")
     def test_rotary_openweight_interweaved_iree(
         self,
         dtype: torch.dtype,
@@ -460,6 +465,7 @@ class TestRotaryOpenWeightIree(TempDirTestBase):
         IREE vs eager test (pattern similar to IreeVsEagerLLMTester: eager first,
         then compiled IREE invocation, then compare).
         """
+        gc.collect()
         driver_env = getattr(self, "iree_hal_target_device", None)
         driver, compile_args, cpu_like = _resolve_iree_compile(driver_env)
         if cpu_like and dtype is torch.bfloat16:
@@ -468,7 +474,7 @@ class TestRotaryOpenWeightIree(TempDirTestBase):
             )
 
         logger.info(
-            "Testing rotary openweight interleaved IREE with "
+            "Testing rotary openweight interweaved IREE with "
             f"bs={bs}, length={length}, heads={heads}, dims={dims}, dtype={dtype}, "
             f"mode={mode}, driver={driver}"
         )
@@ -523,10 +529,11 @@ class TestRotaryOpenWeightIree(TempDirTestBase):
                 device=iree_devices[0],
                 function_name="rotary_openweight_fw",
             )
-
-            return iree_to_torch(*iree_result)
+            iree_result_torch = iree_to_torch(*iree_result, to_host=True)
+            return iree_result_torch
 
         iree_results = with_iree_device_context(run_iree_module, iree_devices)
+
         i_q, i_k = iree_results[0], iree_results[1]
         assert (
             i_q.shape == eager_q.shape
