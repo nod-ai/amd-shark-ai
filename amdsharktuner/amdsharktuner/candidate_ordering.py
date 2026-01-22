@@ -113,7 +113,10 @@ def reorder_assignments(
             indexed_list = list(enumerate(knobs))
             # Good candidates are sorted to the front of the list.
             if not key_fn:
-                assert target_info, "Failed to query target info."
+                # If no custom sort key is specified, use the key selected from SORT_KEY_MAP.
+                assert (
+                    target_info
+                ), "The selected heuristic reordering function requires target information to be provided"
                 sorted_list = sorted(
                     indexed_list, key=lambda pair: key_fn_to_use(pair[1], target_info)
                 )
@@ -121,7 +124,7 @@ def reorder_assignments(
                 sorted_list = sorted(
                     indexed_list, key=lambda pair: key_fn_to_use(pair[1])
                 )
-
+            logging.info(f"Heuristic candidate reordering applied.")
             indices = [i for i, _ in sorted_list]
             return indices
         case _:
