@@ -40,7 +40,6 @@ class LLVMGPUVectorDistributeContractionKnobs(common.KnobAssignment):
     intrinsic_k: int
     subgroup_m: int
     subgroup_n: int
-    subgroup_k: int
 
 
 @dataclass

@@ -33,7 +33,6 @@ def sample_knobs() -> list[Optional[common.KnobAssignment]]:
         intrinsic_k=8,
         subgroup_m=0,
         subgroup_n=0,
-        subgroup_k=0,
     )
     knob_2 = rocm_common.LLVMGPUVectorDistributeContractionKnobs(
         M=2048,
@@ -51,7 +50,6 @@ def sample_knobs() -> list[Optional[common.KnobAssignment]]:
         intrinsic_k=16,
         subgroup_m=0,
         subgroup_n=0,
-        subgroup_k=0,
     )
     knob_3 = rocm_common.LLVMGPUVectorDistributeContractionKnobs(
         M=2048,
@@ -69,7 +67,6 @@ def sample_knobs() -> list[Optional[common.KnobAssignment]]:
         intrinsic_k=16,
         subgroup_m=0,
         subgroup_n=0,
-        subgroup_k=0,
     )
     return [knob_1, knob_2, knob_3]
 
@@ -233,7 +230,6 @@ def test_flatten_records(
             "knob_N": 10240,
             "knob_intrinsic_k": 16,
             "knob_intrinsic_mn": 16,
-            "knob_subgroup_k": 0,
             "knob_subgroup_m": 0,
             "knob_subgroup_m_cnt": 2,
             "knob_subgroup_n": 0,
@@ -255,7 +251,6 @@ def test_flatten_records(
             "knob_N": 10240,
             "knob_intrinsic_k": 16,
             "knob_intrinsic_mn": 16,
-            "knob_subgroup_k": 0,
             "knob_subgroup_m": 0,
             "knob_subgroup_m_cnt": 1,
             "knob_subgroup_n": 0,

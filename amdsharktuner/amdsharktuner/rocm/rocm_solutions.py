@@ -381,9 +381,9 @@ def generate_generic_contraction_solutions(
                     M=int(math.prod(M)),
                     N=int(math.prod(N)),
                     K=int(math.prod(K)),
-                    tile_m=workgroup_tile_sizes[0],
-                    tile_n=workgroup_tile_sizes[1],
-                    tile_k=reduction_tile_sizes[2],
+                    tile_m=int(math.prod(z3_assignment.m_vals)),
+                    tile_n=int(math.prod(z3_assignment.n_vals)),
+                    tile_k=int(math.prod(z3_assignment.k_vals)),
                     wg_x=z3_assignment.wg_x,
                     wg_y=z3_assignment.wg_y,
                     wg_z=z3_assignment.wg_z,
@@ -391,9 +391,8 @@ def generate_generic_contraction_solutions(
                     subgroup_n_cnt=z3_assignment.sg_n_cnt,
                     intrinsic_mn=z3_assignment.intrinsic_mn,
                     intrinsic_k=z3_assignment.intrinsic_k,
-                    subgroup_m=subgroup_tile_sizes[0],
-                    subgroup_n=subgroup_tile_sizes[1],
-                    subgroup_k=subgroup_tile_sizes[2],
+                    subgroup_m=int(math.prod(z3_assignment.subgroup_m_vals)),
+                    subgroup_n=int(math.prod(z3_assignment.subgroup_n_vals)),
                 )
             yield [
                 common.TuningConfiguration(
