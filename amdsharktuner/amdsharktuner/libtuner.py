@@ -432,7 +432,7 @@ def parse_arguments(
     candidate_gen_args.add_argument(
         "--codegen-pipeline",
         choices=[x.value for x in CodegenPipelines],
-        default=CodegenPipelines.llvmgpu_vector_distribute,
+        default=CodegenPipelines.llvmgpu_tile_and_fuse,
         help="Codegen pipeline to tune for",
     )
     candidate_gen_args.add_argument(
@@ -889,6 +889,11 @@ def generate_candidate_specs(
 
         tuning_client.target_info = common.get_target_info(mlir_module)
         assert tuning_client.target_info, "Failed to query target info."
+        if args.candidate_order == candidate_ordering.CandidateOrderKind.heuristic:
+            assert tuning_client.target_info.workgroup_count != 0, (
+                "Failed to retrieve the number of CUs required for the candidate reordering heuristic. "
+                "Try compiling with the GPU SKU specified in the flags (e.g., --iree-hip-target=mi300x)."
+            )
 
         dispatch_tuners = candidate_gen.get_supported_dispatch_tuners(
             tuning_client.target_info.arch,

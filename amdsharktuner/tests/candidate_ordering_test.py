@@ -17,7 +17,7 @@ from amdsharktuner.rocm import rocm_common
 
 @pytest.fixture
 def sample_knobs() -> list[Optional[common.KnobAssignment]]:
-    knob_1 = rocm_common.LLVMGPUVectorDistributeContractionKnobs(
+    knob_1 = rocm_common.LLVMGPUContractionKnobs(
         M=2048,
         N=10240,
         K=1280,
@@ -33,9 +33,8 @@ def sample_knobs() -> list[Optional[common.KnobAssignment]]:
         intrinsic_k=8,
         subgroup_m=0,
         subgroup_n=0,
-        subgroup_k=0,
     )
-    knob_2 = rocm_common.LLVMGPUVectorDistributeContractionKnobs(
+    knob_2 = rocm_common.LLVMGPUContractionKnobs(
         M=2048,
         N=10240,
         K=1280,
@@ -51,9 +50,8 @@ def sample_knobs() -> list[Optional[common.KnobAssignment]]:
         intrinsic_k=16,
         subgroup_m=0,
         subgroup_n=0,
-        subgroup_k=0,
     )
-    knob_3 = rocm_common.LLVMGPUVectorDistributeContractionKnobs(
+    knob_3 = rocm_common.LLVMGPUContractionKnobs(
         M=2048,
         N=10240,
         K=1280,
@@ -69,7 +67,6 @@ def sample_knobs() -> list[Optional[common.KnobAssignment]]:
         intrinsic_k=16,
         subgroup_m=0,
         subgroup_n=0,
-        subgroup_k=0,
     )
     return [knob_1, knob_2, knob_3]
 
@@ -103,6 +100,16 @@ def test_math_expression() -> None:
     ai = candidate_ordering.arith_intensity(2, 3, 4)
     expected = (2 * 2 * 3 * 4) / (2 * (2 * 3 + 3 * 4 + 2 * 4))
     assert math.isclose(ai, expected, rel_tol=1e-9)
+
+    q_ie = candidate_ordering.quantization_inefficiency(2048, 256, 1024, 32, 32)
+    assert q_ie == 0
+    q_ie = candidate_ordering.quantization_inefficiency(10, 4, 10, 4, 4)
+    assert q_ie == 0.21875
+
+    assert candidate_ordering.size_ratio(256, 32) == 0.125
+    assert candidate_ordering.size_ratio(32, 256) == 0.125
+    assert candidate_ordering.size_ratio(32, 1024) == 0.03125
+    assert candidate_ordering.size_ratio(256, 256) == 1
 
 
 def test_reorder_assignments(
@@ -233,7 +240,6 @@ def test_flatten_records(
             "knob_N": 10240,
             "knob_intrinsic_k": 16,
             "knob_intrinsic_mn": 16,
-            "knob_subgroup_k": 0,
             "knob_subgroup_m": 0,
             "knob_subgroup_m_cnt": 2,
             "knob_subgroup_n": 0,
@@ -255,7 +261,6 @@ def test_flatten_records(
             "knob_N": 10240,
             "knob_intrinsic_k": 16,
             "knob_intrinsic_mn": 16,
-            "knob_subgroup_k": 0,
             "knob_subgroup_m": 0,
             "knob_subgroup_m_cnt": 1,
             "knob_subgroup_n": 0,

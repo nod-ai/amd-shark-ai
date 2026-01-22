@@ -21,7 +21,7 @@ ROCM_ARCHITECTURES = ["gfx942", "gfx950", "gfx1100", "gfx1201"]
 
 
 @dataclass
-class LLVMGPUVectorDistributeContractionKnobs(common.KnobAssignment):
+class LLVMGPUContractionKnobs(common.KnobAssignment):
     # Problem Size.
     M: int
     N: int
@@ -40,7 +40,6 @@ class LLVMGPUVectorDistributeContractionKnobs(common.KnobAssignment):
     intrinsic_k: int
     subgroup_m: int
     subgroup_n: int
-    subgroup_k: int
 
 
 @dataclass

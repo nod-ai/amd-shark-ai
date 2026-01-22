@@ -1,6 +1,7 @@
 import random
 import logging
 import csv
+import math
 from typing import Optional, Any
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,23 +36,39 @@ def arith_intensity(x: int, y: int, z: int) -> float:
     return num_flops / num_byte_access
 
 
-def llvm_gpu_vector_distribute_contraction_sort_key(
+def quantization_inefficiency(problem_m, tile_m, problem_n, tile_n, cu_num) -> float:
+    # Inefficiency of tiling when problem sizes do not divide evenly,
+    # resulting in wasted computation in the final tiling round.
+    num_workgroups = (problem_m / tile_m) * (problem_n / tile_n)
+    ceil_val = math.ceil(num_workgroups / cu_num)
+    q_ie = (ceil_val - num_workgroups / cu_num) / ceil_val
+    return q_ie
+
+
+def size_ratio(x: int, y: int) -> float:
+    return min(x, y) / max(x, y)
+
+
+def llvm_gpu_contraction_sort_key(
+    knob: rocm_common.LLVMGPUContractionKnobs,
     target_info: iree_gpu.TargetInfo,
-    knob: rocm_common.LLVMGPUVectorDistributeContractionKnobs,
-) -> tuple[bool, bool, float]:
+) -> tuple:
+    # General heuristic reordering function for all architectures and pipelines.
     return (
         not is_pow2(knob.tile_k),
         not is_mult_simd_num(
             knob.subgroup_m_cnt * knob.subgroup_n_cnt, target_info.simds_per_workgroup
         ),
-        arith_intensity(
-            knob.intrinsic_mn, knob.intrinsic_mn, knob.intrinsic_k
-        ),  # Lower is better.
+        not arith_intensity(knob.intrinsic_mn, knob.intrinsic_mn, knob.intrinsic_k),
+        quantization_inefficiency(
+            knob.M, knob.tile_m, knob.N, knob.tile_n, target_info.workgroup_count
+        ),
+        not size_ratio(knob.tile_m, knob.tile_n),
     )
 
 
 SORT_KEY_MAP: dict[type[common.KnobAssignment | None], Callable | None] = {
-    rocm_common.LLVMGPUVectorDistributeContractionKnobs: llvm_gpu_vector_distribute_contraction_sort_key,
+    rocm_common.LLVMGPUContractionKnobs: llvm_gpu_contraction_sort_key,
     type(None): None,
     # TODO: Add key() for conv, attention, and other dispatch kinds.
 }
@@ -96,15 +113,18 @@ def reorder_assignments(
             indexed_list = list(enumerate(knobs))
             # Good candidates are sorted to the front of the list.
             if not key_fn:
-                assert target_info, "Failed to query target info."
+                # If no custom sort key is specified, use the key selected from SORT_KEY_MAP.
+                assert (
+                    target_info
+                ), "The selected heuristic reordering function requires target information to be provided"
                 sorted_list = sorted(
-                    indexed_list, key=lambda pair: key_fn_to_use(target_info, pair[1])
+                    indexed_list, key=lambda pair: key_fn_to_use(pair[1], target_info)
                 )
             else:
                 sorted_list = sorted(
                     indexed_list, key=lambda pair: key_fn_to_use(pair[1])
                 )
-
+            logging.warning(f"Heuristic candidate reordering applied.")
             indices = [i for i, _ in sorted_list]
             return indices
         case _:
