@@ -6,6 +6,7 @@
 
 """ROCm-specific tuning implementations for amdsharktuner."""
 
+from . import rocm_candidate_ordering
 from . import rocm_common
 from . import rocm_dispatch_constraints
 from . import rocm_solutions

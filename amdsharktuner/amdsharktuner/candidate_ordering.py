@@ -11,7 +11,6 @@ from typing import Optional, Callable
 from iree.compiler.dialects import iree_gpu  # type: ignore
 
 from . import common
-from .rocm import rocm_common
 
 
 class CandidateOrderKind(str, Enum):
@@ -49,28 +48,9 @@ def size_ratio(x: int, y: int) -> float:
     return min(x, y) / max(x, y)
 
 
-def llvm_gpu_contraction_sort_key(
-    knob: rocm_common.LLVMGPUContractionKnobs,
-    target_info: iree_gpu.TargetInfo,
-) -> tuple:
-    # General heuristic reordering function for all architectures and pipelines.
-    return (
-        not is_pow2(knob.tile_k),
-        not is_mult_simd_num(
-            knob.subgroup_m_cnt * knob.subgroup_n_cnt, target_info.simds_per_workgroup
-        ),
-        not arith_intensity(knob.intrinsic_mn, knob.intrinsic_mn, knob.intrinsic_k),
-        quantization_inefficiency(
-            knob.M, knob.tile_m, knob.N, knob.tile_n, target_info.workgroup_count
-        ),
-        not size_ratio(knob.tile_m, knob.tile_n),
-    )
-
-
+# Generic sort key map - architecture-specific modules can extend this.
 SORT_KEY_MAP: dict[type[common.KnobAssignment | None], Callable | None] = {
-    rocm_common.LLVMGPUContractionKnobs: llvm_gpu_contraction_sort_key,
     type(None): None,
-    # TODO: Add key() for conv, attention, and other dispatch kinds.
 }
 
 
@@ -79,6 +59,9 @@ def reorder_assignments(
     strategy: CandidateOrderKind,
     key_fn: Optional[Callable] = None,
     target_info: Optional[iree_gpu.TargetInfo] = None,
+    sort_key_map: Optional[
+        dict[type[common.KnobAssignment | None], Callable | None]
+    ] = None,
 ) -> list[int]:
     """
     Returns a list of indices representing the new order relative to the original list.
@@ -102,7 +85,9 @@ def reorder_assignments(
         case CandidateOrderKind.heuristic:
             # Auto set a sort key function based on the knob type.
             knob_type = type(knobs[0])
-            key_fn_to_use = key_fn if key_fn else SORT_KEY_MAP.get(knob_type)
+            key_fn_to_use = (
+                key_fn if key_fn else (sort_key_map or SORT_KEY_MAP).get(knob_type)
+            )
             if key_fn_to_use is None:
                 logging.warning(
                     f"No sort key defined for knob type {knob_type.__name__}."
