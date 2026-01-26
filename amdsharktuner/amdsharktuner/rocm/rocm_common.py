@@ -15,8 +15,7 @@ from typing import Any, Callable, Optional
 from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_gpu  # type: ignore
 
-from .. import common
-from .. import process_utils
+from amdsharktuner import common, process_utils
 
 
 # The Key name for the 'amdgpu-waves-per-eu' within the llvm_func_attrs attribute.
