@@ -15,6 +15,14 @@ name: CI - Boo on Mi355
 
 on:
   workflow_dispatch:
+    inputs:
+      commit_hash:
+        description: "IREE commit hash"
+        required: false
+      iree_repo_fork:
+        description: "IREE fork"
+        required: false
+        default: "iree-org/iree"
   schedule:
     - cron: "45 11 * * *"
 
@@ -44,7 +52,8 @@ jobs:
         shell: bash
     env:
       VENV_DIR: ${{ github.workspace }}/.venv
-      OFFLINE_SERVING: DISABLED
+      IREE_COMMIT_HASH: ${{ inputs.commit_hash }}
+      IREE_REMOTE_REPO: ${{ inputs.iree_repo_fork }}
     steps:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
@@ -59,7 +68,7 @@ jobs:
         python -m venv ${VENV_DIR}
         source ${VENV_DIR}/bin/activate
 
-    - name: Install pip deps
+    - name: Setup Environment
       run: |
         mkdir -p output_artifacts
         source ${VENV_DIR}/bin/activate
@@ -68,8 +77,33 @@ jobs:
           --pre torch
 
         pip install "git+https://github.com/iree-org/iree-turbine.git"
+
+    - name: Install IREE Nightly Packages
+      if: ${{ inputs.commit_hash == '' }}
+      run: |
         pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
         pip freeze  > $(pwd)/output_artifacts/version.txt
+
+    - name: Install IREE from source
+      if: ${{ inputs.commit_hash != '' }}
+      run: |
+        git clone https://github.com/iree-org/iree.git && cd iree
+        git remote add fork_user https://github.com/${IREE_REMOTE_REPO}
+        git fetch fork_user
+        git checkout ${IREE_COMMIT_HASH}
+        git submodule update --init
+        export IREE_HAL_DRIVER_HIP=ON
+        export IREE_TARGET_BACKEND_ROCM=ON
+        pip install -v compiler/ runtime/
+        pip freeze  > $(pwd)/output_artifacts/version.txt
+        HASH=$(git -C . rev-parse --short HEAD)
+        sed -i \
+          -e "s|iree-base-compiler @ file://[^ ]*|iree-base-compiler $HASH|g" \
+          -e "s|iree-base-runtime @ file://[^ ]*|iree-base-runtime $HASH|g" \
+          $(pwd)/output_artifacts/version.txt || true
+
+    - name: Print packages
+      run: cat $(pwd)/output_artifacts/version.txt
 
     - name: Run all proxy config
       run: |
