@@ -19,6 +19,7 @@ on:
       commit_hash:
         description: "IREE commit hash"
         required: false
+        default: ''
       iree_repo_fork:
         description: "IREE fork"
         required: false
@@ -26,6 +27,7 @@ on:
       iree_version_tag:
         description: "IREE release version tag"
         required: false
+        default: ''
   schedule:
     - cron: "45 11 * * *"
 
@@ -87,7 +89,7 @@ jobs:
         pip install "git+https://github.com/iree-org/iree-turbine.git"
 
     - name: Install IREE Nightly Packages
-      if: ${{ inputs.commit_hash == '' && inputs.version_tag == '' }}
+      if: ${{ !inputs.commit_hash && !inputs.iree_version_tag }}
       run: |
         pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
         pip freeze  > $OUTPUT_ARTIFACTS/version.txt
