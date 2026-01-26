@@ -23,6 +23,9 @@ on:
         description: "IREE fork"
         required: false
         default: "iree-org/iree"
+      iree_version_tag:
+        description: "IREE release version tag"
+        required: false
   schedule:
     - cron: "45 11 * * *"
 
@@ -54,6 +57,8 @@ jobs:
       VENV_DIR: ${{ github.workspace }}/.venv
       IREE_COMMIT_HASH: ${{ inputs.commit_hash }}
       IREE_REMOTE_REPO: ${{ inputs.iree_repo_fork }}
+      IREE_VERSION_TAG: ${{ inputs.iree_version_tag }}
+
     steps:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
@@ -79,9 +84,19 @@ jobs:
         pip install "git+https://github.com/iree-org/iree-turbine.git"
 
     - name: Install IREE Nightly Packages
-      if: ${{ inputs.commit_hash == '' }}
+      if: ${{ inputs.commit_hash == '' && inputs.version_tag == '' }}
       run: |
         pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
+        pip freeze  > $(pwd)/output_artifacts/version.txt
+
+    - name: Install IREE from version tag
+      if: ${{ inputs.iree_version_tag != '' }}
+      run: |
+        pip install \
+          --find-links https://iree.dev/pip-release-links.html \
+          --upgrade --pre \
+          iree-base-compiler==$IREE_VERSION_TAG \
+          iree-base-runtime==$IREE_VERSION_TAG
         pip freeze  > $(pwd)/output_artifacts/version.txt
 
     - name: Install IREE from source
@@ -94,6 +109,7 @@ jobs:
         git submodule update --init
         export IREE_HAL_DRIVER_HIP=ON
         export IREE_TARGET_BACKEND_ROCM=ON
+        export IREE_HIP_TEST_TARGET_CHIP=""
         pip install -v compiler/ runtime/
         pip freeze  > $(pwd)/output_artifacts/version.txt
         HASH=$(git -C . rev-parse --short HEAD)
