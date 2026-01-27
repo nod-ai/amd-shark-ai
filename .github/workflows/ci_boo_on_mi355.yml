@@ -209,18 +209,31 @@ jobs:
         token: ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}
         path: amd-shark-ai-reports
 
-    - name: Push artifacts
+    - name: Setup reports
       if: always()
       run: |
         git config --global user.name "GitHub Actions Bot"
         git config --global user.email ""
-        date=$(date -u +'%Y-%m-%d')
-        mkdir -p "amd-shark-ai-reports/boo/$date/"
-        cp -v logs/*.csv "amd-shark-ai-reports/boo/$date/" || true
-        cp -v logs/version.txt "amd-shark-ai-reports/boo/$date/"
+        if [ "${{ github.event_name }}" = "schedule" ]; then
+          date=$(date -u +'%Y-%m-%d')
+          OUTPUT_DIR="amd-shark-ai-reports/boo/boo-nightly/$date/"
+          mkdir -p $OUTPUT_DIR
+          echo "OUTPUT_DIR=$OUTPUT_DIR" >> $GITHUB_ENV
+        else
+          date=$(date -u +'%Y-%m-%d_%H-%M')
+          OUTPUT_DIR="amd-shark-ai-reports/boo/boo-custom-runs/$date/"
+          mkdir -p $OUTPUT_DIR
+          echo "OUTPUT_DIR=$OUTPUT_DIR" >> $GITHUB_ENV
+        fi
+
+    - name: Push artifacts
+      if: always()
+      run: |
+        cp -v logs/*.csv $OUTPUT_DIR || true
+        cp -v logs/version.txt $OUTPUT_DIR
         cd amd-shark-ai-reports/boo
         git pull
-        git add $date
+        git add $OUTPUT_DIR
         git commit -m "Add conv report on $(date -u +'%Y-%m-%d')"
         git push origin main
         rm -rf ../logs
