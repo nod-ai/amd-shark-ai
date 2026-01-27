@@ -33,7 +33,7 @@ jobs:
       matrix:
         version: [ 3.11 ]
       fail-fast: false
-    runs-on: linux-mi325-1gpu-ossci-nod-ai
+    runs-on: linux-mi355-1gpu-ossci-nod-ai
     defaults:
       run:
         shell: bash
@@ -45,4 +45,11 @@ jobs:
 
     - name: Checking content
       run: |
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+        sudo apt install unzip -y
+        unzip awscliv2.zip
+        sudo ./aws/install
+        tarFileName=`aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx950 | sort -r | head -1 |  awk '{print $NF}'`
+        echo "Installing $tarFileName"
+
         find /amdshark-dev/ -name "*.irpa"
