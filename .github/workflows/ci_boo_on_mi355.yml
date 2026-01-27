@@ -99,15 +99,16 @@ jobs:
             --commands-file amd-shark-ai-reports/boo/gemm_config.txt --csv output_artifacts/gemm_miopen_iree.csv \
             --backend=torch --backend=iree_boo_experimental || true
 
-       echo "============ 4. Running Prod Conv shape with NCHW layout with MIOpen and IREE without tuning ==================="
-       iree-boo-driver \
-            --commands-file amd-shark-ai-reports/boo/prod_conv_config_nchw.txt --csv output_artifacts/prod_conv_miopen_iree_nchw.csv \
-            --backend=torch --backend=iree_boo_experimental || true
+       ## Disabling below two run till the time we have failure debugged, which is happening only on runner machine
+       #echo "============ 4. Running Prod Conv shape with NCHW layout with MIOpen and IREE without tuning ==================="
+       #iree-boo-driver \
+       #     --commands-file amd-shark-ai-reports/boo/prod_conv_config_nchw.txt --csv output_artifacts/prod_conv_miopen_iree_nchw.csv \
+       #     --backend=torch --backend=iree_boo_experimental || true
 
-       echo "============ 5. Running All proxy shape with NCHW layout with MIOpen and IREE without tuning ==================="
-       iree-boo-driver \
-            --commands-file amd-shark-ai-reports/boo/all_proxy_config_nchw.txt --csv output_artifacts/all_proxy_miopen_iree_nchw.csv \
-            --backend=torch --backend=iree_boo_experimental || true
+       #echo "============ 5. Running All proxy shape with NCHW layout with MIOpen and IREE without tuning ==================="
+       #iree-boo-driver \
+       #     --commands-file amd-shark-ai-reports/boo/all_proxy_config_nchw.txt --csv output_artifacts/all_proxy_miopen_iree_nchw.csv \
+       #     --backend=torch --backend=iree_boo_experimental || true
 
     - name: Run hipblaslt-bench
       run: |
