@@ -38,7 +38,7 @@ jobs:
       matrix:
         version: [3.12]
       fail-fast: false
-    runs-on: ""
+    runs-on: "shark-mkm-1-for-boo"
     defaults:
       run:
         shell: bash
@@ -64,7 +64,7 @@ jobs:
         mkdir -p output_artifacts
         source ${VENV_DIR}/bin/activate
         python -m pip install --force-reinstall \
-          --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
+          --index-url https://rocm.nightlies.amd.com/v2/gfx120X-all/ \
           --pre torch
 
         pip install "git+https://github.com/iree-org/iree-turbine.git"
@@ -158,10 +158,10 @@ jobs:
         git config --global user.name "GitHub Actions Bot"
         git config --global user.email ""
         date=$(date -u +'%Y-%m-%d')
-        mkdir -p "amd-shark-ai-reports/boo/$date/"
-        cp -v logs/*.csv "amd-shark-ai-reports/boo/$date/" || true
-        cp -v logs/version.txt "amd-shark-ai-reports/boo/$date/"
-        cd amd-shark-ai-reports/boo
+        mkdir -p "amd-shark-ai-reports/boo/boo-nightly-gfx120X/$date/"
+        cp -v logs/*.csv "amd-shark-ai-reports/boo/boo-nightly-gfx120X/$date/" || true
+        cp -v logs/version.txt "amd-shark-ai-reports/boo/boo-nightly-gfx120X/$date/"
+        cd amd-shark-ai-reports/boo/boo-nightly-gfx120X/
         git pull
         git add $date
         git commit -m "Add conv report on $(date -u +'%Y-%m-%d')"
