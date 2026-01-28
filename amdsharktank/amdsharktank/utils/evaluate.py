@@ -68,7 +68,7 @@ def get_prompts(num_prompts: Optional[int] = None) -> list[str]:
           num_prompts: Number of prompts to fetch from dataset, will return all prompts if None
     """
 
-    test_prompts = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")["text"]
+    test_prompts = load_dataset("Salesforce/wikitext", "wikitext-2-raw-v1", split="test")["text"]
 
     num_test_prompts = 300
 
