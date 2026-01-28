@@ -141,7 +141,7 @@
 | amdsharktank/amdsharktank/utils/create\_cache.py                                    |       13 |        4 |     69% | 20, 31-33 |
 | amdsharktank/amdsharktank/utils/debugging.py                                        |       91 |       29 |     68% |46-63, 67-74, 81-83, 127, 138 |
 | amdsharktank/amdsharktank/utils/e2e\_test\_utils.py                                 |       89 |       71 |     20% |32-40, 45-49, 52-70, 75-119, 122-126, 129-133 |
-| amdsharktank/amdsharktank/utils/evaluate.py                                         |       59 |       34 |     42% |29-50, 57, 71-90, 121-122, 131-151 |
+| amdsharktank/amdsharktank/utils/evaluate.py                                         |       59 |       34 |     42% |29-50, 57, 71-92, 123-124, 133-153 |
 | amdsharktank/amdsharktank/utils/export.py                                           |       70 |        4 |     94% |140, 151, 179, 212 |
 | amdsharktank/amdsharktank/utils/export\_artifacts.py                                |      177 |      130 |     27% |38-46, 60, 67, 74, 81, 88, 122-156, 167, 180-184, 210-230, 248-260, 264-270, 282-298, 322-364, 388-425, 449-462, 488-514, 536-542 |
 | amdsharktank/amdsharktank/utils/functools.py                                        |       10 |        8 |     20% |     27-35 |
@@ -159,7 +159,7 @@
 | amdsharktank/amdsharktank/utils/misc.py                                             |       58 |        9 |     84% |35, 100, 108-114 |
 | amdsharktank/amdsharktank/utils/patching.py                                         |      137 |       46 |     66% |138, 141, 166, 203-206, 215-221, 226, 236-261, 269-285, 288-299, 328, 362, 364 |
 | amdsharktank/amdsharktank/utils/random.py                                           |       38 |        0 |    100% |           |
-| amdsharktank/amdsharktank/utils/testing.py                                          |      438 |      207 |     53% |104-106, 157-268, 291-297, 308, 321-331, 344-368, 374-395, 411-420, 425-438, 442-446, 485-569, 604, 657-660, 697-703, 734, 758-766, 781, 786, 792-796, 804-807, 813-820, 828-832, 900, 949, 954-968, 1009, 1045-1047, 1058, 1064, 1074, 1077, 1119 |
+| amdsharktank/amdsharktank/utils/testing.py                                          |      438 |      207 |     53% |104-106, 157-268, 291-297, 308, 321-331, 344-368, 374-395, 411-420, 425-438, 442-446, 485-569, 604, 657-660, 697-703, 734, 758-766, 781, 786, 792-796, 804-809, 815-822, 830-834, 902, 951, 956-970, 1011, 1047-1049, 1060, 1066, 1076, 1079, 1121 |
 | amdsharktank/amdsharktank/utils/tokenizer.py                                        |       51 |       35 |     31% |34-38, 42-46, 50, 63-66, 69-72, 76, 80-81, 85-110 |
 | amdsharktank/amdsharktank/utils/tree.py                                             |       71 |        2 |     97% |   81, 220 |
 | amdsharktank/conftest.py                                                            |      153 |       12 |     92% |297, 304, 311, 343, 354, 378, 383-386, 415, 442-443 |
@@ -216,7 +216,7 @@
 | amdsharktank/tests/models/punet/sharded\_resnet\_block\_with\_iree\_test.py         |       43 |       12 |     72% |    76-113 |
 | amdsharktank/tests/models/punet/up\_down\_block\_test.py                            |       49 |        1 |     98% |       149 |
 | amdsharktank/tests/models/t5/t5\_test.py                                            |      269 |       59 |     78% |80-108, 146-174, 187-221, 266, 280, 289, 298, 307, 316, 325, 435-477, 522, 531, 540, 549, 558 |
-| amdsharktank/tests/models/vae/vae\_test.py                                          |      223 |      112 |     50% |85-120, 126-135, 140-149, 155-250, 276-290, 295-308, 376, 383-474, 575-582, 591-595, 600-605, 611 |
+| amdsharktank/tests/models/vae/vae\_test.py                                          |      223 |      115 |     48% |85-120, 126-135, 140-149, 155-250, 276-290, 295-308, 372-376, 383-474, 575-582, 591-595, 600-605, 611 |
 | amdsharktank/tests/ops/ops\_test.py                                                 |      854 |       30 |     96% |268-271, 386-392, 399-405, 412-419, 797-802, 1392 |
 | amdsharktank/tests/ops/pipeline\_parallelized\_test.py                              |      153 |        4 |     97% |57, 181, 193, 203 |
 | amdsharktank/tests/ops/qconv\_test.py                                               |       97 |       12 |     88% |192-228, 232 |
@@ -256,7 +256,7 @@
 | amdsharktank/tests/utils/random\_test.py                                            |       23 |        0 |    100% |           |
 | amdsharktank/tests/utils/testing\_test.py                                           |      132 |        0 |    100% |           |
 | amdsharktank/tests/utils/tree\_test.py                                              |       20 |        0 |    100% |           |
-| **TOTAL**                                                                           | **24818** | **5576** | **78%** |           |
+| **TOTAL**                                                                           | **24818** | **5579** | **78%** |           |
 
 
 ## Setup coverage badge
