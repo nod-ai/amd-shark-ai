@@ -56,8 +56,15 @@ if (($IREE_UNPINNED)); then
 else
     pip install --no-compile -r "$SRC_DIR/requirements-iree-pinned.txt"
     pip uninstall -y wave-lang
-    pip install -f https://github.com/iree-org/wave/releases/expanded_assets/dev-wheels wave-lang
-    pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime iree-turbine
+    # pip install -f https://github.com/iree-org/wave/releases/expanded_assets/dev-wheels wave-lang
+    # pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime iree-turbine
+    git clone https://github.com/iree-org/wave.git
+    cd wave
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    pip install -r requirements-iree-pinned.txt
+    pip install -r pytorch-rocm-requirements.txt
+    pip install -e ".[dev]"
+    cd ..
 fi
 
 pip install --no-compile -r "$SRC_DIR/amdsharktank/requirements-tests.txt"
