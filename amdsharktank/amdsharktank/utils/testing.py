@@ -801,7 +801,7 @@ def _eval_condition(c: bool | str | None) -> bool:
 def get_random_test_text_prompts(
     num_prompts: int, min_prompt_length: int | None = None
 ):
-    prompts = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")["text"]
+    prompts = load_dataset("Salesforce/wikitext", "wikitext-2-raw-v1", split="test")["text"]
     if min_prompt_length is not None:
         prompts = [p for p in prompts if len(p) >= min_prompt_length]
     return random.sample(prompts, num_prompts)
