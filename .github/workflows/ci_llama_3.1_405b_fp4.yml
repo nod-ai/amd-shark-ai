@@ -172,16 +172,16 @@ jobs:
       run: |
         git config --global user.name "GitHub Actions Bot"
         git config --global user.email ""
-        date=$(date -u +'%Y-%m-%d-%H'h)
+        date=$(date -u +'%Y-%m-%d')
         mkdir -p "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-405b-fp4-with-topk"
         mkdir -p "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-405b-fp4-without-topk"
-        cp logs/version.txt "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-405b-fp4-with-topk"
-        cp logs/version.txt "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-405b-fp4-without-topk"
+        cp logs/version.txt "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-405b-fp4-with-topk" || true
+        cp logs/version.txt "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-405b-fp4-without-topk" || true
         cp -r logs/output_llama-405b-fp4-with-topk/* "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-405b-fp4-with-topk" || true
         cp -r logs/output_llama-405b-fp4-without-topk/* "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-405b-fp4-without-topk" || true
         cd amd-shark-ai-reports
         git pull
         git add $date
-        git commit -m "Add CI Llama 405B FP4 logs on $(date -u +'%Y-%m-%d-%H'h)"
+        git commit -m "Add CI Llama 405B FP4 logs on ${date}"
         git push origin main
         rm -rf ../logs
