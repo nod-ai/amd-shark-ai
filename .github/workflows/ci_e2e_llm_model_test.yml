@@ -161,7 +161,7 @@ jobs:
         cp -r logs/output_gpt-oss-20b-bfp16/* "amd-shark-ai-reports/amdshark-ai-logs/$date/gpt_oss_20b_bfp16" || true
         cd amd-shark-ai-reports
         git pull
-        git add $date
+        git add amdshark-ai-logs
         git commit -m "Add CI E2E logs on $(date -u +'%Y-%m-%d')"
         git push origin main
         rm -rf ../logs
