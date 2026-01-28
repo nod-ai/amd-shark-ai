@@ -56,10 +56,7 @@ if (($IREE_UNPINNED)); then
 else
     pip install --no-compile -r "$SRC_DIR/requirements-iree-pinned.txt"
     pip uninstall -y wave-lang
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
-    source "$HOME/.cargo/env"
     pip install "git+https://github.com/iree-org/wave.git"
-    pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime iree-turbine
 fi
 
 pip install --no-compile -r "$SRC_DIR/amdsharktank/requirements-tests.txt"
