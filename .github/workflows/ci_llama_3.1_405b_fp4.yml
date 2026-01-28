@@ -9,7 +9,6 @@ name: CI - E2E Llama 3.1 405B FP4 Test
 on:
   workflow_dispatch:
   schedule:
-    # Run every 6 hour starting from 0h 30min on all days
     - cron: "30 2 * * *"
 
 permissions:
