@@ -134,8 +134,8 @@ jobs:
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email ""
           date=$(date -u +'%Y-%m-%d')
-          mkdir -p "amd-shark-ai-reports/$date/generated-images"
-          cp -vr gen_images/* "amd-shark-ai-reports/$date/generated-images/"
+          mkdir -p "amd-shark-ai-reports/amdshark-ai-logs/$date/generated-images"
+          cp -vr gen_images/* "amd-shark-ai-reports/amdshark-ai-logs/$date/generated-images/"
           cd amd-shark-ai-reports
           git pull
           git add $date
