@@ -61,6 +61,11 @@ else
     git clone https://github.com/iree-org/wave.git
     cd wave
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    export PATH="$HOME/.cargo/bin:$PATH"
+
+    # Sanity check (optional but useful)
+    rustc --version
+    cargo --version
     pip install -r requirements-iree-pinned.txt
     pip install -r pytorch-rocm-requirements.txt
     pip install -e ".[dev]"
