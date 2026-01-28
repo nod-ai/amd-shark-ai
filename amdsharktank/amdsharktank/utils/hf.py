@@ -134,7 +134,7 @@ def import_hf_dataset_from_hub(
         model_dir = Path(repo_id_or_path)
         if not model_dir.exists():
             model_dir = Path(
-                snapshot_download(repo_id=repo_id_or_path, repo_type="dataset", revision=revision)
+                snapshot_download(repo_id=repo_id_or_path, revision=revision)
             )
 
     if subfolder is not None:
