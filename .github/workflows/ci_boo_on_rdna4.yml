@@ -15,6 +15,7 @@ name: CI - Boo on Mi355
 
 on:
   workflow_dispatch:
+  pull_request:
   schedule:
     - cron: "45 11 * * *"
 
