@@ -67,7 +67,10 @@ mkdir -p ${SCRIPT_DIR}/../output_artifacts
 
 if [[ $BUILD_TYPE = "nightly" ]]; then
     pip install -r pytorch-rocm-requirements.txt
-    pip install amdsharktank -f https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels --pre
+    # Initial install to get dependencies
+    pip install amdsharktank
+    # Force reinstall with latest dev wheel (keeps dependencies, only replaces amdsharktank)
+    pip install --force-reinstall --no-index --find-links https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels amdsharktank --pre --no-deps
     pip install shortfin --no-index -f https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels --pre
     pip install dataclasses-json
     pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime iree-turbine
