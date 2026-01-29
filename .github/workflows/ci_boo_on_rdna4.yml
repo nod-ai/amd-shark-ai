@@ -37,7 +37,7 @@ jobs:
     name: "Boo on RDNA 4"
     strategy:
       matrix:
-        version: [3.12]
+        version: [3.12.3]
       fail-fast: false
     runs-on: "shark-mkm-1-for-boo"
     defaults:
