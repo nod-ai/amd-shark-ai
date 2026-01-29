@@ -419,6 +419,7 @@ def parse_arguments(
         default=CodegenPipelines.llvmgpu_tile_and_fuse,
         help="Codegen pipeline to tune for",
     )
+
     candidate_gen_args.add_argument(
         "--starter-td-spec",
         type=Path,
