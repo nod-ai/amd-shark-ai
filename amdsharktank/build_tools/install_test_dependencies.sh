@@ -56,22 +56,13 @@ if (($IREE_UNPINNED)); then
 else
     pip install --no-compile -r "$SRC_DIR/requirements-iree-pinned.txt"
     pip uninstall -y wave-lang
-    # pip install -f https://github.com/iree-org/wave/releases/expanded_assets/dev-wheels wave-lang
-    # pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime iree-turbine
-    git clone https://github.com/iree-org/wave.git
-    cd wave
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    export PATH="$HOME/.cargo/bin:$PATH"
-
-    rustc --version
-    cargo --version
-    pip install -r requirements-iree-pinned.txt
-    pip install -r pytorch-rocm-requirements.txt
-    pip install -e ".[dev]"
-    cd ..
-
+    pip install wave-lang
+    ## TODO:: After the issue mentioned in the pr https://github.com/nod-ai/amd-shark-ai/pull/2770 is solved, make use of latest iree
+    pip install --find-links https://iree.dev/pip-release-links.html iree-turbine==3.10.0rc20260113
+    pip uninstall -y iree-base-compiler iree-base-runtime
+    pip install --find-links https://iree.dev/pip-release-links.html iree-base-compiler==3.10.0rc20260106   iree-base-runtime==3.10.0rc20260106
+    # pip install -f https://github.com/iree-org/wave/releases/expanded_assets/dev-wheels wave-lang --no-index
 fi
 
 pip install --no-compile -r "$SRC_DIR/amdsharktank/requirements-tests.txt"
 pip install --no-compile -e "$SRC_DIR/amdsharktank"
-pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-turbine
