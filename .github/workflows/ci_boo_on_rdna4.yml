@@ -82,9 +82,9 @@ jobs:
         whoami
         id
         ls -l /dev/kfd /dev/dri
-
-        iree-boo-driver conv --verbose --gpu-id=-1
-        exit 1
+        python scripts/test_gpu
+        # iree-boo-driver conv --verbose --gpu-id=-1
+        # exit 1
 
     - name: Run all proxy config
       run: |
