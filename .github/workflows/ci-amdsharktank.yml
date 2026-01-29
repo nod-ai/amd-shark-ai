@@ -72,6 +72,18 @@ jobs:
           pip install --no-compile \
             -r amdsharktank/requirements-tests.txt \
             -e amdsharktank/
+          git clone https://github.com/iree-org/wave.git
+          cd wave
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          export PATH="$HOME/.cargo/bin:$PATH"
+
+          rustc --version
+          cargo --version
+          pip install -r requirements-iree-pinned.txt
+          pip install -r pytorch-rocm-requirements.txt
+          pip install -e ".[dev]"
+          cd ..
+          pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-turbine
 
           pip freeze
 
@@ -185,8 +197,7 @@ jobs:
             -v \
             --iree-hal-target-device=hip \
             --iree-hip-target=gfx942 \
-            --iree-device=hip://0 \
-            --device=cuda:0
+            --iree-device=hip://0
 
   test_with_data:
     name: "Data-dependent Tests"
