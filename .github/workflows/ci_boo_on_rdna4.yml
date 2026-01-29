@@ -78,7 +78,7 @@ jobs:
         echo "===================================="
         rocm-smi
         rocminfo
-        export ROCR_VISIBLE_DEVICES="1"
+        export ROCR_VISIBLE_DEVICES="0,1"
         whoami
         id
         ls -l /dev/kfd /dev/dri
