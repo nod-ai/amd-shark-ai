@@ -76,6 +76,7 @@ jobs:
         python --version
         pip freeze
         echo "===================================="
+        rocm-smi
         iree-boo-driver conv --verbose
         exit 1
 
