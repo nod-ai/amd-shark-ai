@@ -185,8 +185,7 @@ jobs:
             -v \
             --iree-hal-target-device=hip \
             --iree-hip-target=gfx942 \
-            --iree-device=hip://0 \
-            --device=cuda:0
+            --iree-device=hip://0
 
   test_with_data:
     name: "Data-dependent Tests"
