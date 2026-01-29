@@ -77,7 +77,7 @@ jobs:
         pip freeze
         echo "===================================="
         rocm-smi
-        export ROCR_VISIBLE_DEVICES="0"
+        export ROCR_VISIBLE_DEVICES="1"
         iree-boo-driver conv --verbose
         exit 1
 
