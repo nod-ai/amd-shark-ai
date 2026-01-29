@@ -224,13 +224,13 @@ jobs:
         git config --global user.name "GitHub Actions Bot"
         git config --global user.email ""
         date=$(date -u +'%Y-%m-%d-%H'h)
-        mkdir -p "amd-shark-ai-reports/$date/llama_3.1-8b-fp16"
-        cp -v logs/*.json "amd-shark-ai-reports/$date/llama_3.1-8b-fp16" || true
-        cp -v logs/*.log "amd-shark-ai-reports/$date/llama_3.1-8b-fp16" || true
-        cp -v logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-8b-fp16"
+        mkdir -p "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-8b-fp16"
+        cp -v logs/*.json "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-8b-fp16" || true
+        cp -v logs/*.log "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-8b-fp16" || true
+        cp -v logs/version.txt "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-8b-fp16"
         cd amd-shark-ai-reports
         git pull
-        git add $date
+        git add amdshark-ai-logs
         git commit -m "Add CI Llama 8B FP16 logs on $(date -u +'%Y-%m-%d-%H'h)"
         git push origin main
         rm -rf ../logs

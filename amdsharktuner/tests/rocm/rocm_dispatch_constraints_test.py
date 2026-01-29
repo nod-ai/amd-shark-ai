@@ -1,12 +1,8 @@
-# Copyright 2024 Advanced Micro Devices, Inc.
+# Copyright 2026 Advanced Micro Devices, Inc.
 #
 # Licensed under the Apache License v2.0 with LLVM Exceptions.
 # See https://llvm.org/LICENSE.txt for license information.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-
-"""
-Usage: python -m pytest dispatch_constraints_test.py
-"""
 
 import pytest
 import z3  # type: ignore
@@ -14,7 +10,8 @@ import z3  # type: ignore
 from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_gpu  # type: ignore
 
-from amdsharktuner import common, dispatch_constraints
+from amdsharktuner import common
+from amdsharktuner.rocm import rocm_dispatch_constraints
 
 from amdsharktuner.test_utils import tuner_ctx
 
@@ -45,7 +42,7 @@ def test_calculate_shared_memory_usage_in_bytes(tuner_ctx: common.TunerContext) 
     rhs_type = common.ShapedType([1024, 1024], tuner_ctx.type.f16)
     res_type = common.ShapedType([1024, 1024], tuner_ctx.type.f32)
     assert (
-        dispatch_constraints.calculate_shared_memory_usage_in_bytes(
+        rocm_dispatch_constraints.calculate_shared_memory_usage_in_bytes(
             lhs_type, rhs_type, res_type, [512], [64], [128]
         )
         == 147456
@@ -53,7 +50,7 @@ def test_calculate_shared_memory_usage_in_bytes(tuner_ctx: common.TunerContext) 
 
     lhs_type = common.ShapedType([1024, 1024], tuner_ctx.type.i8)
     assert (
-        dispatch_constraints.calculate_shared_memory_usage_in_bytes(
+        rocm_dispatch_constraints.calculate_shared_memory_usage_in_bytes(
             lhs_type, rhs_type, res_type, [512], [64], [128]
         )
         == 81920
@@ -61,14 +58,14 @@ def test_calculate_shared_memory_usage_in_bytes(tuner_ctx: common.TunerContext) 
 
     rhs_type = common.ShapedType([1024, 1024], tuner_ctx.type.i32)
     assert (
-        dispatch_constraints.calculate_shared_memory_usage_in_bytes(
+        rocm_dispatch_constraints.calculate_shared_memory_usage_in_bytes(
             lhs_type, rhs_type, res_type, [128], [64], [32]
         )
         == 12288
     )
 
     assert (
-        dispatch_constraints.calculate_shared_memory_usage_in_bytes(
+        rocm_dispatch_constraints.calculate_shared_memory_usage_in_bytes(
             lhs_type, rhs_type, res_type, [2, 64], [4, 16], [8, 4]
         )
         == 12288
@@ -78,19 +75,19 @@ def test_calculate_shared_memory_usage_in_bytes(tuner_ctx: common.TunerContext) 
     rhs_type = common.ShapedType([1024, 1024], tuner_ctx.type.f16)
     res_type = common.ShapedType([1024, 1024], tuner_ctx.type.f32)
     assert (
-        dispatch_constraints.calculate_shared_memory_usage_in_bytes(
+        rocm_dispatch_constraints.calculate_shared_memory_usage_in_bytes(
             lhs_type, rhs_type, res_type, [512], [64], [128], promote_operands=[0, 1, 2]
         )
         == 278528
     )
 
     with pytest.raises(AssertionError):
-        dispatch_constraints.calculate_shared_memory_usage_in_bytes(
+        rocm_dispatch_constraints.calculate_shared_memory_usage_in_bytes(
             lhs_type, rhs_type, res_type, [512], [64], [128], promote_operands=[0]
         )
 
     with pytest.raises(AssertionError):
-        dispatch_constraints.calculate_shared_memory_usage_in_bytes(
+        rocm_dispatch_constraints.calculate_shared_memory_usage_in_bytes(
             lhs_type, rhs_type, res_type, [512], [64], [128], promote_operands=[1, 2]
         )
 
@@ -133,7 +130,7 @@ def test_generate_tile_and_fuse_constraints_valid_input(
     sg_m_cnt = z3.Int("sg_m_cnt")
     sg_n_cnt = z3.Int("sg_n_cnt")
 
-    constraints = dispatch_constraints.generate_tile_and_fuse_constraints(
+    constraints = rocm_dispatch_constraints.generate_tile_and_fuse_constraints(
         matmul_size=matmul_size,
         lhs_type=lhs_type,
         rhs_type=rhs_type,
@@ -190,7 +187,7 @@ def test_generate_tile_and_fuse_constraints_invalid_input(
     sg_n_cnt = z3.Int("sg_n_cnt")
     tile_sizes = [m, n, k, subgroup_m, subgroup_n]
 
-    constraints = dispatch_constraints.generate_tile_and_fuse_constraints(
+    constraints = rocm_dispatch_constraints.generate_tile_and_fuse_constraints(
         matmul_size=matmul_size,
         lhs_type=lhs_type,
         rhs_type=rhs_type,
@@ -239,7 +236,7 @@ def test_generate_vector_distribute_constraints_valid_input(
     sg_m_cnt = z3.Int("sg_m_cnt")
     sg_n_cnt = z3.Int("sg_n_cnt")
 
-    constraints = dispatch_constraints.generate_vector_distribute_constraints(
+    constraints = rocm_dispatch_constraints.generate_vector_distribute_constraints(
         matmul_size=matmul_size,
         lhs_type=lhs_type,
         rhs_type=rhs_type,
@@ -288,7 +285,7 @@ def test_generate_vector_distribute_constraints_invalid_input(
     sg_m_cnt = z3.Int("sg_m_cnt")
     sg_n_cnt = z3.Int("sg_n_cnt")
 
-    constraints = dispatch_constraints.generate_vector_distribute_constraints(
+    constraints = rocm_dispatch_constraints.generate_vector_distribute_constraints(
         matmul_size=matmul_size,
         lhs_type=lhs_type,
         rhs_type=rhs_type,
@@ -325,7 +322,7 @@ def test_is_valid_mma_schedule(
     )
 
     subgroup_size = z3.Int("subgroup_size")
-    schedule = dispatch_constraints.GPUMMASchedule(
+    schedule = rocm_dispatch_constraints.GPUMMASchedule(
         m_size=z3.IntVal(16),
         n_size=z3.IntVal(16),
         k_size=z3.IntVal(16),
@@ -336,7 +333,7 @@ def test_is_valid_mma_schedule(
         k_tile_size=z3.IntVal(2),
     )
 
-    constraints = dispatch_constraints.is_valid_vector_distribute_mma_schedule(
+    constraints = rocm_dispatch_constraints.is_valid_vector_distribute_mma_schedule(
         matmul=matmul,
         schedule=schedule,
         subgroup_size=subgroup_size,
@@ -358,7 +355,7 @@ def test_is_valid_mma_schedule(
         rhs_type=tuner_ctx.type.f16,
         acc_type=tuner_ctx.type.f32,
     )
-    constraints = dispatch_constraints.is_valid_vector_distribute_mma_schedule(
+    constraints = rocm_dispatch_constraints.is_valid_vector_distribute_mma_schedule(
         matmul=matmul,
         schedule=schedule,
         subgroup_size=subgroup_size,
@@ -384,7 +381,7 @@ def test_get_mma_intrinsic_constraints(
     intrinsic_n = z3.Int("intrinsic_n")
     intrinsic_k = z3.Int("intrinsic_k")
 
-    constraints = dispatch_constraints.get_mma_intrinsic_constraints(
+    constraints = rocm_dispatch_constraints.get_mma_intrinsic_constraints(
         lhs_type=lhs_type,
         rhs_type=rhs_type,
         res_type=res_type,
@@ -412,7 +409,7 @@ def test_get_mma_intrinsic_constraints(
     rhs_type = common.ShapedType([16, 32], tuner_ctx.type.f8E4M3FNUZ)
     res_type = common.ShapedType([32, 32], tuner_ctx.type.f32)
 
-    constraints = dispatch_constraints.get_mma_intrinsic_constraints(
+    constraints = rocm_dispatch_constraints.get_mma_intrinsic_constraints(
         lhs_type=lhs_type,
         rhs_type=rhs_type,
         res_type=res_type,
@@ -438,14 +435,14 @@ def test_get_mma_intrinsic_constraints(
 
 
 def test_match_layout():
-    layout_a = dispatch_constraints.MMASingleSubgroupLayout(
+    layout_a = rocm_dispatch_constraints.MMASingleSubgroupLayout(
         outer=(z3.IntVal(0), z3.IntVal(0)),
         thread=(z3.IntVal(1), z3.IntVal(2)),
         tstrides=(z3.IntVal(2), z3.IntVal(4)),
         element=(z3.IntVal(8), z3.IntVal(16)),
     )
 
-    layout_b = dispatch_constraints.MMASingleSubgroupLayout(
+    layout_b = rocm_dispatch_constraints.MMASingleSubgroupLayout(
         outer=(z3.IntVal(0), z3.IntVal(0)),
         thread=(z3.IntVal(3), z3.IntVal(2)),
         tstrides=(z3.IntVal(2), z3.IntVal(4)),
@@ -453,12 +450,12 @@ def test_match_layout():
     )
 
     solver = z3.Solver()
-    solver.add(dispatch_constraints.match_layout(layout_a, layout_b))
+    solver.add(rocm_dispatch_constraints.match_layout(layout_a, layout_b))
     assert solver.check() == z3.unsat
 
     layout_b.thread = (z3.IntVal(1), z3.IntVal(2))
     solver = z3.Solver()
-    solver.add(dispatch_constraints.match_layout(layout_a, layout_b))
+    solver.add(rocm_dispatch_constraints.match_layout(layout_a, layout_b))
     assert solver.check() == z3.sat
 
 
@@ -488,21 +485,23 @@ def test_generate_attention_vector_distribute_constraints(
     subgroup_n_count = z3.Int("subgroup_n_count")
     can_reuse_qk_output_for_pv_input = z3.Bool("can_reuse_qk_output_for_pv_input")
 
-    constraints = dispatch_constraints.generate_attention_vector_distribute_constraints(
-        qk_matmul=qk_matmul,
-        pv_matmul=pv_matmul,
-        transposed_q=False,
-        transposed_k=False,
-        transposed_v=False,
-        tile_sizes=tile_sizes,
-        num_subgroups=4,
-        subgroup_size=subgroup_size,
-        qk_intrinsic_size=qk_intrinsic_size,
-        pv_intrinsic_size=pv_intrinsic_size,
-        subgroup_m_count=subgroup_m_count,
-        subgroup_n_count=subgroup_n_count,
-        can_reuse_qk_output_for_pv_input=can_reuse_qk_output_for_pv_input,
-        gpu_target_info=gpu_target_info,
+    constraints = (
+        rocm_dispatch_constraints.generate_attention_vector_distribute_constraints(
+            qk_matmul=qk_matmul,
+            pv_matmul=pv_matmul,
+            transposed_q=False,
+            transposed_k=False,
+            transposed_v=False,
+            tile_sizes=tile_sizes,
+            num_subgroups=4,
+            subgroup_size=subgroup_size,
+            qk_intrinsic_size=qk_intrinsic_size,
+            pv_intrinsic_size=pv_intrinsic_size,
+            subgroup_m_count=subgroup_m_count,
+            subgroup_n_count=subgroup_n_count,
+            can_reuse_qk_output_for_pv_input=can_reuse_qk_output_for_pv_input,
+            gpu_target_info=gpu_target_info,
+        )
     )
 
     solver = z3.Solver()

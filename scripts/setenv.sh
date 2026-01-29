@@ -67,7 +67,10 @@ mkdir -p ${SCRIPT_DIR}/../output_artifacts
 
 if [[ $BUILD_TYPE = "nightly" ]]; then
     pip install -r pytorch-rocm-requirements.txt
-    pip install amdsharktank -f https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels --pre
+    # Initial install to get dependencies
+    pip install amdsharktank
+    # Force reinstall with latest dev wheel (keeps dependencies, only replaces amdsharktank)
+    pip install --force-reinstall --no-index --find-links https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels amdsharktank --pre --no-deps
     pip install shortfin --no-index -f https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels --pre
     pip install dataclasses-json
     pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime iree-turbine
@@ -111,11 +114,13 @@ elif [[ $BUILD_TYPE = "source" ]]; then
     pip install -v amdsharktank/ shortfin/
 
     ## Install wave
-    rm -rf wave
-    git clone https://github.com/iree-org/wave.git
-    cd wave
-    pip install -r requirements.txt -e .
-    echo -n "Wave : " >> ${SCRIPT_DIR}/../output_artifacts/version.txt
+    rm -rf wave || true
+    # git clone https://github.com/iree-org/wave.git
+    # cd wave
+    # pip install -r requirements.txt -e .
+    # echo -n "Wave : " >> ${SCRIPT_DIR}/../output_artifacts/version.txt
+    pip install wave-lang
+    # pip uninstall -y iree-base-compiler iree-base-runtime
     git log -1 --pretty=%H >> ${SCRIPT_DIR}/../output_artifacts/version.txt
     cd $amdshark_AI_ROOT_DIR
 

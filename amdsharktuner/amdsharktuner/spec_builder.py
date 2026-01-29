@@ -13,7 +13,7 @@ from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_codegen, preprocessing_transform, transform  # type: ignore
 
 from .common import *
-from .dispatch_constraints import *
+from .rocm.rocm_dispatch_constraints import *
 from .dispatch_parser import *
 
 ROOT_OP_ATTR_NAME = "root_op"

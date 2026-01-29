@@ -21,9 +21,6 @@ def mp_square_worker(x):
 
 
 def test_worker_context_manager():
-    # Use "spawn" to avoid fork() warnings in pytest.
-    process_utils.multiprocessing.set_start_method("spawn")
-
     ctx_manager = process_utils.WorkerContextManager(device_ids=["hip://2", "hip://5"])
 
     # Call initializer manually (simulating a multiprocessing worker).
