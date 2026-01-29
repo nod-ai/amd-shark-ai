@@ -71,6 +71,8 @@ jobs:
         pip install "git+https://github.com/iree-org/iree-turbine.git"
         pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
         pip freeze  > $(pwd)/output_artifacts/version.txt
+        iree-boo-driver conv --verbose
+        exit 1
 
     - name: Run all proxy config
       run: |
@@ -83,9 +85,6 @@ jobs:
        cd -
        source ${VENV_DIR}/bin/activate
        export MIOPEN_FIND_ENFORCE=3
-
-       iree-boo-driver conv --verbose
-       exit 1
 
        echo "============ 1. Running Prod Conv shape with MIOpen and IREE without tuning ==================="
        iree-boo-driver \
