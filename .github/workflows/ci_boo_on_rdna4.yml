@@ -71,6 +71,9 @@ jobs:
         pip install "git+https://github.com/iree-org/iree-turbine.git"
         pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
         pip freeze  > $(pwd)/output_artifacts/version.txt
+        echo "===================================="
+        pip freeze
+        echo "===================================="
         iree-boo-driver conv --verbose
         exit 1
 
