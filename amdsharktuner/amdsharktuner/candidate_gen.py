@@ -76,8 +76,7 @@ def instantiate_dispatch_tuner(
     dispatch_tuner: Optional[DispatchTuner] = None
     for tuner_class in dispatch_tuners:
         if tuner_class.supports_root_op(root_op):
-            tuner = tuner_class(root_op, tuner_ctx)
-            dispatch_tuner = tuner
+            dispatch_tuner = tuner_class(root_op, tuner_ctx)
             break
 
     if not dispatch_tuner:

@@ -40,55 +40,6 @@ def parse_mlir(mlir_text: str, ctx: common.TunerContext) -> ir.Module:
     return mlir_module
 
 
-def build_conv_to_igemm_info(
-    convolution_dims: linalg.ConvolutionDimensions,
-    input_type: ir.Type,
-    input_map: ir.AffineMap,
-    igemm_details,
-) -> common.ConvToIgemmInfo:
-    """
-    Builds ConvToIgemmInfo from convolution dimensions and IGEMM details.
-
-    Corresponds to IREE:
-    https://github.com/iree-org/iree/blob/d3440737cc56a4d1b20c72181d9a37f194bd3ce5/compiler/src/iree/compiler/Codegen/Dialect/GPU/TargetUtils/ConfigUtils.cpp#L872-L909
-    """
-    input_shape = input_type.shape
-    conv_to_igemm_info = common.ConvToIgemmInfo(conv_dims=convolution_dims)
-
-    # Map input channel dimensions to their sizes in the input tensor.
-    for dim in convolution_dims.input_channel:
-        for idx, expr in enumerate(input_map.results):
-            if common.is_affine_expr_function_of_dim(expr, dim):
-                conv_to_igemm_info.input_channel_dim_to_size[dim] = input_shape[idx]
-
-    # Process output image dimensions to find input image positions.
-    input_image_pos = []
-    for dim in convolution_dims.output_image:
-        for idx, expr in enumerate(input_map.results):
-            if common.is_affine_expr_function_of_dim(expr, dim):
-                input_image_pos.append(idx)
-
-    # Process batch dimensions to find batch positions.
-    batch_pos = []
-    for dim in convolution_dims.batch:
-        for idx, expr in enumerate(input_map.results):
-            if common.is_affine_expr_function_of_dim(expr, dim):
-                batch_pos.append(idx)
-
-    input_image_pos = sorted(input_image_pos)
-    batch_pos = sorted(batch_pos)
-
-    conv_to_igemm_info.is_batch_dim_last = (
-        len(batch_pos) > 0 and batch_pos[-1] == len(input_shape) - 1
-    )
-    conv_to_igemm_info.is_spatial_dim_last = (
-        len(input_image_pos) > 0 and input_image_pos[-1] == len(input_shape) - 1
-    )
-
-    conv_to_igemm_info.conv_to_igemm_dim_map = dict(igemm_details.conv_to_igemm_dim_map)
-    return conv_to_igemm_info
-
-
 @dataclass
 class OpInfo:
     root_op: ir.Operation
@@ -120,11 +71,6 @@ class ConvolutionOpInfo(OpInfo):
     depth_sizes: list[int]
     strides: list[int]
     dilations: list[int]
-
-    # IGEMM details for TileAndFuse pipeline (None if not available).
-    igemm_details: Optional[iree_codegen.IGEMMGenericConvDetails] = None
-    # Convolution to IGEMM transformation info (None if not available).
-    conv_to_igemm_info: Optional[common.ConvToIgemmInfo] = None
 
 
 @dataclass
@@ -241,14 +187,32 @@ class ContractionOpInterfaceParser(DispatchParser):
         return self._op_info
 
 
-class ConvolutionOpInterfaceParser(DispatchParser):
-    def __init__(self, root_op: ir.Operation, tuner_ctx: common.TunerContext):
+class ConvolutionOpInterfaceParser(DispatchParser, metaclass=ABCMeta):
+    """Base class for convolution parsers. Subclasses implement specific lowering strategies."""
+
+    def __init__(
+        self,
+        root_op: ir.Operation,
+        tuner_ctx: common.TunerContext,
+    ):
         super().__init__(root_op, tuner_ctx)
+        self._conv_dim_info = self._extract_conv_dim_info()
+
+    def _extract_conv_dim_info(self) -> common.ConvDimInfo:
+        """Extract common convolution dimension info from the root op."""
         root_op = self.get_root_op()
+
         convolution_dims: linalg.ConvolutionDimensions = (
             linalg.infer_convolution_dimensions(root_op)
         )
         assert convolution_dims, "no convolution dimensions"
+
+        res_maps = linalg.get_indexing_maps(root_op)
+        indexing_maps = [map_attr.value for map_attr in res_maps]
+
+        lhs_type = root_op.operands[0].type
+        rhs_type = root_op.operands[1].type
+        res_type = root_op.operands[2].type
 
         batch_indices = list(convolution_dims.batch)
         output_image_indices = list(convolution_dims.output_image)
@@ -259,16 +223,7 @@ class ConvolutionOpInterfaceParser(DispatchParser):
         strides = list(convolution_dims.strides)
         dilations = list(convolution_dims.dilations)
 
-        res_maps = linalg.get_indexing_maps(root_op)
-        indexing_maps = [map_attr.value for map_attr in res_maps]
-
-        contraction_dims = common.ContractionDimensions(
-            batch=depth_indices,
-            m=batch_indices + output_image_indices,
-            n=output_channel_indices,
-            k=filter_loop_indices + input_channel_indices,
-        )
-
+        # Compute sizes for MatchDimsEqualOp in spec_builder.
         batch_sizes = (
             [self.get_iter_dim_size(d, 2, indexing_maps) for d in batch_indices]
             if batch_indices
@@ -303,50 +258,57 @@ class ConvolutionOpInterfaceParser(DispatchParser):
             else []
         )
 
-        matmul_size = common.ContractionSizes(
-            B=depth_sizes,
-            M=batch_sizes + output_image_sizes,
-            N=output_channel_sizes,
-            K=filter_loop_sizes + input_channel_sizes,
-        )
-
-        lhs_type = root_op.operands[0].type
-        rhs_type = root_op.operands[1].type
-        res_type = root_op.operands[2].type
-
-        # Get IGEMM details for potential use with the TileAndFuse pipeline.
-        # This provides flattened K dimensions and proper M/N/K categorization
-        # for any convolution layout (nhwc_hwcf, nchw_fchw, etc.).
-        igemm_details = iree_codegen.get_igemm_generic_conv_details(root_op)
-
-        # Build ConvToIgemmInfo using convolution_dims.
-        conv_to_igemm_info = None
-        if igemm_details:
-            conv_to_igemm_info = build_conv_to_igemm_info(
-                convolution_dims, lhs_type, indexing_maps[0], igemm_details
-            )
-
-        self._op_info: ConvolutionOpInfo = ConvolutionOpInfo(
-            root_op=root_op,
+        return common.ConvDimInfo(
+            convolution_dims=convolution_dims,
             indexing_maps=indexing_maps,
-            dims=contraction_dims,
-            matmul_size=matmul_size,
-            lhs_type=common.ShapedType(lhs_type.shape, lhs_type.element_type),
-            rhs_type=common.ShapedType(rhs_type.shape, rhs_type.element_type),
-            res_type=common.ShapedType(res_type.shape, res_type.element_type),
+            lhs_type=lhs_type,
+            rhs_type=rhs_type,
+            res_type=res_type,
+            batch_indices=batch_indices,
+            output_image_indices=output_image_indices,
+            output_channel_indices=output_channel_indices,
+            filter_loop_indices=filter_loop_indices,
+            input_channel_indices=input_channel_indices,
+            depth_indices=depth_indices,
+            strides=strides,
+            dilations=dilations,
             batch_sizes=batch_sizes,
             output_image_sizes=output_image_sizes,
             output_channel_sizes=output_channel_sizes,
             filter_loop_sizes=filter_loop_sizes,
             input_channel_sizes=input_channel_sizes,
             depth_sizes=depth_sizes,
-            strides=strides,
-            dilations=dilations,
-            igemm_details=igemm_details,
-            conv_to_igemm_info=conv_to_igemm_info,
+        )
+
+    def _build_op_info(
+        self,
+        info: common.ConvDimInfo,
+        contraction_dims: common.ContractionDimensions,
+        matmul_size: common.ContractionSizes,
+    ) -> None:
+        """Build ConvolutionOpInfo from extracted info and strategy-specific values."""
+        self._op_info = ConvolutionOpInfo(
+            root_op=self.get_root_op(),
+            indexing_maps=info.indexing_maps,
+            dims=contraction_dims,
+            matmul_size=matmul_size,
+            lhs_type=common.ShapedType(info.lhs_type.shape, info.lhs_type.element_type),
+            rhs_type=common.ShapedType(info.rhs_type.shape, info.rhs_type.element_type),
+            res_type=common.ShapedType(info.res_type.shape, info.res_type.element_type),
+            batch_sizes=info.batch_sizes,
+            output_image_sizes=info.output_image_sizes,
+            output_channel_sizes=info.output_channel_sizes,
+            filter_loop_sizes=info.filter_loop_sizes,
+            input_channel_sizes=info.input_channel_sizes,
+            depth_sizes=info.depth_sizes,
+            strides=info.strides,
+            dilations=info.dilations,
         )
 
     def get_op_info(self) -> ConvolutionOpInfo:
+        assert isinstance(
+            self._op_info, ConvolutionOpInfo
+        ), "Failed to build ConvolutionOpInfo"
         return self._op_info
 
 

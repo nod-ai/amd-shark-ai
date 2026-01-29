@@ -9,58 +9,10 @@ import math
 from typing import Iterator, Optional
 
 from iree.compiler import ir  # type: ignore
-from iree.compiler.dialects import iree_codegen, iree_gpu, linalg  # type: ignore
+from iree.compiler.dialects import iree_codegen, iree_gpu  # type: ignore
 
 from .. import common, constraint_generator, dispatch_parser, process_utils
 from . import rocm_common, rocm_dispatch_constraints
-
-
-def adjust_problem_size_for_pipeline(
-    contraction_dims: common.ContractionDimensions,
-    matmul_size: common.ContractionSizes,
-    dispatch_kind: common.DispatchKind,
-    pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace,
-    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline,
-    igemm_details: Optional[iree_codegen.IGEMMGenericConvDetails] = None,
-):
-    # Adjustment is only needed for IGEMM. Fail if the problem is not a conv
-    # going down the TileAndFuse pipeline.
-    if (
-        codegen_pipeline != iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
-        or dispatch_kind != common.DispatchKind.conv
-    ):
-        return
-
-    pipeline_options_search_space.use_igemm_convolution = [True]
-
-    # Fallback: Manual flattening for legacy path when IGEMM details are unavailable.
-    # TODO(Bangtian): Once all IGEMM implementation is complete, fully remove this fallback path
-    # and corresponding tests.
-    if not igemm_details:
-        contraction_dims.k = [contraction_dims.k[0]]
-        matmul_size.K = [math.prod(matmul_size.K)]
-        return
-
-    # Use IGEMM binding details for accurate dimension mapping.
-    igemm_maps = [map_attr.value for map_attr in igemm_details.igemm_contraction_maps]
-    igemm_contraction_dims = linalg.infer_contraction_dimensions_from_maps(igemm_maps)
-    assert (
-        igemm_contraction_dims
-    ), "Failed to infer contraction dimensions from IGEMM maps"
-
-    bounds = list(igemm_details.igemm_loop_bounds)
-
-    # Update contraction_dims with IGEMM structure.
-    contraction_dims.m = list(igemm_contraction_dims.m)
-    contraction_dims.n = list(igemm_contraction_dims.n)
-    contraction_dims.k = list(igemm_contraction_dims.k)
-    contraction_dims.batch = list(igemm_contraction_dims.batch)
-
-    # Update matmul_size with IGEMM loop bounds (K is already flattened!).
-    matmul_size.M = [bounds[i] for i in contraction_dims.m]
-    matmul_size.N = [bounds[i] for i in contraction_dims.n]
-    matmul_size.K = [bounds[i] for i in contraction_dims.k]
-    matmul_size.B = [bounds[i] for i in contraction_dims.batch]
 
 
 def generate_generic_contraction_z3_constraints(
@@ -163,16 +115,14 @@ def generate_generic_contraction_solutions(
     allowed_waves_per_eu: list[int] = [2],
     pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
     igemm_details: Optional[iree_codegen.IGEMMGenericConvDetails] = None,
-    conv_to_igemm_info: Optional[common.ConvToIgemmInfo] = None,
+    conv_to_igemm_info: Optional[rocm_common.ConvToIgemmInfo] = None,
 ) -> Iterator[list[common.TuningConfiguration]]:
-    adjust_problem_size_for_pipeline(
-        contraction_dims,
-        matmul_size,
-        dispatch_kind,
-        pipeline_options_search_space,
-        codegen_pipeline,
-        igemm_details,
-    )
+    # Set use_igemm_convolution for IGEMM convolutions.
+    if (
+        codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
+        and dispatch_kind == common.DispatchKind.conv
+    ):
+        pipeline_options_search_space.use_igemm_convolution = [True]
 
     # Apply padding for TileAndFuse pipeline to get better tile sizes.
     overpadding_applied = False

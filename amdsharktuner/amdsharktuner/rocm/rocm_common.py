@@ -8,12 +8,12 @@ import csv
 import logging
 import math
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
 
 from iree.compiler import ir  # type: ignore
-from iree.compiler.dialects import iree_gpu  # type: ignore
+from iree.compiler.dialects import iree_gpu, linalg  # type: ignore
 
 from amdsharktuner import common, process_utils
 
@@ -23,6 +23,23 @@ WAVES_PER_EU_KEY = "amdgpu-waves-per-eu"
 
 # List of tested ROCm architectures.
 ROCM_ARCHITECTURES = ["gfx942", "gfx950", "gfx1100", "gfx1201"]
+
+
+@dataclass
+class ConvToIgemmInfo:
+    """
+    Stores information about convolution to IGEMM transformation.
+    Used by get_padding_conv_sizes to calculate padding_conv attribute.
+
+    Corresponds to ConvToIgemmInfo struct in IREE:
+    https://github.com/iree-org/iree/blob/d3440737cc56a4d1b20c72181d9a37f194bd3ce5/compiler/src/iree/compiler/Codegen/Dialect/GPU/TargetUtils/ConfigUtils.cpp#L373-L379
+    """
+
+    conv_dims: linalg.ConvolutionDimensions
+    is_batch_dim_last: bool = False
+    is_spatial_dim_last: bool = False
+    conv_to_igemm_dim_map: dict[int, int] = field(default_factory=dict)
+    input_channel_dim_to_size: dict[int, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -154,7 +171,7 @@ def get_padding_conv_sizes(
     bounds: list[int],
     padding_sizes: list[int],
     igemm_loop_iterators: list[str],
-    conv_to_igemm_info: common.ConvToIgemmInfo,
+    conv_to_igemm_info: ConvToIgemmInfo,
 ) -> Optional[list[int]]:
     """
     Computes padding_conv by mapping padding from IGEMM space to convolution space.
