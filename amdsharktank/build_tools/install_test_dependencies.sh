@@ -69,7 +69,7 @@ else
     pip install -r pytorch-rocm-requirements.txt
     pip install -e ".[dev]"
     cd ..
-    
+
 fi
 
 pip install --no-compile -r "$SRC_DIR/amdsharktank/requirements-tests.txt"
