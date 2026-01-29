@@ -138,7 +138,7 @@ jobs:
           cp -vr gen_images/* "amd-shark-ai-reports/amdshark-ai-logs/$date/generated-images/"
           cd amd-shark-ai-reports
           git pull
-          git add $date
+          git add amdshark-ai-logs
           git commit -m "Add sdxl/flux images on $(date -u +'%Y-%m-%d')"
           git push origin main
           rm -rf ../gen_images
