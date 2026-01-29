@@ -77,8 +77,14 @@ jobs:
         pip freeze
         echo "===================================="
         rocm-smi
+        rocminfo
         export ROCR_VISIBLE_DEVICES="1"
-        iree-boo-driver conv --verbose
+        whoami
+        id
+        ls -l /dev/kfd /dev/dri
+        
+        
+        # iree-boo-driver conv --verbose
         exit 1
 
     - name: Run all proxy config
