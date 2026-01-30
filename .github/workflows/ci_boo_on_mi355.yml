@@ -256,6 +256,27 @@ jobs:
         token: ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}
         path: amd-shark-ai-reports
 
+    - name: Generate Comparison
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+          cd amd-shark-ai-reports
+          export LATEST_DATE=$(ls -1 boo/boo-nightly | sort | tail -n 1)
+
+          if [ "${{ inputs.run_all_proxy }}" = "true" ]; then
+            python github-actions/new_boo_comp.py --current-file "../logs/all_proxy_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/all_proxy_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_all_proxy_iree.md" --threshold 0.05 --total-arguments 1071 || echo "all_proxy_miopen_iree.csv not found"
+          fi
+
+          if [ "${{ inputs.run_gemm }}" = "true" ]; then
+            python github-actions/new_boo_comp.py --current-file "../logs/gemm_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/gemm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_gemm_iree.md" --threshold 0.05 --total-arguments 320
+          fi
+
+          if [ "${{ inputs.run_prod_conv }}" = "true" ]; then
+            python github-actions/new_boo_comp.py --current-file "../logs/prod_conv_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/prod_conv_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 476"
+          fi
+
+          cd ..
+          ls -R logs
+
     - name: Setup reports
       if: always()
       run: |
