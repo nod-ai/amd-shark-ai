@@ -223,10 +223,10 @@ jobs:
           mkdir install
           tar -xf *.tar.gz -C install
           export PATH=$PWD/install/bin:$PATH
-        fi
 
-        echo "============= 5. Running Gemm Shape with hipblaslt =============================="
-        bash amd-shark-ai-reports/boo/hipblaslt-bench.sh >& output_artifacts/gemm_hipBlaslt-bench.csv
+          echo "============= 5. Running Gemm Shape with hipblaslt =============================="
+          bash amd-shark-ai-reports/boo/hipblaslt-bench.sh >& output_artifacts/gemm_hipBlaslt-bench.csv
+        fi
 
     - name: Upload log files
       if: always()
