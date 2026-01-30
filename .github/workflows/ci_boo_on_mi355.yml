@@ -303,8 +303,17 @@ jobs:
             mkdir -p $OUTPUT_DIR
             echo "OUTPUT_DIR=$OUTPUT_DIR" >> $GITHUB_ENV
           else
-            date=$(date -u +'%Y-%m-%d_%H-%M')
-            OUTPUT_DIR="amd-shark-ai-reports/boo/boo-custom-runs/$date/"
+            if [ "${{ github.event_name }}" = "schedule" ]; then
+              date="$(date -u +'%Y-%m-%d')"
+              OUTPUT_DIR="amd-shark-ai-reports/boo/boo-nightly/${date}/"
+            else
+              if [ -n "${{ inputs.commit_hash }}" ]; then
+                date="$(date -u +'%Y-%m-%d_%H-%M')_${{ inputs.commit_hash }}"
+              else
+                date="$(date -u +'%Y-%m-%d_%H-%M')"
+              fi
+              OUTPUT_DIR="amd-shark-ai-reports/boo/boo-custom-runs/${date}/"
+            fi
             mkdir -p $OUTPUT_DIR
             echo "OUTPUT_DIR=$OUTPUT_DIR" >> $GITHUB_ENV
           fi
