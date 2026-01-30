@@ -196,6 +196,7 @@ jobs:
           output_artifacts/version.txt
 
   # New job to push logs to amd-shark-ai-reports repository
+  # Add Comparison change
   push_logs:
     name: "Push log for conv run"
     needs: [ test_boo ]
