@@ -212,16 +212,18 @@ jobs:
 
     - name: Run hipblaslt-bench
       run: |
-        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
-        sudo apt install unzip -y
-        unzip awscliv2.zip
-        sudo ./aws/install
-        tarFileName=`aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx950 | sort -r | head -1 |  awk '{print $NF}'`
-        echo "Installing $tarFileName"
-        wget https://therock-nightly-tarball.s3.us-east-2.amazonaws.com/${tarFileName}
-        mkdir install
-        tar -xf *.tar.gz -C install
-        export PATH=$PWD/install/bin:$PATH
+        if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.run_hipblaslt }}" = "true" ]; then
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+          sudo apt install unzip -y
+          unzip awscliv2.zip
+          sudo ./aws/install
+          tarFileName=`aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx950 | sort -r | head -1 |  awk '{print $NF}'`
+          echo "Installing $tarFileName"
+          wget https://therock-nightly-tarball.s3.us-east-2.amazonaws.com/${tarFileName}
+          mkdir install
+          tar -xf *.tar.gz -C install
+          export PATH=$PWD/install/bin:$PATH
+        fi
 
         echo "============= 5. Running Gemm Shape with hipblaslt =============================="
         bash amd-shark-ai-reports/boo/hipblaslt-bench.sh >& output_artifacts/gemm_hipBlaslt-bench.csv
