@@ -222,7 +222,7 @@ jobs:
       if: always()
       run: |
         wget \
-          --header="${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}" \
+          --header="Authorization: token ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}" \
           https://raw.githubusercontent.com/nod-ai/amd-shark-ai-reports/main/github-actions/new_boo_comp_miopen_iree.py
         ls
         cat new_boo_comp.py
