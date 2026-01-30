@@ -265,22 +265,27 @@ jobs:
           export LATEST_DATE=$(ls -1 boo/boo-nightly | sort | tail -n 1)
 
           if [ "${{ inputs.run_all_proxy }}" = "true" ]; then
+            echo "1"
             python github-actions/new_boo_comp.py --current-file "../logs/all_proxy_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/all_proxy_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_all_proxy_iree.md" --threshold 0.05 --total-arguments 1071 || echo "failure in all_proxy"
           fi
 
           if [ "${{ inputs.run_gemm }}" = "true" ]; then
+            echo "2"
             python github-actions/new_boo_comp.py --current-file "../logs/gemm_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/gemm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_gemm_iree.md" --threshold 0.05 --total-arguments 320 || echo "failure in gemm"
           fi
 
           if [ "${{ inputs.run_prod_conv }}" = "true" ]; then
+            echo "3"
             python github-actions/new_boo_comp.py --current-file "../logs/prod_conv_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/prod_conv_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 476" || echo "failure in prod conv"
           fi
 
           if [ "${{ inputs.run_batch_norm }}" = "true" ]; then
+            echo "4"
             python github-actions/new_boo_comp.py --current-file "../logs/batch_norm_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/batch_norm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_batch_norm_miopen_iree.md" --threshold 0.05 --total-arguments 476" || echo "Failure in batchnorm"
           fi
 
           if [ "${{ inputs.run_hipblaslt }}" = true ] && [ "${{ inputs.run_gemm }}" = "true" ]; then
+            echo "5"
             python github-actions/new_boo_comp_hipblaslt_iree.py --hipblaslt-file "../logs/gemm_hipBlaslt-bench.csv" --iree-file "../logs/gemm_miopen_iree.csv" --output-csv "../logs/comparison/gemm_iree_hipblaslt_comparison.csv" || echo "failure in hipblaslt"
           fi
 
