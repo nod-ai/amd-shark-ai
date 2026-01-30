@@ -224,14 +224,14 @@ jobs:
       run: |
           cd amd-shark-ai-reports
           export LATEST_DATE=$(ls -1 boo/boo-nightly | sort | tail -n 1)
-          python github-actions/new_boo_comp.py --current-file boo/boo-nightly/2026-01-29/all_proxy_miopen_iree.csv --baseline-file boo/boo-nightly/2026-01-25/all_proxy_miopen_iree.csv --output-file "comparison/current_vs_2026-01-25_all_proxy_iree.md" --threshold 0.05 --total-arguments 1071 | "all_proxy_miopen_iree.csv not found"
+          python github-actions/new_boo_comp.py --current-file boo/boo-nightly/2026-01-29/all_proxy_miopen_iree.csv --baseline-file boo/boo-nightly/2026-01-25/all_proxy_miopen_iree.csv --output-file "comparison/current_vs_2026-01-25_all_proxy_iree.md" --threshold 0.05 --total-arguments 1071 || "all_proxy_miopen_iree.csv not found"
           cat "comparison/current_vs_2026-01-25_all_proxy_iree.md"
           cd ..
           exit 1
 
-          # python github-actions/new_boo_comp.py --current-file logs/prod_conv_miopen_iree.csv --baseline-file boo/boo-nightly/${LATEST_DATE}/prod_conv_miopen_iree.csv --output-file "logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 476 | "prod_conv_miopen_iree.csv not found"
-          # python github-actions/new_boo_comp.py --current-file logs/gemm_miopen_iree.csv --baseline-file "boo/boo-nightly/${LATEST_DATE}/gemm_miopen_iree.csv" --output-file "logs/comparison/current_vs_${LATEST_DATE}_gemm_iree.md" --threshold 0.05 --total-arguments 320 | "gemm_miopen_iree.csv not found"
-          # python github-actions/new_boo_comp.py --current-file logs/all_proxy_miopen_iree.csv --baseline-file boo/boo-nightly/${LATEST_DATE}/all_proxy_miopen_iree.csv --output-file "logs/comparison/current_vs_${LATEST_DATE}_all_proxy_iree.md" --threshold 0.05 --total-arguments 1071 | "all_proxy_miopen_iree.csv not found"
+          # python github-actions/new_boo_comp.py --current-file logs/prod_conv_miopen_iree.csv --baseline-file boo/boo-nightly/${LATEST_DATE}/prod_conv_miopen_iree.csv --output-file "logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 476 || "prod_conv_miopen_iree.csv not found"
+          # python github-actions/new_boo_comp.py --current-file logs/gemm_miopen_iree.csv --baseline-file "boo/boo-nightly/${LATEST_DATE}/gemm_miopen_iree.csv" --output-file "logs/comparison/current_vs_${LATEST_DATE}_gemm_iree.md" --threshold 0.05 --total-arguments 320 || "gemm_miopen_iree.csv not found"
+          # python github-actions/new_boo_comp.py --current-file logs/all_proxy_miopen_iree.csv --baseline-file boo/boo-nightly/${LATEST_DATE}/all_proxy_miopen_iree.csv --output-file "logs/comparison/current_vs_${LATEST_DATE}_all_proxy_iree.md" --threshold 0.05 --total-arguments 1071 || "all_proxy_miopen_iree.csv not found"
 
     # - name: Setup reports
     #   if: always()
