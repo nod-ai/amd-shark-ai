@@ -204,11 +204,11 @@ jobs:
     if: always()
     runs-on: ubuntu-24.04
     steps:
-    - name: Download log artifacts
-      uses: actions/download-artifact@v7
-      with:
-        name: boo-logs
-        path: logs
+    # - name: Download log artifacts
+    #   uses: actions/download-artifact@v7
+    #   with:
+    #     name: boo-logs
+    #     path: logs
 
     - name: Checkout Target Repo
       if: always()
@@ -219,8 +219,9 @@ jobs:
         path: amd-shark-ai-reports
 
     - name: Generate Comparison
+      if: always()
+      #if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
       run: |
-        if: always() #[ "${{ github.event_name }}" = "workflow_dispatch" ]; then
           cd amd-shark-ai-reports
           export LATEST_DATE=$(ls -1 boo/boo-nightly | sort | tail -n 1)
           python github-actions/new_boo_comp.py --current-file boo/boo-nightly/2026-01-29/all_proxy_miopen_iree.csv --baseline-file boo/boo-nightly/2026-01-25/all_proxy_miopen_iree.csv --output-file "comparison/current_vs_2026-01-25_all_proxy_iree.md" --threshold 0.05 --total-arguments 1071 | "all_proxy_miopen_iree.csv not found"
