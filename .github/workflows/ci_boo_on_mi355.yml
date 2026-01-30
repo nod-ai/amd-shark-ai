@@ -276,8 +276,10 @@ jobs:
             python github-actions/new_boo_comp.py --current-file "../logs/prod_conv_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/prod_conv_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 476"
           fi
 
-          if [ "${{ inputs.run_hipblaslt }}" = true ]; then
+          if [ "${{ inputs.run_hipblaslt }}" = true ] && [ "${{ inputs.run_gemm }}" = "true" ]; then
             python github-actions/new_boo_comp_miopen_iree.py --hipblaslt-file "../logs/gemm_hipBlaslt-bench.csv" --iree-file "../logs/gemm_miopen_iree.csv" --output-csv "../logs/comparison/gemm_iree_hipblaslt_comparison.csv"
+          fi
+
           cd ..
           ls -R logs
 
