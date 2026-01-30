@@ -175,24 +175,24 @@ jobs:
        fi
 
        if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.run_all_proxy }}" = "true" ]; then
-       echo "============ 2. Running All proxy shape with MIOpen and IREE without tuning ==================="
-       iree-boo-driver \
-            --commands-file amd-shark-ai-reports/boo/all_proxy_config.txt --csv output_artifacts/all_proxy_miopen_iree.csv \
-            --backend=torch --backend=iree_boo_experimental || true
+         echo "============ 2. Running All proxy shape with MIOpen and IREE without tuning ==================="
+         iree-boo-driver \
+              --commands-file amd-shark-ai-reports/boo/all_proxy_config.txt --csv output_artifacts/all_proxy_miopen_iree.csv \
+              --backend=torch --backend=iree_boo_experimental || true
        fi
        
        if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.run_gemm }}" = "true" ]; then
-       echo "============ 3. Running Gemm shape with MIOpen and IREE without tuning ======================================="
-       iree-boo-driver \
-            --commands-file amd-shark-ai-reports/boo/gemm_config.txt --csv output_artifacts/gemm_miopen_iree.csv \
-            --backend=torch --backend=iree_boo_experimental || true
+         echo "============ 3. Running Gemm shape with MIOpen and IREE without tuning ======================================="
+         iree-boo-driver \
+              --commands-file amd-shark-ai-reports/boo/gemm_config.txt --csv output_artifacts/gemm_miopen_iree.csv \
+              --backend=torch --backend=iree_boo_experimental || true
        fi
 
        if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.run_batch_norm }}" = "true" ]; then
-       echo "============ 4. Running Batch norm shape with MIOpen and IREE without tuning ======================================="
-       iree-boo-driver \
-            --commands-file amd-shark-ai-reports/boo/batch_norm_config.txt --csv output_artifacts/batch_norm_miopen_iree.csv \
-            --backend=torch --backend=iree_boo_experimental || true
+         echo "============ 4. Running Batch norm shape with MIOpen and IREE without tuning ======================================="
+         iree-boo-driver \
+              --commands-file amd-shark-ai-reports/boo/batch_norm_config.txt --csv output_artifacts/batch_norm_miopen_iree.csv \
+              --backend=torch --backend=iree_boo_experimental || true
        fi
 
        ## Disabling below two run till the time we have failure debugged, which is happening only on runner machine
