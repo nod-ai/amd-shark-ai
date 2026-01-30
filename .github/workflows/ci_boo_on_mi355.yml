@@ -221,10 +221,9 @@ jobs:
     - name: Setup reports
       if: always()
       run: |
-        wget \
-          --header="${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}" \
-          https://raw.githubusercontent.com/nod-ai/amd-shark-ai-reports/blob/main/github-actions/new_boo_comp.py
-        exit 1
+        wget "https://raw.githubusercontent.com/nod-ai/amd-shark-ai-reports/refs/heads/main/github-actions/new_boo_comp.py?token=${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}"
+        ls
+        cat new_boo_comp.py
         git config --global user.name "GitHub Actions Bot"
         git config --global user.email ""
         if [ "${{ github.event_name }}" = "schedule" ]; then
