@@ -225,9 +225,9 @@ jobs:
           cd amd-shark-ai-reports
           export LATEST_DATE=$(ls -1 boo/boo-nightly | sort | tail -n 1)
 
-          python github-actions/new_boo_comp.py --current-file "../logs/prod_conv_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/prod_conv_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 476 || "prod_conv_miopen_iree.csv not found"
-          python github-actions/new_boo_comp.py --current-file "../logs/gemm_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/gemm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_gemm_iree.md" --threshold 0.05 --total-arguments 320 || "gemm_miopen_iree.csv not found"
-          python github-actions/new_boo_comp.py --current-file "../logs/all_proxy_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/all_proxy_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_all_proxy_iree.md" --threshold 0.05 --total-arguments 1071 || "all_proxy_miopen_iree.csv not found"
+          python github-actions/new_boo_comp.py --current-file "../logs/prod_conv_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/prod_conv_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 476 || echo "prod_conv_miopen_iree.csv not found"
+          python github-actions/new_boo_comp.py --current-file "../logs/gemm_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/gemm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_gemm_iree.md" --threshold 0.05 --total-arguments 320 || echo "gemm_miopen_iree.csv not found"
+          python github-actions/new_boo_comp.py --current-file "../logs/all_proxy_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/all_proxy_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_all_proxy_iree.md" --threshold 0.05 --total-arguments 1071 || echo "all_proxy_miopen_iree.csv not found"
           cd ..
           ls -R logs
 
@@ -254,6 +254,7 @@ jobs:
         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
           mkdir -p $OUTPUT_DIR/comparison/
           cp -v logs/comparison/*.md $OUTPUT_DIR/comparison/
+        fi
         cp -v logs/*.csv $OUTPUT_DIR || true
         cp -v logs/version.txt $OUTPUT_DIR
         cd amd-shark-ai-reports/boo
