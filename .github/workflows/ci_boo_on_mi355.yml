@@ -218,36 +218,45 @@ jobs:
         token: ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}
         path: amd-shark-ai-reports
 
-    - name: Setup reports
-      if: always()
+    - name: Generate Comparison
       run: |
-        wget \
-          --header="Authorization: token ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}" \
-          https://raw.githubusercontent.com/nod-ai/amd-shark-ai-reports/main/github-actions/new_boo_comp_miopen_iree.py
-        ls
-        cat new_boo_comp.py
-        git config --global user.name "GitHub Actions Bot"
-        git config --global user.email ""
-        if [ "${{ github.event_name }}" = "schedule" ]; then
-          date=$(date -u +'%Y-%m-%d')
-          OUTPUT_DIR="amd-shark-ai-reports/boo/boo-nightly/$date/"
-          mkdir -p $OUTPUT_DIR
-          echo "OUTPUT_DIR=$OUTPUT_DIR" >> $GITHUB_ENV
-        else
-          date=$(date -u +'%Y-%m-%d_%H-%M')
-          OUTPUT_DIR="amd-shark-ai-reports/boo/boo-custom-runs/$date/"
-          mkdir -p $OUTPUT_DIR
-          echo "OUTPUT_DIR=$OUTPUT_DIR" >> $GITHUB_ENV
-        fi
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          cd amd-shark-ai-reports
+          export LATEST_DATE=$(ls -1 boo/boo-nightly | sort | tail -n 1)
+          python github-actions/new_boo_comp.py --current-file boo/boo-nightly/2026-01-29/all_proxy_miopen_iree.csv --baseline-file boo/boo-nightly/2026-01-25/all_proxy_miopen_iree.csv --output-file "comparison/current_vs_2026-01-25_all_proxy_iree.md" --threshold 0.05 --total-arguments 1071 | "all_proxy_miopen_iree.csv not found"
+          cat "comparison/current_vs_2026-01-25_all_proxy_iree.md"
+          cd ..
+          exit 1
 
-    - name: Push artifacts
-      if: always()
-      run: |
-        cp -v logs/*.csv $OUTPUT_DIR || true
-        cp -v logs/version.txt $OUTPUT_DIR
-        cd amd-shark-ai-reports/boo
-        git pull
-        git add .
-        git commit -m "Add conv report on $(date -u +'%Y-%m-%d')"
-        git push origin main
-        rm -rf ../logs
+          # python github-actions/new_boo_comp.py --current-file logs/prod_conv_miopen_iree.csv --baseline-file boo/boo-nightly/${LATEST_DATE}/prod_conv_miopen_iree.csv --output-file "logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 476 | "prod_conv_miopen_iree.csv not found"
+          # python github-actions/new_boo_comp.py --current-file logs/gemm_miopen_iree.csv --baseline-file "boo/boo-nightly/${LATEST_DATE}/gemm_miopen_iree.csv" --output-file "logs/comparison/current_vs_${LATEST_DATE}_gemm_iree.md" --threshold 0.05 --total-arguments 320 | "gemm_miopen_iree.csv not found"
+          # python github-actions/new_boo_comp.py --current-file logs/all_proxy_miopen_iree.csv --baseline-file boo/boo-nightly/${LATEST_DATE}/all_proxy_miopen_iree.csv --output-file "logs/comparison/current_vs_${LATEST_DATE}_all_proxy_iree.md" --threshold 0.05 --total-arguments 1071 | "all_proxy_miopen_iree.csv not found"
+
+    # - name: Setup reports
+    #   if: always()
+    #   run: |
+    #     git config --global user.name "GitHub Actions Bot"
+    #     git config --global user.email ""
+    #     if [ "${{ github.event_name }}" = "schedule" ]; then
+    #       date=$(date -u +'%Y-%m-%d')
+    #       OUTPUT_DIR="amd-shark-ai-reports/boo/boo-nightly/$date/"
+    #       mkdir -p $OUTPUT_DIR
+    #       echo "OUTPUT_DIR=$OUTPUT_DIR" >> $GITHUB_ENV
+    #     else
+    #       date=$(date -u +'%Y-%m-%d_%H-%M')
+    #       OUTPUT_DIR="amd-shark-ai-reports/boo/boo-custom-runs/$date/"
+    #       mkdir -p $OUTPUT_DIR
+    #       echo "OUTPUT_DIR=$OUTPUT_DIR" >> $GITHUB_ENV
+    #     fi
+
+    # - name: Push artifacts
+    #   if: always()
+    #   run: |
+    #     cp -v logs/*.csv $OUTPUT_DIR || true
+    #     cp -v logs/version.txt $OUTPUT_DIR
+    #     cd amd-shark-ai-reports/boo
+    #     git pull
+    #     git add .
+    #     git commit -m "Add conv report on $(date -u +'%Y-%m-%d')"
+    #     git push origin main
+    #     rm -rf ../logs
