@@ -56,6 +56,7 @@ jobs:
           bash scripts/setenv.sh --nightly
           mkdir -p output_artifacts
           pip freeze | grep -E 'iree|amdshark' > $(pwd)/output_artifacts/version.txt
+          pip install -r requirements.txt -r requirements-iree-pinned.txt -e amdsharktank/ -e shortfin/
           pip freeze
 
       - name: Llama 70b fp16
