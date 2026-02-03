@@ -118,7 +118,6 @@ jobs:
     name: Coverage
     runs-on: ubuntu-24.04
     needs: test
-    if: github.event.pull_request.number != 2677  # Skip for large PR that exceeds GitHub's 300-file diff limit
     permissions:
       pull-requests: write
       contents: write
@@ -300,7 +299,7 @@ jobs:
 
   # Depends on other jobs to provide an aggregate job status.
   # TODO(#584): move test_with_data and test_integration to a pkgci integration test workflow?
-  ci_amdsharktank_summary: # TODO: rename to ci_amdsharktank_summary
+  ci_amdsharktank_summary:
     if: always()
     runs-on: ubuntu-24.04
     needs:
