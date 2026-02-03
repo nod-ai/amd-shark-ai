@@ -1,6 +1,7 @@
 import random
 import logging
 import csv
+import math
 from typing import Optional, Any
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,7 +11,6 @@ from typing import Optional, Callable
 from iree.compiler.dialects import iree_gpu  # type: ignore
 
 from . import common
-from .rocm import rocm_common
 
 
 class CandidateOrderKind(str, Enum):
@@ -35,25 +35,22 @@ def arith_intensity(x: int, y: int, z: int) -> float:
     return num_flops / num_byte_access
 
 
-def llvm_gpu_vector_distribute_contraction_sort_key(
-    target_info: iree_gpu.TargetInfo,
-    knob: rocm_common.LLVMGPUVectorDistributeContractionKnobs,
-) -> tuple[bool, bool, float]:
-    return (
-        not is_pow2(knob.tile_k),
-        not is_mult_simd_num(
-            knob.subgroup_m_cnt * knob.subgroup_n_cnt, target_info.simds_per_workgroup
-        ),
-        arith_intensity(
-            knob.intrinsic_mn, knob.intrinsic_mn, knob.intrinsic_k
-        ),  # Lower is better.
-    )
+def quantization_inefficiency(problem_m, tile_m, problem_n, tile_n, cu_num) -> float:
+    # Inefficiency of tiling when problem sizes do not divide evenly,
+    # resulting in wasted computation in the final tiling round.
+    num_workgroups = (problem_m / tile_m) * (problem_n / tile_n)
+    ceil_val = math.ceil(num_workgroups / cu_num)
+    q_ie = (ceil_val - num_workgroups / cu_num) / ceil_val
+    return q_ie
 
 
+def size_ratio(x: int, y: int) -> float:
+    return min(x, y) / max(x, y)
+
+
+# Generic sort key map - architecture-specific modules can extend this.
 SORT_KEY_MAP: dict[type[common.KnobAssignment | None], Callable | None] = {
-    rocm_common.LLVMGPUVectorDistributeContractionKnobs: llvm_gpu_vector_distribute_contraction_sort_key,
     type(None): None,
-    # TODO: Add key() for conv, attention, and other dispatch kinds.
 }
 
 
@@ -62,6 +59,9 @@ def reorder_assignments(
     strategy: CandidateOrderKind,
     key_fn: Optional[Callable] = None,
     target_info: Optional[iree_gpu.TargetInfo] = None,
+    sort_key_map: Optional[
+        dict[type[common.KnobAssignment | None], Callable | None]
+    ] = None,
 ) -> list[int]:
     """
     Returns a list of indices representing the new order relative to the original list.
@@ -85,7 +85,9 @@ def reorder_assignments(
         case CandidateOrderKind.heuristic:
             # Auto set a sort key function based on the knob type.
             knob_type = type(knobs[0])
-            key_fn_to_use = key_fn if key_fn else SORT_KEY_MAP.get(knob_type)
+            key_fn_to_use = (
+                key_fn if key_fn else (sort_key_map or SORT_KEY_MAP).get(knob_type)
+            )
             if key_fn_to_use is None:
                 logging.warning(
                     f"No sort key defined for knob type {knob_type.__name__}."
@@ -96,15 +98,18 @@ def reorder_assignments(
             indexed_list = list(enumerate(knobs))
             # Good candidates are sorted to the front of the list.
             if not key_fn:
-                assert target_info, "Failed to query target info."
+                # If no custom sort key is specified, use the key selected from SORT_KEY_MAP.
+                assert (
+                    target_info
+                ), "The selected heuristic reordering function requires target information to be provided"
                 sorted_list = sorted(
-                    indexed_list, key=lambda pair: key_fn_to_use(target_info, pair[1])
+                    indexed_list, key=lambda pair: key_fn_to_use(pair[1], target_info)
                 )
             else:
                 sorted_list = sorted(
                     indexed_list, key=lambda pair: key_fn_to_use(pair[1])
                 )
-
+            logging.warning(f"Heuristic candidate reordering applied.")
             indices = [i for i, _ in sorted_list]
             return indices
         case _:

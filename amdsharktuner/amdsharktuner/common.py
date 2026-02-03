@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from types import TracebackType
-from typing import Optional, Any
+from typing import Optional, Any, Callable, Protocol
 from abc import ABC
 import os
 import time
@@ -44,6 +44,12 @@ class CommonTypes:
 
     def getI64ArrayAttr(self, values: list[int]) -> ir.ArrayAttr:
         return ir.ArrayAttr.get([self.getI64(x) for x in values])
+
+
+class BenchmarkToolConfig(Protocol):
+    """Marker base class for benchmark tool configuration objects."""
+
+    benchmark_fn: Callable
 
 
 class TunerContext:
