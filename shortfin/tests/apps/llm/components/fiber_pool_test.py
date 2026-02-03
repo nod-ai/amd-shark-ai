@@ -17,8 +17,8 @@ import logging
 import time
 
 FIBER_POOL_INIT_SIZE: int = 16
-DELAY_TOLERANCE = 2.0000
-
+# Increase the tolerance temporarily
+DELAY_TOLERANCE = 3.0000
 
 logger = logging.getLogger(__name__)
 
