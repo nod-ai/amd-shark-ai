@@ -9,7 +9,10 @@
 #
 # 1. proxy with untuned boo and native pytorch
 # 2. prod with untuned boo and native pytorch
-# 3. gemms with untuned boo and native pytorch
+# 3. gemms with untuned boo, native pytorch and hipblaslt
+# 4. batch norm with untuned boo and native pytorch
+# 5. prod(nchw) with untuned boo and native pytorch
+# 6. proxy(nchw) with untuned boo and native pytorch
 
 name: CI - Boo on Mi355
 
