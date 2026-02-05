@@ -11,8 +11,8 @@ from types import SimpleNamespace
 from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import func, iree_codegen, iree_gpu, linalg  # type: ignore
 
-from amdsharktuner import common, dispatch_parser
-from amdsharktuner.rocm import rocm_common
+from amdsharktuner import common
+from amdsharktuner.rocm import rocm_common, rocm_parsers
 from amdsharktuner.test_utils import tuner_ctx
 
 
@@ -114,11 +114,11 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     # Python bindings, so we mock it with SimpleNamespace for testing convenience.
 
     # Spatial dimension last (NCHW layout).
-    conv_to_igemm_info = common.ConvToIgemmInfo(
+    conv_to_igemm_info = rocm_common.ConvToIgemmInfo(
         is_batch_dim_last=False,
         is_spatial_dim_last=True,
         conv_dims=SimpleNamespace(batch=[0], input_channel=[1]),
-        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 2},
+        conv_to_igemm_dim={0: 0, 1: 1, 2: 2},
         input_channel_dim_to_size={1: 64},
     )
     result = rocm_common.get_padding_conv_sizes(
@@ -130,11 +130,11 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     assert result is None
 
     # Batch dimension last (CHWN layout).
-    conv_to_igemm_info = common.ConvToIgemmInfo(
+    conv_to_igemm_info = rocm_common.ConvToIgemmInfo(
         is_batch_dim_last=True,
         is_spatial_dim_last=False,
         conv_dims=SimpleNamespace(batch=[0, 3], input_channel=[1]),
-        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 2, 3: 3},
+        conv_to_igemm_dim={0: 0, 1: 1, 2: 2, 3: 3},
         input_channel_dim_to_size={1: 64},
     )
     result = rocm_common.get_padding_conv_sizes(
@@ -146,11 +146,11 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     assert result == [0, 0, 0, 64]
 
     # Batch dimension last with bounds divisible by padding.
-    conv_to_igemm_info = common.ConvToIgemmInfo(
+    conv_to_igemm_info = rocm_common.ConvToIgemmInfo(
         is_batch_dim_last=True,
         is_spatial_dim_last=False,
         conv_dims=SimpleNamespace(batch=[0, 3], input_channel=[1]),
-        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 2, 3: 3},
+        conv_to_igemm_dim={0: 0, 1: 1, 2: 2, 3: 3},
         input_channel_dim_to_size={1: 64},
     )
     result = rocm_common.get_padding_conv_sizes(
@@ -162,11 +162,11 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     assert result is None
 
     # Normal convolution with parallel and reduction dimensions.
-    conv_to_igemm_info = common.ConvToIgemmInfo(
+    conv_to_igemm_info = rocm_common.ConvToIgemmInfo(
         is_batch_dim_last=False,
         is_spatial_dim_last=False,
         conv_dims=SimpleNamespace(batch=[0], input_channel=[3]),
-        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 2, 3: 3},
+        conv_to_igemm_dim={0: 0, 1: 1, 2: 2, 3: 3},
         input_channel_dim_to_size={3: 64},
     )
     result = rocm_common.get_padding_conv_sizes(
@@ -178,11 +178,11 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     assert result == [256, 64, 64, 128]
 
     # Reduction dimension with bounds divisible by padding.
-    conv_to_igemm_info = common.ConvToIgemmInfo(
+    conv_to_igemm_info = rocm_common.ConvToIgemmInfo(
         is_batch_dim_last=False,
         is_spatial_dim_last=False,
         conv_dims=SimpleNamespace(batch=[0], input_channel=[3]),
-        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 2, 3: 3},
+        conv_to_igemm_dim={0: 0, 1: 1, 2: 2, 3: 3},
         input_channel_dim_to_size={3: 128},
     )
     result = rocm_common.get_padding_conv_sizes(
@@ -194,11 +194,11 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     assert result == [256, 64, 64, 0]
 
     # Input channel size is small compared to padding size.
-    conv_to_igemm_info = common.ConvToIgemmInfo(
+    conv_to_igemm_info = rocm_common.ConvToIgemmInfo(
         is_batch_dim_last=False,
         is_spatial_dim_last=False,
         conv_dims=SimpleNamespace(batch=[0], input_channel=[3]),
-        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 2, 3: 3},
+        conv_to_igemm_dim={0: 0, 1: 1, 2: 2, 3: 3},
         input_channel_dim_to_size={3: 32},
     )
     result = rocm_common.get_padding_conv_sizes(
@@ -210,11 +210,11 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     assert result == [256, 64, 64, 0]
 
     # Multiple padded parallel dims mapping to same IGEMM dim.
-    conv_to_igemm_info = common.ConvToIgemmInfo(
+    conv_to_igemm_info = rocm_common.ConvToIgemmInfo(
         is_batch_dim_last=False,
         is_spatial_dim_last=False,
         conv_dims=SimpleNamespace(batch=[0], input_channel=[3]),
-        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 1, 3: 3},
+        conv_to_igemm_dim={0: 0, 1: 1, 2: 1, 3: 3},
         input_channel_dim_to_size={3: 64},
     )
     result = rocm_common.get_padding_conv_sizes(
@@ -225,11 +225,11 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     )
     assert result is None
 
-    conv_to_igemm_info = common.ConvToIgemmInfo(
+    conv_to_igemm_info = rocm_common.ConvToIgemmInfo(
         is_batch_dim_last=False,
         is_spatial_dim_last=False,
         conv_dims=SimpleNamespace(batch=[0], input_channel=[2]),
-        conv_to_igemm_dim_map={0: 0, 1: 1, 2: 3},
+        conv_to_igemm_dim={0: 0, 1: 1, 2: 3},
         input_channel_dim_to_size={2: 64},
     )
     result = rocm_common.get_padding_conv_sizes(
@@ -267,7 +267,7 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     indexing_maps = [map_attr.value for map_attr in res_maps]
     input_map = indexing_maps[0]
 
-    conv_to_igemm_info = dispatch_parser.build_conv_to_igemm_info(
+    conv_to_igemm_info = rocm_parsers.build_conv_to_igemm_info(
         convolution_dims, input_type, input_map, igemm_details
     )
     assert conv_to_igemm_info is not None

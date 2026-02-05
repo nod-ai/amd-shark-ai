@@ -279,7 +279,7 @@ jobs:
 
             if [ "${{ inputs.run_prod_conv }}" = "true" ]; then
               echo "3"
-              python github-actions/new_boo_comp.py --current-file "../logs/prod_conv_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/prod_conv_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 476 || echo "failure in prod conv"
+              python github-actions/new_boo_comp.py --current-file "../logs/prod_conv_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/prod_conv_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 591 || echo "failure in prod conv"
             fi
 
             if [ "${{ inputs.run_batch_norm }}" = "true" ]; then
