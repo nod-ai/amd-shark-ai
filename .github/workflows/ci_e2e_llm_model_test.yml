@@ -53,6 +53,8 @@ jobs:
       - name: Install pip deps
         run: |
           bash scripts/setenv.sh --nightly
+          pip uninstall amdsharktank -y
+          pip install -e amdsharktank/
           mkdir -p output_artifacts
           pip freeze | grep -E 'iree|amdshark' > $(pwd)/output_artifacts/version.txt
 
