@@ -9,7 +9,7 @@ from typing import Iterator
 from iree.compiler.dialects import iree_codegen, iree_gpu  # type: ignore
 
 from .. import common, constraint_generator, dispatch_parser
-from . import rocm_solutions
+from . import rocm_parsers, rocm_solutions
 
 
 class ROCmContractionVectorDistributeConstraintGenerator(
@@ -59,10 +59,10 @@ class ROCmConvolutionVectorDistributeConstraintGenerator(
     LLVMGPUVectorDistribute lowering pipeline. Supports IGEMM-based convolutions.
 
     Attributes:
-        op_info: ConvolutionOpInfo containing all convolution operation metadata.
+        op_info: ROCmConvolutionOpInfo containing all convolution operation metadata.
     """
 
-    def __init__(self, op_info: dispatch_parser.ConvolutionOpInfo):
+    def __init__(self, op_info: rocm_parsers.ROCmConvolutionOpInfo):
         self.op_info = op_info
 
     def generate_solutions(
@@ -137,10 +137,10 @@ class ROCmConvolutionTileAndFuseConstraintGenerator(
     LLVMGPUTileAndFuse lowering pipeline. Supports IGEMM-based convolutions.
 
     Attributes:
-        op_info: ConvolutionOpInfo containing all convolution operation metadata.
+        op_info: ROCmConvolutionOpInfo containing all convolution operation metadata.
     """
 
-    def __init__(self, op_info: dispatch_parser.ConvolutionOpInfo):
+    def __init__(self, op_info: rocm_parsers.ROCmConvolutionOpInfo):
         self.op_info = op_info
 
     def generate_solutions(
