@@ -62,8 +62,50 @@ def run_cmd(cmd, OUTPUT_DIR, append=True):
     return LOG_FILE
 
 
+def determine_stages_to_run(requested_stages):
+    """
+    Determine which stages should be run based on requested stages.
+    Ensures dependencies are met (export and compile always run before other stages).
+
+    Args:
+        requested_stages: List of stage names requested by the user
+
+    Returns:
+        List of stages to run in order, including dependencies
+
+    Examples:
+        ["validate_vmfb", "online_serving"] -> ["export", "compile", "validate_vmfb", "online_serving"]
+        ["benchmark"] -> ["export", "compile", "benchmark"]
+        ["export"] -> ["export"]
+    """
+    stage_order = ["export", "compile", "validate_vmfb", "benchmark", "online_serving"]
+
+    if "all" in requested_stages:
+        return stage_order
+
+    stages_to_run = set()
+
+    # Add all requested stages
+    for stage in requested_stages:
+        if stage in stage_order:
+            stages_to_run.add(stage)
+
+    # Add dependencies: export and compile are needed for any later stage
+    if any(
+        s in stages_to_run for s in ["validate_vmfb", "benchmark", "online_serving"]
+    ):
+        stages_to_run.add("export")
+        stages_to_run.add("compile")
+    elif "compile" in stages_to_run:
+        # If only compile is requested, we need export
+        stages_to_run.add("export")
+
+    # Return stages in order
+    return [s for s in stage_order if s in stages_to_run]
+
+
 def run_stage(
-    stage,
+    stages,
     model_name,
     irpa,
     tokenizer,
@@ -72,7 +114,11 @@ def run_stage(
     gpu_model,
     OUTPUT_DIR,
 ):
-    print(f"\n Running stage: {stage} for model: {model_name}")
+    stages_to_run = determine_stages_to_run(stages)
+
+    print(f"\n Requested stages: {stages}")
+    print(f" Stages to run (including dependencies): {stages_to_run}")
+    print(f" Model: {model_name}")
     print(f"    IRPA: {irpa}")
     print(f"    Tokenizer: {tokenizer}")
     print(f"    Tokenizer Config: {tokenizer_config}")
@@ -106,14 +152,7 @@ def run_stage(
         logging.info(str(device_ids))
 
     # === Export Stage ===
-    if stage in [
-        "export",
-        "compile",
-        "validate_vmfb",
-        "benchmark",
-        "online_serving",
-        "all",
-    ]:
+    if "export" in stages_to_run:
         if os.path.exists(gen_mlir_path) and os.path.exists(gen_config_path):
             logging.info("File exists. Skipping Export..")
         else:
@@ -162,7 +201,7 @@ def run_stage(
             logging.info(f"Time taken by Export: {int(time.time()-start)} seconds")
 
     # === Compile Stage ===
-    if stage in ["compile", "validate_vmfb", "benchmark", "online_serving", "all"]:
+    if "compile" in stages_to_run:
         if os.path.exists(gen_vmfb_path):
             logging.info("File exists. Skipping Compile...")
         else:
@@ -216,7 +255,7 @@ def run_stage(
             )
 
     # === Validate Stage ===
-    if stage in ["validate_vmfb", "all"]:
+    if "validate_vmfb" in stages_to_run:
         PROMPT_RESPONSES = {
             "<|begin_of_text|>Name the capital of the United States.<|eot_id|>": "The capital of the United States is Washington, D.C.",
             "Fire is hot. Yes or No ?": "Yes",
@@ -278,7 +317,7 @@ def run_stage(
         )
 
     # === IREE Benchmark ===
-    if stage in ["benchmark", "all"]:
+    if "benchmark" in stages_to_run:
         try:
             extra_flags = cfg.get("extra_benchmark_flags_list", [])
             if not isinstance(extra_flags, list):
@@ -451,7 +490,7 @@ def run_stage(
         )
 
     # === Online Serving ===
-    if stage in ["online_serving", "all"]:
+    if "online_serving" in stages_to_run:
         logging.info("Running server ...")
 
         original_dir = os.getcwd()
@@ -553,10 +592,10 @@ def main():
     )
     parser.add_argument(
         "--stage",
-        default="all",
-        required=False,
+        nargs="+",
         choices=STAGES,
-        help="Stage to run. Default all",
+        default=["all"],
+        help="One or more stages to run",
     )
     parser.add_argument("--irpa", help="Path to IRPA file")
     parser.add_argument("--tokenizer", help="Path to tokenizer.json")
