@@ -9,8 +9,8 @@
 #ifndef SHORTFIN_SUPPORT_IREE_THREADING_H
 #define SHORTFIN_SUPPORT_IREE_THREADING_H
 
-#include "iree/base/internal/synchronization.h"
-#include "iree/base/internal/threading.h"
+#include "iree/base/threading/mutex.h"
+#include "iree/base/threading/thread.h"
 #include "iree/base/internal/wait_handle.h"
 #include "shortfin/support/iree_helpers.h"
 
