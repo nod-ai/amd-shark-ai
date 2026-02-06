@@ -543,7 +543,7 @@ def flatten_nested_td_spec(td_spec_str: str, output_path: Path) -> None:
             "--iree-codegen-link-tuning-specs",
             input_path,
             "-o",
-            output_path,
+            str(output_path),
         ]
 
         process_utils.run_command(process_utils.RunPack(command=link_command))
