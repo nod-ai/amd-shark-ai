@@ -28,7 +28,8 @@ shortfin_cc_component(
     iree_base_base
     # TODO: Maybe reclassify some of these low level, shared support entities
     # as externally usable.
-    iree_base_internal_threading
+    iree_base_threading_threading
+    iree_base_threading_thread
     iree_io_file_handle
     iree_hal_hal
     iree_io_parameter_index
