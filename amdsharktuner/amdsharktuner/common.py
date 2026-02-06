@@ -343,8 +343,7 @@ def link_tuning_specs(tuner_ctx: TunerContext, td_specs: list[ir.Module]) -> ir.
     into one tuning spec.
     """
     module = combine_tuning_specs(tuner_ctx, td_specs)
-    iree_opt = ireec.binaries.find_tool("iree-opt")  # type: ignore
-    assert iree_opt, "iree-opt tool not found"
+    iree_opt: str = ireec.binaries.find_tool("iree-opt")  # type: ignore[attr-defined]
 
     if len(td_specs) == 1:
         # avoid unnecessary link overhead.
