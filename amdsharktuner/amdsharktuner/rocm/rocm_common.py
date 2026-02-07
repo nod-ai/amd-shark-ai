@@ -200,7 +200,7 @@ def get_padding_conv_sizes(
     # For batch-last layout (e.g., CHWN), only pad the batch dimension to avoid
     # introducing pad op as the producer of collapse_shape op which may cause fusion problem.
     if conv_to_igemm_info.is_batch_dim_last:
-        last_batch_dim = conv_dims.batch[-1]
+        last_batch_dim = list(conv_dims.batch)[-1]
         igemm_batch_pos = conv_to_igemm[last_batch_dim]
 
         if (
