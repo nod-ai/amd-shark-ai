@@ -181,6 +181,6 @@ if __name__ == "__main__":
         min_context=args.min_context,
         expected_err=args.expected_err,
         iree_hal_target_devices=args.iree_hal_target_device,
-        iree_hip_target=args.iree_hip_target,
+        iree_hip_target=args.iree_rocm_target,
         pipeline_parallelism_size=args.pipeline_parallelism_size,
     )
