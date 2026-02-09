@@ -53,6 +53,7 @@ fi
 
 if (($IREE_UNPINNED)); then
     pip install --no-compile --upgrade -r "$SRC_DIR/requirements-iree-unpinned.txt"
+    pip uninstall -y wave-lang
     git clone https://github.com/iree-org/wave.git
     cd wave
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
