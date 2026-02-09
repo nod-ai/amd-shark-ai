@@ -47,7 +47,7 @@ def test_pruned_llama3_405b_f4_pipeline_parallel_eager_vs_eager_perplexity(
 
     parameters_path = (
         test_data_dir
-        / "ossci-models/llama_3_1/405b/fp4/fp4_preshuffled_2025_09_12.irpa"
+        / "ossci-models/llama_3_1/405b/fp4/instruct_405b_fp4_preshuffled.irpa"
     )
     dataset = Dataset.load(parameters_path)
 
