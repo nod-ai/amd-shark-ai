@@ -531,8 +531,7 @@ def handle_error(
 
 
 def flatten_nested_td_spec(td_spec_str: str, output_path: Path) -> None:
-    iree_opt = ireec.binaries.find_tool("iree-opt")  # type: ignore
-    assert iree_opt, "iree-opt tool not found"
+    iree_opt: str = ireec.binaries.find_tool("iree-opt")  # type: ignore[attr-defined]
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = os.path.join(tmpdir, "tmp_input.mlir")
         with open(input_path, "w") as f:
@@ -543,7 +542,7 @@ def flatten_nested_td_spec(td_spec_str: str, output_path: Path) -> None:
             "--iree-codegen-link-tuning-specs",
             input_path,
             "-o",
-            output_path,
+            str(output_path),
         ]
 
         process_utils.run_command(process_utils.RunPack(command=link_command))
@@ -569,8 +568,7 @@ def run_iree_compile_command(compile_pack: CompilePack) -> Optional[int]:
     crash_dump_path = f"{output_path}.crash_report.mlir"
     assert candidate_tracker.mlir_path, "expected input mlir file path"
     input_file = candidate_tracker.mlir_path.as_posix()
-    iree_compile = ireec.binaries.find_tool("iree-compile")  # type: ignore
-    assert iree_compile, "iree-compile tool not found"
+    iree_compile: str = ireec.binaries.find_tool("iree-compile")  # type: ignore[attr-defined]
     compile_command = [
         iree_compile,
         input_file,
