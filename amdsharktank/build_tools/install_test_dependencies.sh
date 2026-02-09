@@ -53,6 +53,17 @@ fi
 
 if (($IREE_UNPINNED)); then
     pip install --no-compile --upgrade -r "$SRC_DIR/requirements-iree-unpinned.txt"
+    git clone https://github.com/iree-org/wave.git
+    cd wave
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    export PATH="$HOME/.cargo/bin:$PATH"
+
+    rustc --version
+    cargo --version
+    pip install -r requirements-iree-pinned.txt
+    pip install -r pytorch-rocm-requirements.txt
+    pip install -e ".[dev]"
+    cd ..
 else
     pip install --no-compile -r "$SRC_DIR/requirements-iree-pinned.txt"
     pip uninstall -y wave-lang
