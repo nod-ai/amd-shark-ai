@@ -116,7 +116,7 @@
 | amdsharktank/amdsharktank/pipelines/flux/\_\_init\_\_.py                            |        2 |        0 |    100% |           |
 | amdsharktank/amdsharktank/pipelines/flux/flux\_pipeline.py                          |      138 |      109 |     21% |40-93, 121-133, 155-188, 210-228, 238, 244-246, 269-277, 295-317, 320, 339-368, 373-474, 478 |
 | amdsharktank/amdsharktank/tools/convert\_dataset.py                                 |       27 |        1 |     96% |        51 |
-| amdsharktank/amdsharktank/tools/e2e\_model\_test.py                                 |      273 |      253 |      7% |46-62, 75-541, 547-623, 636 |
+| amdsharktank/amdsharktank/tools/e2e\_model\_test.py                                 |      290 |      269 |      7% |46-62, 81-104, 117-580, 586-662, 675 |
 | amdsharktank/amdsharktank/tools/import\_hf\_dataset.py                              |       16 |       10 |     38% | 33-54, 60 |
 | amdsharktank/amdsharktank/transforms/dataset/\_\_init\_\_.py                        |        2 |        0 |    100% |           |
 | amdsharktank/amdsharktank/transforms/dataset/dataset.py                             |       21 |        6 |     71% | 25, 43-47 |
@@ -256,7 +256,7 @@
 | amdsharktank/tests/utils/random\_test.py                                            |       23 |        0 |    100% |           |
 | amdsharktank/tests/utils/testing\_test.py                                           |      132 |        0 |    100% |           |
 | amdsharktank/tests/utils/tree\_test.py                                              |       20 |        0 |    100% |           |
-| **TOTAL**                                                                           | **24818** | **5579** | **78%** |           |
+| **TOTAL**                                                                           | **24835** | **5595** | **77%** |           |
 
 
 ## Setup coverage badge
