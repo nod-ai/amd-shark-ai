@@ -38,7 +38,7 @@ def get_iree_compile_flags(self):
         flags.append("--iree-hal-local-target-device-backends=llvm-cpu")
 
     if self.iree_hip_target is not None:
-        flags.append(f"--iree-hip-target={self.iree_hip_target}")
+        flags.append(f"--iree-rocm-target={self.iree_hip_target}")
 
     return flags
 

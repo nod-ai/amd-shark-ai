@@ -125,7 +125,7 @@ jobs:
             --expected-err=1e-2 \
             --min-context=10 \
             --iree-hal-target-device=hip \
-            --iree-hip-target=gfx950 \
+            --iree-rocm-target=gfx950 \
             --vmfb output_artifacts/output_llama-405b-fp4-without-topk/output.vmfb \
             --config output_artifacts/output_llama-405b-fp4-without-topk/config_attn.json 2>&1 | tee output_artifacts/output_llama-405b-fp4-without-topk/eval_llm_vmfb_perplexity.log
 

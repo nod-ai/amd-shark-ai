@@ -775,7 +775,7 @@ def generate_candidate_specs(
         if args.candidate_order == candidate_ordering.CandidateOrderKind.heuristic:
             assert tuning_client.target_info.workgroup_count != 0, (
                 "Failed to retrieve the number of CUs required for the candidate reordering heuristic. "
-                "Try compiling with the GPU SKU specified in the flags (e.g., --iree-hip-target=mi300x)."
+                "Try compiling with the GPU SKU specified in the flags (e.g., --iree-rocm-target=mi300x)."
             )
 
         dispatch_tuners = candidate_gen.get_supported_dispatch_tuners(

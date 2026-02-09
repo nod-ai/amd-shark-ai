@@ -44,7 +44,7 @@ class PerplexityTest(unittest.TestCase):
             f"--irpa-file={self.irpa_file}",
             f"--tokenizer-config-json={self.tokenizer}",
             f"--iree-hal-target-device={self.iree_hal_target_device}",
-            f"--iree-hip-target={self.iree_hip_target}",
+            f"--iree-rocm-target={self.iree_hip_target}",
             f"--tensor-parallelism-size={self.tensor_parallelism_size}",
             f"--pipeline-parallelism-size={self.pipeline_parallelism_size}",
             f"--num-prompts={self.batch_size}",

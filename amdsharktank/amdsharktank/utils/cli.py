@@ -221,10 +221,10 @@ def add_iree_flags(parser: argparse.ArgumentParser):
         help="List an IREE device from 'iree-run-module --list_devices'",
     )
     parser.add_argument(
-        "--iree-hip-target",
+        "--iree-rocm-target",
         action="store",
         default="gfx942",
-        help="Specify the iree-hip target version (e.g., gfx942)",
+        help="Specify the iree-rocm target version (e.g., gfx942)",
     )
     parser.add_argument(
         "--iree-hal-target-device",

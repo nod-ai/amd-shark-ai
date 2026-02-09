@@ -37,7 +37,7 @@ class TestAsmFp4Gemm:
             "--iree-hip-enable-tensor-ukernels",
             "--iree-hip-encoding-layout-resolver=data-tiling",
             "--iree-hip-specialize-dispatches",
-            "--iree-hip-target=gfx950",
+            "--iree-rocm-target=gfx950",
             "--iree-opt-data-tiling=false",
             "--iree-opt-level=O3",
             "--iree-stream-affinity-solver-max-iterations=1024",
