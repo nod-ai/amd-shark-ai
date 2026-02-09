@@ -505,7 +505,7 @@ def run_perplexity_iree(
     perplexity = PerplexityIree(
         torch_device=torch_device,
         iree_devices=args.iree_device,
-        iree_hip_target=args.iree_hip_target,
+        iree_hip_target=args.iree_rocm_target,
         iree_hal_target_device=args.iree_hal_target_device,
         tensor_parallelism_size=tensor_parallelism_size,
         pipeline_parallelims_size=pipeline_parallelism_size,

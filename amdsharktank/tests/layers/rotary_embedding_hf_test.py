@@ -396,10 +396,10 @@ def _resolve_iree_compile(driver_env: str | None):
 
     # GPU/backends
     driver = requested
-    hip_target = os.getenv("IREE_HIP_TARGET", "gfx942")
+    hip_target = os.getenv("IREE_ROCM_TARGET", "gfx942")
     compile_args: list[str] = [f"--iree-hal-target-device={driver}"]
     if driver == "hip":
-        compile_args.append(f"--iree-hip-target={hip_target}")
+        compile_args.append(f"--iree-rocm-target={hip_target}")
     runtime_driver = driver
     cpu_like = False
     return runtime_driver, compile_args, cpu_like

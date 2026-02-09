@@ -54,8 +54,8 @@ is_llama_8b = pytest.mark.skipif(
     'config.getoption("llama3_8b_f16_model_path") is None',
     reason="Run llama tests if --llama3-8b-f16-model-path is passed",
 )
-is_mi300x = pytest.mark.skipif("config.getoption('iree_hip_target') != 'gfx942'")
-is_mi350x = pytest.mark.skipif("config.getoption('iree_hip_target') != 'gfx950'")
+is_mi300x = pytest.mark.skipif("config.getoption('iree_rocm_target') != 'gfx942'")
+is_mi350x = pytest.mark.skipif("config.getoption('iree_rocm_target') != 'gfx950'")
 is_cpu_condition = (
     "exec('from amdsharktank.utils.testing import is_iree_hal_target_device_cpu') or "
     "is_iree_hal_target_device_cpu(config.getoption('iree_hal_target_device'))"

@@ -155,7 +155,7 @@ jobs:
       matrix:
         python-version: ["3.12"]
         torch-version: ["2.6.0"]
-        iree-target-args: ["--iree-hip-target=gfx942 --iree-hal-target-device=hip"]
+        iree-target-args: ["--iree-rocm-target=gfx942 --iree-hal-target-device=hip"]
         runs-on: [linux-mi325-8gpu-ossci-nod-ai]
       fail-fast: false
     runs-on: ${{matrix.runs-on}}
@@ -196,7 +196,7 @@ jobs:
             --log-cli-level=info \
             -v \
             --iree-hal-target-device=hip \
-            --iree-hip-target=gfx942 \
+            --iree-rocm-target=gfx942 \
             --iree-device=hip://0
 
   test_with_data:
@@ -247,7 +247,7 @@ jobs:
             --log-cli-level=info \
             --with-quark-data \
             --iree-hal-target-device=hip \
-            --iree-hip-target=gfx942 \
+            --iree-rocm-target=gfx942 \
             --iree-device=hip://0 \
             amdsharktank/tests/models/llama/quark_parity_test.py \
             --durations=0 \

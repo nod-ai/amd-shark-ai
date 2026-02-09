@@ -178,7 +178,7 @@ tool for compiling our model.
 ```bash
 iree-compile $MLIR_PATH \
   --iree-hal-target-device=hip \
-  --iree-hip-target=gfx942 \
+  --iree-rocm-target=gfx942 \
   --iree-hal-indirect-command-buffers=true \
   --iree-stream-resource-memory-model=discrete \
   --iree-hal-memoization=true \
@@ -187,7 +187,7 @@ iree-compile $MLIR_PATH \
 ```
 
 > [!NOTE]
-> The `--iree-hip-target=gfx942` option will generate code for MI300 series
+> The `--iree-rocm-target=gfx942` option will generate code for MI300 series
 > GPUs. To compile for other targets, see
 > [the options here](https://iree.dev/guides/deployment-configurations/gpu-rocm/#compile-a-program).
 
@@ -342,7 +342,7 @@ python -m amdsharktank.examples.export_paged_llm_v1 \
 ```bash
 iree-compile $MLIR_PATH \
   --iree-hal-target-device=hip \
-  --iree-hip-target=gfx942 \
+  --iree-rocm-target=gfx942 \
   --iree-hal-indirect-command-buffers=true \
   --iree-stream-resource-memory-model=discrete \
   --iree-hal-memoization=true \
@@ -452,7 +452,7 @@ python -m amdsharktank.examples.export_paged_llm_v1 \
 iree-compile \
     model.mlir \
     -o=model.vmfb \
-    --iree-hip-target=gfx950 \
+    --iree-rocm-target=gfx950 \
     --iree-hal-target-device=hip \
     --iree-opt-level=O3 \
     --iree-dispatch-creation-propagate-collapse-across-expands=true \

@@ -38,7 +38,7 @@ pytest -n 8 -v -s amdsharktank/tests/evaluate/perplexity_iree_test.py -k test_ll
   --llama3-8b-tokenizer-path=tokenizer_config.json \
   --bs=4 \
   --iree-device=hip://0 \
-  --iree-hip-target=gfx942 \
+  --iree-rocm-target=gfx942 \
   --iree-hal-target-device=hip \
   --run-nightly-test
 ```
@@ -66,7 +66,7 @@ python -m amdsharktank.evaluate.perplexity_iree \
   --num-prompts=4 \
   --iree-device='hip://0' \
   --iree-hal-target-device=hip \
-  --iree-hip-target=gfx942
+  --iree-rocm-target=gfx942
 ```
 
 To run on CPU, replace the above --iree-* flags with:

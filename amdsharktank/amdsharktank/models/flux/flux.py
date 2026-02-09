@@ -480,7 +480,7 @@ def _register_flux_transformer_config_presets():
     iree_hip_target = "gfx942"
     iree_compile_flags = compile.iree_compile_flags + [
         f"--iree-hal-target-device={iree_hal_target_device}",
-        f"--iree-hip-target={iree_hip_target}",
+        f"--iree-rocm-target={iree_hip_target}",
     ]
     build_type_compile_flags: dict[str, list[str]] = {
         "debug": ["--iree-hal-executable-debug-level=3"],

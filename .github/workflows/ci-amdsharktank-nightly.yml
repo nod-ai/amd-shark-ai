@@ -74,7 +74,7 @@ jobs:
             --with-t5-data \
             --with-vae-data \
             --iree-hal-target-device=hip \
-            --iree-hip-target=gfx942 \
+            --iree-rocm-target=gfx942 \
             --iree-device=hip://0 \
             amdsharktank/tests \
             --durations=0 \
@@ -87,7 +87,7 @@ jobs:
           pytest \
             --test-data-dir=/amdshark-dev \
             --iree-hal-target-device=hip \
-            --iree-hip-target=gfx942 \
+            --iree-rocm-target=gfx942 \
             --iree-device=hip://0 \
             --device='cuda:0' \
             -v \
@@ -146,7 +146,7 @@ jobs:
             --bs=32 \
             --device='cuda:0' \
             --iree-device=hip://0 \
-            --iree-hip-target=gfx942 \
+            --iree-rocm-target=gfx942 \
             --iree-hal-target-device=hip \
             --llama3-8b-f16-model-path=/amdshark-dev/ossci-models/llama_3_1/8b/fp16/llama_3_1_instruct_8b_fp16.irpa \
             --llama3-8b-f8-model-path=/amdshark-dev/ossci-models/llama_3_1/instruct_8b_fp8_e4m3fnuz.irpa \

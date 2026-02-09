@@ -61,7 +61,7 @@ def compile_ir(ir, iree_hal_target_devices: list[str], iree_hip_target: str):
     extra_args = [
         f"--iree-hal-target-device={device}" for device in iree_hal_target_devices
     ]
-    extra_args += [f"--iree-hip-target={iree_hip_target}"]
+    extra_args += [f"--iree-rocm-target={iree_hip_target}"]
     vmfb = iree.compiler.compile_str(ir, extra_args=extra_args)
     return vmfb
 
@@ -79,7 +79,7 @@ def get_instance(
             raise ValueError("--iree-hal-target-device is required")
 
         if iree_hip_target is None:
-            raise ValueError("--iree-hip-target is required")
+            raise ValueError("--iree-rocm-target is required")
 
         if config is not None:
             raise ValueError("Config found without corresponding vmfb")
@@ -156,7 +156,7 @@ if __name__ == "__main__":
         help="Target device(s) if compiling",
         action="append",
     )
-    parser.add_argument("--iree-hip-target", help="Iree hip target")
+    parser.add_argument("--iree-rocm-target", help="Iree rocm target")
     parser.add_argument(
         "--pipeline-parallelism-size",
         help="Pipeline parallelism size",
@@ -181,6 +181,6 @@ if __name__ == "__main__":
         min_context=args.min_context,
         expected_err=args.expected_err,
         iree_hal_target_devices=args.iree_hal_target_device,
-        iree_hip_target=args.iree_hip_target,
+        iree_hip_target=args.iree_rocm_target,
         pipeline_parallelism_size=args.pipeline_parallelism_size,
     )
