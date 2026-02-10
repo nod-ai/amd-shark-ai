@@ -82,7 +82,7 @@ jobs:
             --kv-cache-dtype "float16" \
             --tokenizer-path "/amdshark-dev/ossci-models/llama_3_1/8b/tokenizer/tokenizer.json" \
             --tokenizer-config-path "/amdshark-dev/ossci-models/llama_3_1/8b/tokenizer/tokenizer_config.json" \
-            --azure-blob-path "ossci-models/llama_3_1/8b/fp16/" \
+            --azure-blob-path "ossci-models/llama_3_1/8b/fp16" \
             --azure-sas-token "$AZURE_WRITE_ACCESS_OSSCI" \
             --date-suffix "$DATE" \
             --bs-prefill 4 \
