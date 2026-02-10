@@ -176,7 +176,7 @@ echo "Validation completed successfully"
 # Check for IRPA changes
 echo "=== Checking for IRPA changes ==="
 echo "Downloading latest IRPA file from Azure"
-PREVIOUS_IRPA="${IRPA_FILENAME%.irpa}_previous.irpa"
+PREVIOUS_IRPA="${IRPA_FILENAME%.irpa}.irpa"
 az storage blob download \
   --account-name sharkpublic \
   --sas-token "$AZURE_SAS_TOKEN" \
@@ -203,22 +203,13 @@ fi
 if [ "$UPLOAD_REQUIRED" = true ]; then
   echo "=== Uploading new IRPA for $MODEL_TAG ==="
   # Upload with date suffix
+  date=$(date -u +'%Y-%m-%d')
   az storage blob upload \
     --account-name amdsharkpublic \
     --sas-token "$AZURE_SAS_TOKEN" \
     --container-name ossci \
-    --name "ossci-models/llama_3_1/70b/fp8/instruct_70b_fp8_e4m3fnuz.irpa" \
+    --name "$AZURE_BLOB_PATH/"${IRPA_FILENAME%.irpa}_${date}.irpa"" \
     --file "$IRPA_PATH"
-
-  # Upload current version (overwrite)
-  DATE=$(date -u +'%Y-%m-%d')
-  az storage blob upload \
-    --account-name amdsharkpublic \
-    --sas-token "$AZURE_SAS_TOKEN" \
-    --container-name ossci \
-    --name "ossci-models/llama_3_1/70b/fp8/instruct_70b_fp8_e4m3fnuz.irpa" \
-    --file "$IRPA_PATH" \
-    --overwrite
 fi
 
 echo "=== Completed $MODEL_TAG workflow ==="
