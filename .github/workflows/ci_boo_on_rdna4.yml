@@ -11,7 +11,7 @@
 # 2. prod with untuned boo and native pytorch
 # 3. gemms with untuned boo and native pytorch
 
-name: CI - Boo on Mi355
+name: CI - Boo on Mi355 - RDNA4
 
 on:
   workflow_dispatch:
@@ -31,15 +31,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test_boo:
+  test_boo_rdna4:
     if: ${{ github.repository_owner == 'nod-ai' || github.event_name != 'schedule' }}
     timeout-minutes: 240
     name: "Boo on RDNA 4"
     strategy:
       matrix:
-        version: [3.12.3]
+        version: [3.12]
       fail-fast: false
-    runs-on: "shark-mkm-1-for-boo"
+    runs-on: "shark41-rdna4"
     defaults:
       run:
         shell: bash
@@ -64,28 +64,11 @@ jobs:
       run: |
         mkdir -p output_artifacts
         source ${VENV_DIR}/bin/activate
-        python -m pip install --force-reinstall \
-          --index-url https://rocm.nightlies.amd.com/v2/gfx120X-all/ \
-          --pre torch
-
+        pip install --index-url https://rocm.nightlies.amd.com/v2/gfx120X-all/ torch torchaudio torchvision
         pip install "git+https://github.com/iree-org/iree-turbine.git"
         pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
         pip freeze  > $(pwd)/output_artifacts/version.txt
-        echo "===================================="
-        which pip
-        python --version
-        pip freeze
-        echo "===================================="
-        rocm-smi
-        rocminfo
-        export ROCR_VISIBLE_DEVICES="0,1"
-        whoami
-        id
-        ls -l /dev/kfd /dev/dri
-        python scripts/test_gpu
-        export AMD_LOG_LEVEL=3
         iree-boo-driver conv --verbose --gpu-id=-1
-        exit 1
 
     - name: Run all proxy config
       run: |
@@ -150,7 +133,7 @@ jobs:
   # New job to push logs to amd-shark-ai-reports repository
   push_logs:
     name: "Push log for conv run"
-    needs: [ test_boo ]
+    needs: [ test_boo_rdna4 ]
     if: always()
     runs-on: ubuntu-24.04
     steps:
