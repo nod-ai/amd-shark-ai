@@ -8,6 +8,7 @@ name: Release Generate IRPA for models
 
 on:
   workflow_dispatch:
+  pull_request:
   schedule:
     # Runs on Saturday only
     - cron: "0 9 * * 5"
