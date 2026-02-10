@@ -141,11 +141,11 @@ jobs:
             --hf-token "${HF_TOKEN}" \
             --irpa-path "instruct_70b_fp8_e4m3fnuz.irpa" \
             --irpa-filename "instruct_70b_fp8_e4m3fnuz.irpa" \
-            --dtype "fp8" \
+            --dtype "llama-70B-FP8" \
             --kv-cache-dtype "float8_e4m3fnuz" \
-            --tokenizer-path "/amdshark-dev/70b/FP8-QKV-Prob/tokenizer.json" \
-            --tokenizer-config-path "/amdshark-dev/70b/FP8-QKV-Prob/tokenizer_config.json" \
-            --azure-blob-path "ossci-models/llama_3_1/70b" \
+            --tokenizer-path "/amdshark-dev/ossci-models/llama_3_1/70b/tokenizer/tokenizer.json" \
+            --tokenizer-config-path "/amdshark-dev/ossci-models/llama_3_1/70b/tokenizer/tokenizer_config.json" \
+            --azure-blob-path "ossci-models/llama_3_1/70b/fp8/" \
             --azure-sas-token "$AZURE_WRITE_ACCESS_OSSCI" \
             --date-suffix "$DATE" \
             --bs-prefill 4 \
@@ -261,8 +261,8 @@ jobs:
             --irpa-filename "instruct_405b_fp4_preshuffled.irpa" \
             --dtype "llama-405B-FP4" \
             --kv-cache-dtype "float8_e4m3fn" \
-            --tokenizer-path "/shark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer.json" \
-            --tokenizer-config-path "/shark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer_config.json" \
+            --tokenizer-path "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer.json" \
+            --tokenizer-config-path "/amdshark-dev/ossci-models/llama_3_1/405b/fp4/tokenizer_config.json" \
             --azure-blob-path "ossci-models/llama_3_1/405b/fp4" \
             --azure-sas-token "$AZURE_WRITE_ACCESS_OSSCI" \
             --date-suffix "$DATE" \
