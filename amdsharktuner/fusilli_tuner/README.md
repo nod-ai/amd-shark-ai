@@ -23,7 +23,7 @@ Follow instructions in [`/amdsharktuner/README.md`](../README.md) for IREE insta
 
 ### Tuner Setup
 
-Set up PYTHONPATH:
+Set up `PYTHONPATH`:
 
 ```shell
 cd amdsharktuner
@@ -59,15 +59,24 @@ python -m fusilli_tuner \
   --devices hip://0
 ```
 
-Alternatively, you can pass the Fusilli command directly:
+Alternatively, you can pass a single Fusilli command using `--fusilli-args`:
 
 ```shell
+# With space (requires quotes)
 python -m fusilli_tuner \
   --fusilli-driver ~/fusilli/build/bin/benchmarks/fusilli_benchmark_driver \
   --output-td-spec tuning_spec.mlir \
   --num-candidates 30 \
   --devices hip://0 \
-  conv -F 1 --bf16 -n 1 -c 64 -H 28 -W 28 -k 128 -y 3 -x 3 -p 1 -q 1 -u 1 -v 1 -l 1 -j 1 --in_layout NHWC --out_layout NHWC --fil_layout NHWC --spatial_dim 2
+  --fusilli-args "conv -F 1 --bf16 -n 1 -c 64 -H 28 -W 28 -k 128 -y 3 -x 3 -p 1 -q 1 -u 1 -v 1 -l 1 -j 1 --in_layout NHWC --out_layout NHWC --fil_layout NHWC --spatial_dim 2"
+
+# Or with equals sign
+python -m fusilli_tuner \
+  --fusilli-driver ~/fusilli/build/bin/benchmarks/fusilli_benchmark_driver \
+  --output-td-spec tuning_spec.mlir \
+  --num-candidates 30 \
+  --devices hip://0 \
+  --fusilli-args="conv -F 1 --bf16 -n 1 -c 64 -H 28 -W 28 -k 128 -y 3 -x 3 -p 1 -q 1 -u 1 -v 1 -l 1 -j 1 --in_layout NHWC --out_layout NHWC --fil_layout NHWC --spatial_dim 2"
 ```
 
 > Example input format for multiple devices: use a comma-separated list, such

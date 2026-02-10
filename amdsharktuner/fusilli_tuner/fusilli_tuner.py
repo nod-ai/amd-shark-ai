@@ -78,14 +78,8 @@ class FusilliTuner(libtuner.TuningClient):
 
 
 def insert_placeholder_input_file(argv: list[str]) -> list[str]:
-    """Insert a placeholder input file for libtuner compatibility.
-
-    Args:
-        argv: Original command line arguments.
-
-    Returns:
-        Modified argv with placeholder input file inserted.
-    """
+    """Inserts 'fusilli.mlir' placeholder into argv to satisfy libtuner's required
+    input_file argument (Fusilli generates files internally, not from command line)."""
     return [argv[0], "fusilli.mlir"] + argv[1:]
 
 
@@ -100,6 +94,11 @@ def parse_args() -> tuple[argparse.Namespace, list[str]]:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     fusilli_args = parser.add_argument_group("Fusilli Tuner Options")
+    fusilli_args.add_argument(
+        "--fusilli-args",
+        type=str,
+        help='Fusilli operation command. Examples: --fusilli-args="conv -F 1 ..." or --fusilli-args "conv -F 1 ..."',
+    )
     fusilli_args.add_argument(
         "--commands-file",
         type=str,
@@ -127,26 +126,27 @@ def parse_args() -> tuple[argparse.Namespace, list[str]]:
         "--fusilli-num-dispatch-candidates",
         type=int,
         default=None,
-        help="Number of dispatch candidates to keep for benchmarking.",
+        help="Number of top dispatch candidates to return (default: return all benchmarked candidates).",
     )
     fusilli_args.add_argument(
         "--fusilli-dispatch-benchmark-timeout-mins",
         type=float,
         default=None,
-        help="Timeout in minutes for dispatch benchmarking.",
+        help="Time budget in minutes per dispatch for benchmarking all candidates.",
     )
 
-    # Insert a placeholder input_file for libtuner (Fusilli generates files
-    # internally).
+    # Placeholder to satisfy libtuner's required input_file argument.
+    # Fusilli generates benchmark files at runtime, not from a pre-existing file.
+    # TODO(Bangtian): Remove dispatch tuner's input file requirement, then use dispatch tuner.
     sys.argv = insert_placeholder_input_file(sys.argv)
-    args = libtuner.parse_arguments(parser, allow_unknown=True)
+    args = libtuner.parse_arguments(parser)
 
     if "--codegen-pipeline" not in sys.argv:
         # Default to tile_and_fuse for Fusilli operations.
         args.codegen_pipeline = libtuner.CodegenPipelines.llvmgpu_tile_and_fuse
 
-    # Extract Fusilli operation arguments.
-    _, fusilli_op_args = parser.parse_known_args()
+    # Extract Fusilli operation arguments from --fusilli-args.
+    fusilli_op_args = shlex.split(args.fusilli_args) if args.fusilli_args else []
 
     return args, fusilli_op_args
 
@@ -163,9 +163,7 @@ def load_commands_from_file_or_args(
 
     # Validate that fusilli_op_args is empty when using a commands file.
     if fusilli_op_args:
-        raise ValueError(
-            "Cannot specify both --commands-file and Fusilli operation arguments."
-        )
+        raise ValueError("Cannot specify both --commands-file and --fusilli-args.")
 
     with open(commands_file) as f:
         return [
@@ -179,30 +177,29 @@ def build_compile_args(compile_command: str, benchmarks_dir: Path) -> list[str]:
     fusilli_compile_flags = shlex.split(compile_command)
 
     # Start with iree-compile and filter out unwanted flags from fusilli flags.
+    # See fusilli/include/fusilli/backend/compile_command.h for flag formats.
     compile_args = ["iree-compile"]
     args_iter = iter(fusilli_compile_flags[1:])
     for arg in args_iter:
+        # Skip output flag (Fusilli generates "-o" as separate argument + path).
         if arg == "-o":
-            next(args_iter, None)  # Skip the output file path.
+            next(args_iter, None)
             continue
-        if arg in [
-            "--iree-scheduling-dump-statistics-format",
-            "--iree-scheduling-dump-statistics-file",
-        ]:
-            next(args_iter, None)  # Skip the flag and its value.
+        # Skip scheduling statistics flags (Fusilli generates with "=" syntax).
+        if arg.startswith("--iree-scheduling-dump-statistics-format") or arg.startswith(
+            "--iree-scheduling-dump-statistics-file"
+        ):
             continue
         compile_args.append(arg)
 
     # Add tuner-specific flags.
-    compile_args.extend(
-        [
-            "--iree-config-add-tuner-attributes",
-            "--iree-hal-dump-executable-benchmarks-to",
-            str(benchmarks_dir),
-            "-o",
-            os.devnull,
-        ]
-    )
+    compile_args += [
+        "--iree-config-add-tuner-attributes",
+        "--iree-hal-dump-executable-benchmarks-to",
+        str(benchmarks_dir),
+        "-o",
+        os.devnull,
+    ]
 
     return compile_args
 
@@ -212,10 +209,12 @@ def run_fusilli_benchmark_driver(
     cli_args: list[str],
     cache_dir: Path,
 ) -> None:
-    # Build the command with --dump and --iter 1.
+    # Use --dump to generate MLIR and compile command artifacts, --iter 1 since
+    # we only need file generation (not actual benchmarking).
     cmd = [fusilli_driver, "--dump", "--iter", "1"] + cli_args
 
-    # Set FUSILLI_CACHE_DIR to control where artifacts are dumped.
+    # Override FUSILLI_CACHE_DIR to control where Fusilli dumps the generated
+    # MLIR and compilation flags.
     env = os.environ.copy()
     env["FUSILLI_CACHE_DIR"] = str(cache_dir)
 
@@ -450,9 +449,7 @@ def main() -> None:
     args, fusilli_op_args = parsed_args
 
     if args.commands_file and fusilli_op_args:
-        raise ValueError(
-            "Cannot specify both --commands-file and Fusilli operation arguments"
-        )
+        raise ValueError("Cannot specify both --commands-file and --fusilli-args")
 
     # Create main tuning directory.
     fusilli_path_config = FusilliPathConfig()
