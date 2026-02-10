@@ -178,7 +178,7 @@ echo "=== Checking for IRPA changes ==="
 echo "Downloading latest IRPA file from Azure"
 PREVIOUS_IRPA="${IRPA_FILENAME%.irpa}.irpa"
 az storage blob download \
-  --account-name sharkpublic \
+  --account-name amdsharkpublic \
   --sas-token "$AZURE_SAS_TOKEN" \
   --container-name ossci \
   --name "$AZURE_BLOB_PATH/$IRPA_FILENAME" \
