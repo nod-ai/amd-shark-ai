@@ -7,7 +7,7 @@ export PREFILL_BS="1,2,4,8"
 export DECODE_BS="4,8,16,32,64"
 export DTYPE="fp16"
 export TENSOR_PARALLELISM_SIZE="1"
-export IREE_HIP_TARGET="gfx942"
+export IREE_ROCM_TARGET="gfx942"
 export TOP_K=0
 SCRIPT_DIR=$(dirname $(realpath "$0"))
 export OUTPUT_DIR="${SCRIPT_DIR}/../output_artifacts"
@@ -48,9 +48,9 @@ while [[ "$1" != "" ]]; do
             shift
             export OUTPUT_DIR=$1
             ;;
-        --iree-hip-target)
+        --iree-rocm-target)
             shift
-            export IREE_HIP_TARGET=$1
+            export IREE_ROCM_TARGET=$1
             ;;
         --top-k)
             shift
@@ -63,7 +63,7 @@ while [[ "$1" != "" ]]; do
             echo "--bs-decode   : decode BS to be exported. Default: 4,8,16,32,64"
             echo "--dtype       : Data type to be used. Default: fp16"
             echo "--output_dir  : Absolute path of directory for dumping the artifacts. Default: '\$PWD/output_artifacts' "
-            echo "--iree-hip-target: IREE HIP Target to compile for, Default: gfx942"
+            echo "--iree-rocm-target: IREE HIP Target to compile for, Default: gfx942"
             echo "--top-k: Specify the value to export topk with"
             exit 0
             ;;
@@ -138,7 +138,7 @@ echo "### compiling IR .... "
 
 if [[ $TENSOR_PARALLELISM_SIZE = "8" ]]; then
     iree-compile $OUTPUT_DIR/output.mlir \
-        --iree-hip-target="${IREE_HIP_TARGET}" -o $OUTPUT_DIR/output.vmfb \
+        --iree-rocm-target="${IREE_ROCM_TARGET}" -o $OUTPUT_DIR/output.vmfb \
         --iree-hal-target-device="hip[0]" \
         --iree-hal-target-device="hip[1]" \
         --iree-hal-target-device="hip[2]" \
@@ -156,7 +156,7 @@ if [[ $TENSOR_PARALLELISM_SIZE = "8" ]]; then
 
 elif [[ $DTYPE = "llama-405B-FP4" ]]; then
     iree-compile $OUTPUT_DIR/output.mlir \
-        --iree-hip-target="${IREE_HIP_TARGET}" -o $OUTPUT_DIR/output.vmfb \
+        --iree-rocm-target="${IREE_ROCM_TARGET}" -o $OUTPUT_DIR/output.vmfb \
         --iree-hal-target-device=hip \
         --iree-opt-level=O3 \
         --iree-dispatch-creation-propagate-collapse-across-expands=true \
@@ -173,7 +173,7 @@ elif [[ $DTYPE = "llama-405B-FP4" ]]; then
         --iree-opt-const-expr-hoisting=false
 else
     iree-compile $OUTPUT_DIR/output.mlir \
-        --iree-hip-target="${IREE_HIP_TARGET}" -o $OUTPUT_DIR/output.vmfb \
+        --iree-rocm-target="${IREE_ROCM_TARGET}" -o $OUTPUT_DIR/output.vmfb \
         --iree-hal-target-device=hip --iree-opt-level=O3 \
         --iree-hal-indirect-command-buffers=true \
         --iree-stream-resource-memory-model=discrete \

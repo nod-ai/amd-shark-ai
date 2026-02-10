@@ -276,7 +276,7 @@ def get_modules(args, model_config, flagfile, td_spec):
             f"--model={modelname}",
             f"--force-update={args.force_update}",
             f"--iree-hal-target-device={args.device}",
-            f"--iree-hip-target={args.target}",
+            f"--iree-rocm-target={args.target}",
             f"--iree-compile-extra-args={ireec_extra_args}",
         ]
         logger.info(f"Preparing runtime artifacts for {modelname}...")

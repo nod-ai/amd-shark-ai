@@ -122,8 +122,9 @@ ProgramModule ProgramModule::Load(System &system,
   // it until after success.
   iree::vm_module_ptr module;
   SHORTFIN_THROW_IF_ERROR(iree_vm_bytecode_module_create(
-      system.vm_instance(), contents.const_buffer(), contents.deallocator(),
-      system.host_allocator(), module.for_output()));
+      system.vm_instance(), IREE_VM_BYTECODE_MODULE_FLAG_NONE,
+      contents.const_buffer(), contents.deallocator(), system.host_allocator(),
+      module.for_output()));
   contents.release();  // Must be invoked on success path only.
   return ProgramModule(system.shared_from_this(), std::move(module));
 }

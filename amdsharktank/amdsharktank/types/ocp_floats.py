@@ -327,16 +327,13 @@ def dynamic_quantize_to_fp4(values, result_scales=None, result_quantized=None):
     module {
     util.func private @{{kernel_name}}(%values : !values) -> (!result_scales, !result_quantized) {
       %c0 = arith.constant 0 : index
-      %c1 = arith.constant 1 : index
       %c0_25_f32 = arith.constant 0.25 : f32
       %neg_inf = arith.constant 0xff800000 : f32
 
       %batch_dim = tensor.dim %values, %c0 : !values
-      %empty_scales = tensor.empty(%batch_dim) : !result_scales
-      %empty_max = tensor.empty(%batch_dim) : tensor<?xf32>
-      %empty_quantized = tensor.empty(%batch_dim) : !result_quantized
 
       // Step 1: Find max absolute value per block (reduction)
+      %empty_max = tensor.empty(%batch_dim) : tensor<?xf32>
       %init_max = linalg.fill ins(%neg_inf : f32) outs(%empty_max : tensor<?xf32>) -> tensor<?xf32>
       %f32_scales = linalg.reduce ins(%values : !values) outs(%init_max : tensor<?xf32>) dimensions = [1]
         (%in: f32, %init: f32) {
@@ -345,19 +342,20 @@ def dynamic_quantize_to_fp4(values, result_scales=None, result_quantized=None):
           linalg.yield %max_val : f32
         }
       // Step 2: Convert max to FE8M0 scales
-      %scales = linalg.generic {
+      %empty_fe8m0_scales = tensor.empty(%batch_dim) : tensor<?xf8E8M0FNU>
+      %fe8m0_scales = linalg.generic {
         indexing_maps = [
           affine_map<(d0) -> (d0)>,
           affine_map<(d0) -> (d0)>
         ],
         iterator_types = ["parallel"]
-      } ins(%f32_scales : tensor<?xf32>) outs(%empty_scales : !result_scales) {
-      ^bb0(%max_val: f32, %out_scale: i8):
+      } ins(%f32_scales : tensor<?xf32>) outs(%empty_fe8m0_scales : tensor<?xf8E8M0FNU>) {
+      ^bb0(%max_val: f32, %out_scale: f8E8M0FNU):
         %biased_scale = arith.mulf %max_val, %c0_25_f32 : f32
         %fe8m0_scale = arith.truncf %biased_scale : f32 to f8E8M0FNU
-        %scale_i8 = arith.bitcast %fe8m0_scale : f8E8M0FNU to i8
-        linalg.yield %scale_i8 : i8
-      } -> !result_scales
+        linalg.yield %fe8m0_scale : f8E8M0FNU
+      } -> tensor<?xf8E8M0FNU>
+      %scales = iree_tensor_ext.bitcast %fe8m0_scales : tensor<?xf8E8M0FNU>{{'{'}}%batch_dim{{'}'}} -> tensor<?xi8>{{'{'}}%batch_dim{{'}'}}
       // Step 3: Quantize and pack FP4 values directly to bytes
       %empty_packed = tensor.empty(%batch_dim) : tensor<?x32xf4E2M1FN>
       %quantized = linalg.generic {

@@ -61,7 +61,7 @@ def start_server(fibers_per_device=1, isolation="per_fiber"):
             f"--isolation={isolation}",
             f"--splat",
             f"--build_preference=compile",
-            f"--compile_flags=--iree-hal-target-backends=rocm --iree-hip-target=gfx942",
+            f"--compile_flags=--iree-hal-target-backends=rocm --iree-rocm-target=gfx942",
         ]
     )
     runner = ServerRunner(srv_args)

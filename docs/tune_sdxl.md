@@ -126,7 +126,7 @@ iree-compile <IR Path> \
 --iree-hal-executable-debug-level=3 \
 --iree-hal-dump-executable-files-to=dispatchOutput \
 --iree-hal-target-backends=rocm \
---iree-hip-target=gfx942 \
+--iree-rocm-target=gfx942 \
 --iree-execution-model=async-external \
 --iree-global-opt-propagate-transposes=1 \
 --iree-opt-const-eval=0 \
@@ -170,7 +170,7 @@ Create following files:
 
 ```
 --iree-hal-target-backends=rocm
---iree-hip-target=gfx942
+--iree-rocm-target=gfx942
 --iree-vm-bytecode-module-output-format=flatbuffer-binary
 --iree-dispatch-creation-enable-aggressive-fusion
 --iree-dispatch-creation-enable-fuse-horizontal-contractions=false

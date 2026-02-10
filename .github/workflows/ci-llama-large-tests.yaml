@@ -63,7 +63,7 @@ jobs:
           pytest amdsharktank/tests/models/llama/benchmark_amdgpu_test.py \
             -v -s \
             --run-nightly-test \
-            --iree-hip-target=gfx942 \
+            --iree-rocm-target=gfx942 \
             --iree-device=hip://0 \
             --iree-hal-target-device=hip \
             --llama3-8b-f16-model-path="/amdshark-dev/8b/instruct/weights/llama3.1_8b_instruct_fp16.irpa" \

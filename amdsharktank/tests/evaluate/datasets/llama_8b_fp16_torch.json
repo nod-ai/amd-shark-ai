@@ -1,5 +1,5 @@
 {
-  "dataset": "wikitext",
+  "dataset": "Salesforce/wikitext",
   "revision": "wikitext-2-raw-v1",
   "split": "test",
   "scores": {

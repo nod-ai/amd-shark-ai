@@ -13,7 +13,7 @@
           "4x2048xi64",
           "4xi64",
           "4x64xi64",
-          "261x2097152xf8E4M3FNUZ"
+          "261x2097152xf16"
         ],
         "seq_len": 2048
       },
@@ -24,7 +24,7 @@
           "4xi64",
           "4xi64",
           "4x65xi64",
-          "261x2097152xf8E4M3FNUZ"
+          "261x2097152xf16"
         ],
         "seq_len": 2048
       }
@@ -53,7 +53,7 @@
       "--iree-stream-resource-memory-model=discrete",
       "--iree-hip-enable-tensor-ukernels",
       "--iree-hal-memoization=true",
-      "--iree-hip-target=gfx942"
+      "--iree-rocm-target=gfx942"
     ],
     "device_ids": [
       0
@@ -115,7 +115,7 @@
       "--iree-stream-resource-memory-model=discrete",
       "--iree-hip-enable-tensor-ukernels",
       "--iree-hal-memoization=true",
-      "--iree-hip-target=gfx942"
+      "--iree-rocm-target=gfx942"
     ],
     "device_ids": [
       0
@@ -180,7 +180,7 @@
       "--iree-stream-resource-memory-model=discrete",
       "--iree-hip-enable-tensor-ukernels",
       "--iree-hal-memoization=true",
-      "--iree-hip-target=gfx942"
+      "--iree-rocm-target=gfx942"
     ],
     "device_ids": [
       0
@@ -207,7 +207,7 @@
           "4x2048xi64",
           "4xi64",
           "4x64xi64",
-          "261x5242880xf8E4M3FNUZ"
+          "261x5242880xf16"
         ],
         "seq_len": 2048
       },
@@ -218,7 +218,7 @@
           "4xi64",
           "4xi64",
           "4x65xi64",
-          "261x5242880xf8E4M3FNUZ"
+          "261x5242880xf16"
         ],
         "seq_len": 2048
       }
@@ -231,8 +231,7 @@
     "extra_export_flags_list": [
       "--use-hf",
       "--attention-kernel",
-      "amdsharktank",
-      "--kv-cache-dtype=float8_e4m3fnuz"
+      "amdsharktank"
     ],
     "output_dir": "../amdshark-ai/output_artifacts/",
     "prefill_gold_mi325x": 1530.90,
@@ -250,7 +249,7 @@
       "--iree-stream-resource-memory-model=discrete",
       "--iree-hip-enable-tensor-ukernels",
       "--iree-hal-memoization=true",
-      "--iree-hip-target=gfx942"
+      "--iree-rocm-target=gfx942"
     ],
     "device_ids": [
       0
@@ -317,7 +316,7 @@
       "--iree-stream-resource-memory-model=discrete",
       "--iree-hip-enable-tensor-ukernels",
       "--iree-hal-memoization=true",
-      "--iree-hip-target=gfx942"
+      "--iree-rocm-target=gfx942"
     ],
     "device_ids": [
       0
@@ -392,7 +391,7 @@
       "--iree-stream-resource-memory-model=discrete",
       "--iree-hip-enable-tensor-ukernels",
       "--iree-hal-memoization=true",
-      "--iree-hip-target=gfx942"
+      "--iree-rocm-target=gfx942"
     ],
     "device_ids": [
       0
@@ -452,7 +451,7 @@
     "prefill_gold_mi350x": 63271,
     "decode_gold_mi350x": 279,
     "extra_compile_flags_list": [
-      "--iree-hip-target=gfx950",
+      "--iree-rocm-target=gfx950",
       "--iree-opt-level=O3",
       "--iree-dispatch-creation-propagate-collapse-across-expands=true",
       "--iree-stream-affinity-solver-max-iterations=1024",
@@ -528,7 +527,7 @@
     "prefill_gold_mi350x": 63271,
     "decode_gold_mi350x": 279,
     "extra_compile_flags_list": [
-      "--iree-hip-target=gfx950",
+      "--iree-rocm-target=gfx950",
       "--iree-opt-level=O3",
       "--iree-dispatch-creation-propagate-collapse-across-expands=true",
       "--iree-stream-affinity-solver-max-iterations=1024",
@@ -616,7 +615,7 @@
     "prefill_gold_mi350x": 62734,
     "decode_gold_mi350x": 302,
     "extra_compile_flags_list": [
-      "--iree-hip-target=gfx950",
+      "--iree-rocm-target=gfx950",
       "--iree-opt-level=O3",
       "--iree-dispatch-creation-propagate-collapse-across-expands=true",
       "--iree-stream-affinity-solver-max-iterations=1024",
@@ -710,7 +709,7 @@
     "prefill_gold_mi350x": 62734,
     "decode_gold_mi350x": 302,
     "extra_compile_flags_list": [
-      "--iree-hip-target=gfx950",
+      "--iree-rocm-target=gfx950",
       "--iree-opt-level=O3",
       "--iree-dispatch-creation-propagate-collapse-across-expands=true",
       "--iree-stream-affinity-solver-max-iterations=1024",
@@ -805,7 +804,7 @@
       "--iree-stream-resource-memory-model=discrete",
       "--iree-hip-enable-tensor-ukernels",
       "--iree-hal-memoization=true",
-      "--iree-hip-target=gfx950"
+      "--iree-rocm-target=gfx950"
     ],
     "device_ids": [
       0
@@ -879,7 +878,7 @@
       "--iree-stream-resource-memory-model=discrete",
       "--iree-hip-enable-tensor-ukernels",
       "--iree-hal-memoization=true",
-      "--iree-hip-target=gfx950"
+      "--iree-rocm-target=gfx950"
     ],
     "device_ids": [
       0
