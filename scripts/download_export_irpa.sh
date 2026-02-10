@@ -153,8 +153,8 @@ if [[ $? = 0 ]]; then
                 fi
                 if [[ $MODEL = "Llama-3.1-70B-Instruct" ]]; then
                     date=$(date -u +'%Y-%m-%d')
-                    sudo cp /amdshark-dev/70b/instruct/weights/llama3.1_70b_instruct_fp16.irpa /amdshark-dev/70b/instruct/weights/llama3.1_70b_instruct_fp16.irpa_${date}
-                    sudo cp ../$MODEL/${MODEL}.irpa /amdshark-dev/70b/instruct/weights/llama3.1_70b_instruct_fp16.irpa
+                    #sudo cp /amdshark-dev/70b/instruct/weights/llama3.1_70b_instruct_fp16.irpa /amdshark-dev/70b/instruct/weights/llama3.1_70b_instruct_fp16.irpa_${date}
+                    sudo cp ../$MODEL/${MODEL}.irpa /amdshark-dev/ossci-models/llama_3_1/70b/fp16/llama3.1_70b_instruct_fp16_${date}.irpa
                     cd ..
                 fi
             else
