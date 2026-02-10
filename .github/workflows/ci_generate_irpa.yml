@@ -60,6 +60,9 @@ jobs:
 
       - name: Install pip deps
         run: |
+          ls -R /amdshark-dev/ossci-models/llama_3_1/8b/fp16/
+          ls -l /amdshark-dev/ossci-models/llama_3_1/8b/fp16/
+          exit 1
           bash scripts/setenv.sh --nightly
           pip install azure-cli
           mkdir -p output_artifacts
