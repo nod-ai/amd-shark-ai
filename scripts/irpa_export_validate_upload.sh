@@ -35,7 +35,7 @@ Optional Options:
   --bs-prefill NUM              Prefill batch size (default: 4)
   --bs-decode NUM               Decode batch size (default: 4)
   --steps NUM                   Number of validation steps (default: 64)
-  --iree-hip-target TARGET      IREE HIP target (default: gfx942)
+  --iree-rocm-target TARGET      IREE HIP target (default: gfx942)
   --help                        Show this help message
 
 EOF
@@ -114,7 +114,7 @@ while [[ $# -gt 0 ]]; do
       STEPS="$2"
       shift 2
       ;;
-    --iree-hip-target)
+    --iree-rocm-target)
       IREE_HIP_TARGET="$2"
       shift 2
       ;;
@@ -147,7 +147,7 @@ bash scripts/download_export_irpa.sh \
 
 # Run export and compile
 echo "=== Running export and compile ==="
-COMPILE_CMD="bash scripts/export_and_compile.sh --irpa $IRPA_PATH --bs-prefill $BS_PREFILL --bs-decode $BS_DECODE --iree-hip-target $IREE_HIP_TARGET"
+COMPILE_CMD="bash scripts/export_and_compile.sh --irpa $IRPA_PATH --bs-prefill $BS_PREFILL --bs-decode $BS_DECODE --iree-rocm-target $IREE_HIP_TARGET"
 if [ -n "$DTYPE" ]; then
   COMPILE_CMD="$COMPILE_CMD --dtype $DTYPE"
 fi

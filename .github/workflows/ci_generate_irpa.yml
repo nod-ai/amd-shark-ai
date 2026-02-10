@@ -85,7 +85,7 @@ jobs:
             --bs-prefill 4 \
             --bs-decode 4 \
             --steps 64 \
-            --iree-hip-target "gfx942"
+            --iree-rocm-target "gfx942"
 
       #      # Llama 8B FP8 irpa export, compile and validate
       #      - name: Export 8B-FP8 instruct model
@@ -108,7 +108,7 @@ jobs:
       #            --bs-prefill 4 \
       #            --bs-decode 4 \
       #            --steps 64 \
-      #            --iree-hip-target "gfx942"
+      #            --iree-rocm-target "gfx942"
       #
       # Llama 70B FP16 irpa export, compile and validate
       # - name: Export 70B-FP16 instruct model
@@ -130,7 +130,7 @@ jobs:
       #       --bs-prefill 4 \
       #       --bs-decode 4 \
       #       --steps 64 \
-      #       --iree-hip-target "gfx942"
+      #       --iree-rocm-target "gfx942"
 
       #      # Llama 70B FP8 irpa export, compile and validate
       #      - name: Export 70B-FP8 instruct model
@@ -153,7 +153,7 @@ jobs:
       #            --bs-prefill 4 \
       #            --bs-decode 4 \
       #            --steps 64 \
-      #            --iree-hip-target "gfx942"
+      #            --iree-rocm-target "gfx942"
       #
       # Mistral-Nemo-Instruct-2407-FP8 irpa export, compile and validate
       # - name: Export Mistral-Nemo-Instruct-2407-FP8
@@ -176,7 +176,7 @@ jobs:
       #       --bs-prefill 4 \
       #       --bs-decode 4 \
       #       --steps 64 \
-      #       --iree-hip-target "gfx942"
+      #       --iree-rocm-target "gfx942"
 
       - name: Cleanup download Directory
         run: |
@@ -271,7 +271,7 @@ jobs:
   #           --bs-prefill 4 \
   #           --bs-decode 4 \
   #           --steps 64 \
-  #           --iree-hip-target "gfx950"
+  #           --iree-rocm-target "gfx950"
 
   #     - name: Cleanup download Directory
   #       run: |
