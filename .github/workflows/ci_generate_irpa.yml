@@ -78,7 +78,7 @@ jobs:
             --hf-model "Llama-3.1-8B-Instruct" \
             --hf-token "${HF_TOKEN}" \
             --irpa-path "/amdshark-dev/ossci-models/llama_3_1/8b/fp16/llama_3_1_instruct_8b_fp16_${date}.irpa" \
-            --irpa-filename "instruct_8b_fp16.irpa" \
+            --irpa-filename "llama_3_1_instruct_8b_fp16.irpa" \
             --kv-cache-dtype "float16" \
             --tokenizer-path "/amdshark-dev/ossci-models/llama_3_1/8b/tokenizer/tokenizer.json" \
             --tokenizer-config-path "/amdshark-dev/ossci-models/llama_3_1/8b/tokenizer/tokenizer_config.json" \
@@ -112,8 +112,8 @@ jobs:
       #            --bs-decode 4 \
       #            --steps 64 \
       #            --iree-rocm-target "gfx942"
-      #
-      # Llama 70B FP16 irpa export, compile and validate
+
+      # # Llama 70B FP16 irpa export, compile and validate
       # - name: Export 70B-FP16 instruct model
       #   id: export_irpa_llama_70b_fp16
       #   continue-on-error: true
@@ -127,7 +127,7 @@ jobs:
       #       --kv-cache-dtype "float16" \
       #       --tokenizer-path "/amdshark-dev/70b/instruct/tokenizer.json" \
       #       --tokenizer-config-path "/amdshark-dev/70b/instruct/tokenizer_config.json" \
-      #       --azure-blob-path "ossci-models/llama_3_1/70b" \
+      #       --azure-blob-path "ossci-models/llama_3_1/70b/fp16/" \
       #       --azure-sas-token "$AZURE_WRITE_ACCESS_OSSCI" \
       #       --date-suffix "$DATE" \
       #       --bs-prefill 4 \
@@ -157,7 +157,7 @@ jobs:
       #            --bs-decode 4 \
       #            --steps 64 \
       #            --iree-rocm-target "gfx942"
-      #
+
       # Mistral-Nemo-Instruct-2407-FP8 irpa export, compile and validate
       # - name: Export Mistral-Nemo-Instruct-2407-FP8
       #   id: export_irpa_mistral_nemo_2407_fp8
