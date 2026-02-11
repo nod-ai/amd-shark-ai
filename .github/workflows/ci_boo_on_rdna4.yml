@@ -67,8 +67,6 @@ jobs:
         pip install "git+https://github.com/iree-org/iree-turbine.git"
         pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
         pip freeze  > $(pwd)/output_artifacts/version.txt
-        iree-boo-driver conv
-        echo "Tested driver"
 
     - name: Run all proxy config
       run: |
