@@ -11,7 +11,7 @@
 # 2. prod with untuned boo and native pytorch
 # 3. gemms with untuned boo and native pytorch
 
-name: CI - Boo on Mi355 - RDNA4
+name: CI - Boo on RDNA4
 
 on:
   workflow_dispatch:
