@@ -83,15 +83,15 @@ jobs:
        source ${VENV_DIR}/bin/activate
        export MIOPEN_FIND_ENFORCE=3
 
-       # echo "============ 1. Running Prod Conv shape with MIOpen and IREE without tuning ==================="
-       # iree-boo-driver \
-       #      --commands-file amd-shark-ai-reports/boo/prod_conv_config.txt --csv output_artifacts/rdna4_prod_conv_miopen_iree.csv \
-       #      --backend=torch --backend=iree_boo_experimental || true
-
-       echo "============ 2. Running All proxy shape with MIOpen and IREE without tuning ==================="
+       echo "============ 1. Running Prod Conv shape with MIOpen and IREE without tuning ==================="
        iree-boo-driver \
-            --commands-file amd-shark-ai-reports/boo/all_proxy_config.txt --csv output_artifacts/rdna4_all_proxy_miopen_iree.csv \
+            --commands-file amd-shark-ai-reports/boo/prod_conv_config.txt --csv output_artifacts/rdna4_prod_conv_miopen_iree.csv \
             --backend=torch --backend=iree_boo_experimental || true
+
+       # echo "============ 2. Running All proxy shape with MIOpen and IREE without tuning ==================="
+       # iree-boo-driver \
+       #      --commands-file amd-shark-ai-reports/boo/all_proxy_config.txt --csv output_artifacts/rdna4_all_proxy_miopen_iree.csv \
+       #      --backend=torch --backend=iree_boo_experimental || true
 
        # echo "============ 3. Running Gemm shape with MIOpen and IREE without tuning ======================================="
        # iree-boo-driver \
