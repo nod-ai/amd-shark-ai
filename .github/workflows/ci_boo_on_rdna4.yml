@@ -165,12 +165,13 @@ jobs:
         git config --global user.name "GitHub Actions Bot"
         git config --global user.email ""
         date=$(date -u +'%Y-%m-%d')
-        mkdir -p "amd-shark-ai-reports/boo/boo-nightly-gfx120X/$date_full_run/"
-        cp -v logs/*.csv "amd-shark-ai-reports/boo/boo-nightly-gfx120X/$date_full_run/" || true
-        cp -v logs/version.txt "amd-shark-ai-reports/boo/boo-nightly-gfx120X/$date_full_run/"
+        dir_name="${date}_full_run"
+        mkdir -p "amd-shark-ai-reports/boo/boo-nightly-gfx120X/$dir_name/"
+        cp -v logs/*.csv "amd-shark-ai-reports/boo/boo-nightly-gfx120X/$dir_name/" || true
+        cp -v logs/version.txt "amd-shark-ai-reports/boo/boo-nightly-gfx120X/$dir_name/"
         cd amd-shark-ai-reports/boo/boo-nightly-gfx120X/
         git pull
-        git add ${date}_full_run
+        git add "$dir_name"
         git commit -m "Add conv report on $(date -u +'%Y-%m-%d')"
         git push origin main
         rm -rf ../logs
