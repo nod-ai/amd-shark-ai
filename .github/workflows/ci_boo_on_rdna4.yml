@@ -93,15 +93,15 @@ jobs:
        #      --commands-file amd-shark-ai-reports/boo/all_proxy_config.txt --csv output_artifacts/rdna4_all_proxy_miopen_iree.csv \
        #      --backend=torch --backend=iree_boo_experimental || true
 
-       # echo "============ 3. Running Gemm shape with MIOpen and IREE without tuning ======================================="
-       # iree-boo-driver \
-       #      --commands-file amd-shark-ai-reports/boo/gemm_config.txt --csv output_artifacts/rdna4_gemm_miopen_iree.csv \
-       #      --backend=torch --backend=iree_boo_experimental || true
+       echo "============ 3. Running Gemm shape with MIOpen and IREE without tuning ======================================="
+       iree-boo-driver \
+            --commands-file amd-shark-ai-reports/boo/gemm_config.txt --csv output_artifacts/rdna4_gemm_miopen_iree.csv \
+            --backend=torch --backend=iree_boo_experimental || true
 
-       # echo "============ 4. Running Batch norm shape with MIOpen and IREE without tuning ======================================="
-       #   iree-boo-driver \
-       #        --commands-file amd-shark-ai-reports/boo/batch_norm_config.txt --csv output_artifacts/rdna4_batch_norm_miopen_iree.csv \
-       #        --backend=torch --backend=iree_boo_experimental --backend=inductor || true     
+       echo "============ 4. Running Batch norm shape with MIOpen and IREE without tuning ======================================="
+         iree-boo-driver \
+              --commands-file amd-shark-ai-reports/boo/batch_norm_config.txt --csv output_artifacts/rdna4_batch_norm_miopen_iree.csv \
+              --backend=torch --backend=iree_boo_experimental --backend=inductor || true     
 
        # echo "============ 4. Running Prod Conv shape with NCHW layout with MIOpen and IREE without tuning ==================="
        # iree-boo-driver \
@@ -113,19 +113,19 @@ jobs:
        #      --commands-file amd-shark-ai-reports/boo/all_proxy_config_nchw.txt --csv output_artifacts/rdna4_all_proxy_miopen_iree_nchw.csv \
        #      --backend=torch --backend=iree_boo_experimental || true
 
-    - name: Run hipblaslt-bench
-      run: |
-        sudo apt update
-        sudo apt install awscli -y
-        tarFileName=`aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx950 | sort -r | head -1 |  awk '{print $NF}'`
-        echo "Installing $tarFileName"
-        wget https://therock-nightly-tarball.s3.us-east-2.amazonaws.com/${tarFileName}
-        mkdir install
-        tar -xf *.tar.gz -C install
-        export PATH=$PWD/install/bin:$PATH
+    # - name: Run hipblaslt-bench
+    #   run: |
+    #     sudo apt update
+    #     sudo apt install awscli -y
+    #     tarFileName=`aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx950 | sort -r | head -1 |  awk '{print $NF}'`
+    #     echo "Installing $tarFileName"
+    #     wget https://therock-nightly-tarball.s3.us-east-2.amazonaws.com/${tarFileName}
+    #     mkdir install
+    #     tar -xf *.tar.gz -C install
+    #     export PATH=$PWD/install/bin:$PATH
 
-        echo "============= 4. Running Gemm Shape with hipblaslt =============================="
-        bash amd-shark-ai-reports/boo/hipblaslt-bench.sh >& output_artifacts/rdna4_gemm_hipBlaslt-bench.csv
+    #     echo "============= 4. Running Gemm Shape with hipblaslt =============================="
+    #     bash amd-shark-ai-reports/boo/hipblaslt-bench.sh >& output_artifacts/rdna4_gemm_hipBlaslt-bench.csv
 
     - name: Upload log files
       if: always()
