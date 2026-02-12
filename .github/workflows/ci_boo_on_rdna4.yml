@@ -15,6 +15,7 @@ name: CI - Boo on RDNA4
 
 on:
   workflow_dispatch:
+  pull_request:
   schedule:
     - cron: "45 10 * * *"
 
@@ -87,9 +88,10 @@ jobs:
             --backend=torch --backend=iree_boo_experimental || true
 
        echo "============ 2. Running All proxy shape with MIOpen and IREE without tuning ==================="
+       ## temporarily removing --backend=torch
        iree-boo-driver \
             --commands-file amd-shark-ai-reports/boo/all_proxy_config.txt --csv output_artifacts/rdna4_all_proxy_miopen_iree.csv \
-            --backend=torch --backend=iree_boo_experimental || true
+            --backend=iree_boo_experimental || true
 
        echo "============ 3. Running Gemm shape with MIOpen and IREE without tuning ======================================="
        iree-boo-driver \
