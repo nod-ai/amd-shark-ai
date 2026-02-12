@@ -195,7 +195,7 @@ class ClipTextIreeTest(TempDirTestBase):
                 "iree_module_path": iree_module_path,
                 "compile_args": [
                     f"--iree-hal-target-device={self.iree_hal_target_device}",
-                    f"--iree-hip-target={self.iree_hip_target}",
+                    f"--iree-rocm-target={self.iree_hip_target}",
                 ],
             },
         )

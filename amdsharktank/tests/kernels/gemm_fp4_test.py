@@ -140,7 +140,7 @@ class TestKernelOnGpu:
 
     def hip_flags(self):
         return [
-            "--iree-hip-target=gfx950",
+            "--iree-rocm-target=gfx950",
             "--iree-hal-target-device=hip",
             "--iree-hal-target-backends=rocm",
             "--iree-opt-level=O3",

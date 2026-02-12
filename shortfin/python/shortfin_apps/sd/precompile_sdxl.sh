@@ -99,7 +99,7 @@ for modelname in "clip" "scheduled_unet" "vae"; do
         "--model=$modelname"
         "--force-update=$force_export"
         "--iree-hal-target-device=amdgpu"
-        "--iree-hip-target=gfx942"
+        "--iree-rocm-target=gfx942"
         "--iree-compile-extra-args=$ireec_extra_args"
         "--quant-path=$quant_path"
     )

@@ -25,7 +25,7 @@ from ..device_settings import DeviceSettings
 DEVICE_SETTINGS = DeviceSettings(
     compile_flags=(
         "--iree-hal-target-device=hip",
-        "--iree-hip-target=gfx942",
+        "--iree-rocm-target=gfx942",
     ),
     server_flags=("--device=hip",),
 )

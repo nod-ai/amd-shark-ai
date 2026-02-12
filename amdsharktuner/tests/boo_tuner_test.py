@@ -104,7 +104,7 @@ def test_insert_placeholder_input_file() -> None:
 
 def test_build_compile_args() -> None:
     compile_command = (
-        "iree-compile --iree-hal-target-backends=rocm --iree-hip-target=mi300x "
+        "iree-compile --iree-hal-target-backends=rocm --iree-rocm-target=mi300x "
         "--iree-opt-level=O3 /path/to/input.mlir -o /path/to/output.vmfb"
     )
     benchmarks_dir = Path("/tmp/benchmarks")
@@ -116,7 +116,7 @@ def test_build_compile_args() -> None:
 
     # Check that original flags are preserved.
     assert "--iree-hal-target-backends=rocm" in result
-    assert "--iree-hip-target=mi300x" in result
+    assert "--iree-rocm-target=mi300x" in result
     assert "--iree-opt-level=O3" in result
     assert "/path/to/input.mlir" in result
 

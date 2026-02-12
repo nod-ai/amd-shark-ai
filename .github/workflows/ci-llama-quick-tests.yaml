@@ -62,7 +62,7 @@ jobs:
             amdsharktank/tests/models/llama/benchmark_amdgpu_test.py \
             -v -s \
             --run-quick-test \
-            --iree-hip-target=gfx942 \
+            --iree-rocm-target=gfx942 \
             --iree-device=hip://0 \
             --iree-hal-target-device=hip \
             --llama3-8b-f16-model-path="/amdshark-dev/ossci-models/llama_3_1/8b/fp16/llama_3_1_instruct_8b_fp16.irpa"

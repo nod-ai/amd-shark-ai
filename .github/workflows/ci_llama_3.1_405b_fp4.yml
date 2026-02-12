@@ -9,8 +9,7 @@ name: CI - E2E Llama 3.1 405B FP4 Test
 on:
   workflow_dispatch:
   schedule:
-    # Run every 6 hour starting from 0h 30min on all days
-    - cron: "30 */6 * * *"
+    - cron: "30 2 * * *"
 
 permissions:
   contents: write
@@ -36,7 +35,7 @@ jobs:
     container:
       image: 'ghcr.io/rocm/no_rocm_image_ubuntu24_04@sha256:405945a40deaff9db90b9839c0f41d4cba4a383c1a7459b28627047bf6302a26'
       options: --ipc host
-        --group-add video
+        --group-add 992
         --device /dev/kfd
         --device /dev/dri
         --env-file /etc/podinfo/gha-gpu-isolation-settings
@@ -126,7 +125,7 @@ jobs:
             --expected-err=1e-2 \
             --min-context=10 \
             --iree-hal-target-device=hip \
-            --iree-hip-target=gfx950 \
+            --iree-rocm-target=gfx950 \
             --vmfb output_artifacts/output_llama-405b-fp4-without-topk/output.vmfb \
             --config output_artifacts/output_llama-405b-fp4-without-topk/config_attn.json 2>&1 | tee output_artifacts/output_llama-405b-fp4-without-topk/eval_llm_vmfb_perplexity.log
 
@@ -172,16 +171,16 @@ jobs:
       run: |
         git config --global user.name "GitHub Actions Bot"
         git config --global user.email ""
-        date=$(date -u +'%Y-%m-%d-%H'h)
-        mkdir -p "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-with-topk"
-        mkdir -p "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-without-topk"
-        cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-with-topk"
-        cp logs/version.txt "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-without-topk"
-        cp -r logs/output_llama-405b-fp4-with-topk/* "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-with-topk" || true
-        cp -r logs/output_llama-405b-fp4-without-topk/* "amd-shark-ai-reports/$date/llama_3.1-405b-fp4-without-topk" || true
+        date=$(date -u +'%Y-%m-%d')
+        mkdir -p "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-405b-fp4-with-topk"
+        mkdir -p "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-405b-fp4-without-topk"
+        cp logs/version.txt "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-405b-fp4-with-topk" || true
+        cp logs/version.txt "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-405b-fp4-without-topk" || true
+        cp -r logs/output_llama-405b-fp4-with-topk/* "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-405b-fp4-with-topk" || true
+        cp -r logs/output_llama-405b-fp4-without-topk/* "amd-shark-ai-reports/amdshark-ai-logs/$date/llama_3.1-405b-fp4-without-topk" || true
         cd amd-shark-ai-reports
         git pull
-        git add $date
-        git commit -m "Add CI Llama 405B FP4 logs on $(date -u +'%Y-%m-%d-%H'h)"
+        git add amdshark-ai-logs
+        git commit -m "Add CI Llama 405B FP4 logs on ${date}"
         git push origin main
         rm -rf ../logs

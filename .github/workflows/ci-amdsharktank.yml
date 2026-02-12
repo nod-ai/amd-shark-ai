@@ -72,6 +72,18 @@ jobs:
           pip install --no-compile \
             -r amdsharktank/requirements-tests.txt \
             -e amdsharktank/
+          git clone https://github.com/iree-org/wave.git
+          cd wave
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          export PATH="$HOME/.cargo/bin:$PATH"
+
+          rustc --version
+          cargo --version
+          pip install -r requirements-iree-pinned.txt
+          pip install -r pytorch-rocm-requirements.txt
+          pip install -e ".[dev]"
+          cd ..
+          pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-turbine
 
           pip freeze
 
@@ -143,7 +155,7 @@ jobs:
       matrix:
         python-version: ["3.12"]
         torch-version: ["2.6.0"]
-        iree-target-args: ["--iree-hip-target=gfx942 --iree-hal-target-device=hip"]
+        iree-target-args: ["--iree-rocm-target=gfx942 --iree-hal-target-device=hip"]
         runs-on: [linux-mi325-8gpu-ossci-nod-ai]
       fail-fast: false
     runs-on: ${{matrix.runs-on}}
@@ -184,9 +196,8 @@ jobs:
             --log-cli-level=info \
             -v \
             --iree-hal-target-device=hip \
-            --iree-hip-target=gfx942 \
-            --iree-device=hip://0 \
-            --device=cuda:0
+            --iree-rocm-target=gfx942 \
+            --iree-device=hip://0
 
   test_with_data:
     name: "Data-dependent Tests"
@@ -236,7 +247,7 @@ jobs:
             --log-cli-level=info \
             --with-quark-data \
             --iree-hal-target-device=hip \
-            --iree-hip-target=gfx942 \
+            --iree-rocm-target=gfx942 \
             --iree-device=hip://0 \
             amdsharktank/tests/models/llama/quark_parity_test.py \
             --durations=0 \

@@ -84,13 +84,13 @@ tool for compiling our model.
 ### Compile for MI300
 
 **NOTE: This command is specific to MI300 GPUs.
-For other `--iree-hip-target` GPU options,
+For other `--iree-rocm-target` GPU options,
 look [here](https://iree.dev/guides/deployment-configurations/gpu-rocm/#compile-a-program)**
 
 ```bash
 iree-compile $MLIR_PATH \
  --iree-hal-target-device=hip \
- --iree-hip-target=gfx942 \
+ --iree-rocm-target=gfx942 \
  -o $VMFB_PATH
 ```
 

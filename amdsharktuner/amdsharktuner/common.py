@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from types import TracebackType
-from typing import Optional, Any
+from typing import Optional, Any, Callable, Protocol
 from abc import ABC
 import os
 import time
@@ -44,6 +44,41 @@ class CommonTypes:
 
     def getI64ArrayAttr(self, values: list[int]) -> ir.ArrayAttr:
         return ir.ArrayAttr.get([self.getI64(x) for x in values])
+
+
+class BenchmarkToolConfig(Protocol):
+    """Marker base class for benchmark tool configuration objects."""
+
+    benchmark_fn: Callable
+
+
+@dataclass
+class ConvDimInfo:
+    """Common convolution dimension info extracted from a convolution op.
+
+    This dataclass is reused by all convolution parsers to share the common
+    dimension extraction logic.
+    """
+
+    convolution_dims: linalg.ConvolutionDimensions
+    indexing_maps: list[ir.AffineMap]
+    lhs_type: ir.Type
+    rhs_type: ir.Type
+    res_type: ir.Type
+    batch_indices: list[int]
+    output_image_indices: list[int]
+    output_channel_indices: list[int]
+    filter_loop_indices: list[int]
+    input_channel_indices: list[int]
+    depth_indices: list[int]
+    strides: list[int]
+    dilations: list[int]
+    batch_sizes: list[int]
+    output_image_sizes: list[int]
+    output_channel_sizes: list[int]
+    filter_loop_sizes: list[int]
+    input_channel_sizes: list[int]
+    depth_sizes: list[int]
 
 
 class TunerContext:
@@ -191,23 +226,6 @@ class ContractionDimensions:
 
 
 @dataclass
-class ConvToIgemmInfo:
-    """
-    Stores information about convolution to IGEMM transformation.
-    Used by get_padding_conv_sizes to calculate padding_conv attribute.
-
-    Corresponds to ConvToIgemmInfo struct in IREE:
-    https://github.com/iree-org/iree/blob/d3440737cc56a4d1b20c72181d9a37f194bd3ce5/compiler/src/iree/compiler/Codegen/Dialect/GPU/TargetUtils/ConfigUtils.cpp#L373-L379
-    """
-
-    conv_dims: linalg.ConvolutionDimensions
-    is_batch_dim_last: bool = False
-    is_spatial_dim_last: bool = False
-    conv_to_igemm_dim_map: dict[int, int] = field(default_factory=dict)
-    input_channel_dim_to_size: dict[int, int] = field(default_factory=dict)
-
-
-@dataclass
 class MatmulShapeType:
     m: int
     n: int
@@ -325,8 +343,7 @@ def link_tuning_specs(tuner_ctx: TunerContext, td_specs: list[ir.Module]) -> ir.
     into one tuning spec.
     """
     module = combine_tuning_specs(tuner_ctx, td_specs)
-    iree_opt = ireec.binaries.find_tool("iree-opt")  # type: ignore
-    assert iree_opt, "iree-opt tool not found"
+    iree_opt: str = ireec.binaries.find_tool("iree-opt")  # type: ignore[attr-defined]
 
     if len(td_specs) == 1:
         # avoid unnecessary link overhead.
