@@ -16,7 +16,7 @@ name: CI - Boo on RDNA4
 on:
   workflow_dispatch:
   schedule:
-    - cron: "45 10 * * *"
+    - cron: "54 11 * * *"
 
 permissions:
   contents: write
