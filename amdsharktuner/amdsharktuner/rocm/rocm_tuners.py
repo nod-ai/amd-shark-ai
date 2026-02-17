@@ -173,8 +173,7 @@ class ROCmConvolutionTileAndFuseTuner(
         convolution_dims = linalg.infer_convolution_dimensions(root_op)
         if not convolution_dims:
             return False
-        # Support all 2D convolutions (no depth dimension) for IGEMM.
-        return list(convolution_dims.depth) == []
+        return True
 
     def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
         return rocm_constraint_generators.ROCmConvolutionTileAndFuseConstraintGenerator(

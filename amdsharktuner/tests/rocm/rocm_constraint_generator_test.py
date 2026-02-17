@@ -9,7 +9,7 @@ import pytest
 # TODO: remove after https://github.com/llvm/llvm-project/pull/117918 is resolved.
 import amdsharktuner
 from iree.compiler import ir  # type: ignore
-from iree.compiler.dialects import iree_codegen, iree_gpu  # type: ignore
+from iree.compiler.dialects import iree_codegen, iree_gpu, linalg  # type: ignore
 
 from amdsharktuner import (
     common,
@@ -29,6 +29,7 @@ from tests.constraint_generator_test import (
     build_func_with_conv2d_nchw_fchw,
     build_func_with_conv2d_nhwc_fhwc,
     build_func_with_conv2d_chwn_chwf,
+    build_func_with_group_conv2d_nhwgc_gfhwc,
 )
 
 
@@ -609,4 +610,65 @@ def test_generate_solutions_tile_and_fuse_conv_chwn_chwf(
             assert len(solution) == 1
             config = solution[0]
             assert isinstance(config, common.TuningConfiguration)
+            assert isinstance(config.configuration, iree_codegen.CompilationInfoAttr)
+
+
+def test_generate_solutions_tile_and_fuse_group_conv(
+    tuner_ctx: common.TunerContext, gpu_target_info: iree_gpu.TargetInfo
+) -> None:
+    context = tuner_ctx.mlir_ctx
+    f16 = tuner_ctx.type.f16
+    f32 = tuner_ctx.type.f32
+
+    # Group convolution: 32 groups, 512 total channels (32 * 16 per group).
+    input_shape = (32, 52, 52, 32, 16)
+    kernel_shape = (32, 16, 3, 3, 16)
+    output_shape = (32, 50, 50, 32, 16)
+
+    with ir.Location.unknown(context):
+        module = ir.Module.create()
+        build_func_with_group_conv2d_nhwgc_gfhwc(
+            module=module,
+            input_shape=input_shape,
+            kernel_shape=kernel_shape,
+            output_shape=output_shape,
+            input_type=f16,
+            kernel_type=f16,
+            output_type=f32,
+        )
+
+        root_ops = iree_codegen.get_tuner_root_ops(module)
+        assert len(root_ops) == 1
+        root_op = root_ops[0]
+
+        assert linalg.isa_convolution_op(root_op)
+        conv_dims = linalg.infer_convolution_dimensions(root_op)
+        assert conv_dims is not None
+        assert list(conv_dims.depth) == [3], "Group dimension should be at index 3"
+
+        parser = rocm_parsers.IGEMMConvolutionParser(root_op, tuner_ctx)
+        op_info = parser.get_op_info()
+        gen = rocm_constraint_generators.ROCmConvolutionTileAndFuseConstraintGenerator(
+            op_info
+        )
+
+        assert gen.op_info.lhs_type.shape == [32, 52, 52, 32, 16]
+        assert gen.op_info.rhs_type.shape == [32, 16, 3, 3, 16]
+        assert gen.op_info.res_type.shape == [32, 50, 50, 32, 16]
+
+        solutions = list(
+            gen.generate_solutions(
+                tuner_context=tuner_ctx,
+                gpu_target_info=gpu_target_info,
+                num_subgroups=4,
+            )
+        )
+
+        assert len(solutions) > 0, "No solutions generated for group convolution."
+        for solution in solutions:
+            assert len(solution) == 1
+            config = solution[0]
+            assert isinstance(config, common.TuningConfiguration)
+
+            assert config.name == "compilation_info"
             assert isinstance(config.configuration, iree_codegen.CompilationInfoAttr)
