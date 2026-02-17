@@ -39,7 +39,7 @@ jobs:
       matrix:
         version: [3.12]
       fail-fast: false
-    runs-on: "shark-mkm-1-for-boo"
+    runs-on: "shark41-rdna4"
     defaults:
       run:
         shell: bash
