@@ -79,8 +79,10 @@ jobs:
        git checkout main
        cd -
        source ${VENV_DIR}/bin/activate
+       pip freeze
        export MIOPEN_FIND_ENFORCE=3
        export PYTHONUNBUFFERED=1
+       export ROCR_VISIBLE_DEVICES="0"
 
        echo "============ 1. Running Prod Conv shape with MIOpen and IREE without tuning ==================="
        iree-boo-driver \
