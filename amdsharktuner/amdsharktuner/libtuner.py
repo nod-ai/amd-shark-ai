@@ -703,7 +703,7 @@ def run_iree_benchmark_module_command(benchmark_pack: BenchmarkPack):
 
     mean_benchmark_time = sum(times) / float(len(times))
     logging.debug(
-        f"Candidate {candidate_id:3d}: {mean_benchmark_time:10.2f} us  (device: {device_id})"
+        f"Benchmark time of candidate {candidate_id}: {mean_benchmark_time:.2f} us"
     )
     return BenchmarkResult(
         candidate_id=candidate_id,
@@ -1123,9 +1123,6 @@ def benchmark_baseline(
                 elapsed_s = time.perf_counter() - benchmark_start_timestamp
                 running_time_s.append(elapsed_s)
                 baseline_results.append(result)
-                logging.info(
-                    f"Baseline     : {result.time:10.2f} us  (device: {device_id})"
-                )
                 pbar.update(1)  # Update progress bar.
         except KeyboardInterrupt:
             # If Ctrl+C is pressed, terminate all child processes.
