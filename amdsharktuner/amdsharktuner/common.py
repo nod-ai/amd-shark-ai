@@ -293,7 +293,6 @@ def is_result_type_compatible_with_accumulator(
     return res_type == c_type
 
 
-
 # The key name for GPUPipelineOptionsAttr in the translation info config dictionary.
 GPU_PIPELINE_OPTIONS_KEY = "gpu_pipeline_options"
 # The key name for llvm_func_attrs attribute in the translation info config dictionary.

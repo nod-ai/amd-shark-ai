@@ -142,7 +142,7 @@ def run_command(run_pack: RunPack) -> RunResult:
         )
     """
     # Convert all Path objects to strings in the command list
-    command = [str(x) if hasattr(x, 'as_posix') else x for x in run_pack.command]
+    command = [str(x) if hasattr(x, "as_posix") else x for x in run_pack.command]
     check = run_pack.check
     timeout_seconds = run_pack.timeout_seconds
 
@@ -150,7 +150,9 @@ def run_command(run_pack: RunPack) -> RunResult:
     is_timeout = False
     try:
         # Convert the command list to a command string for logging.
-        command_str = shlex.join([str(x) if not isinstance(x, str) else x for x in command])
+        command_str = shlex.join(
+            [str(x) if not isinstance(x, str) else x for x in command]
+        )
         logging.debug(f"Run: {command_str}")
 
         # Add timeout to subprocess.run call.
