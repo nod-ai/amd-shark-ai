@@ -117,6 +117,34 @@ def test_get_pipeline_config(tuner_ctx: common.TunerContext) -> None:
     )
 
 
+def test_is_result_type_compatible_with_accumulator(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    bf16 = tuner_ctx.type.bf16
+    f16 = tuner_ctx.type.f16
+    f32 = tuner_ctx.type.f32
+    i8 = tuner_ctx.type.i8
+    i32 = tuner_ctx.type.i32
+
+    # bf16 inputs with f32 accumulator: allow bf16 or f32 result
+    assert common.is_result_type_compatible_with_accumulator(bf16, bf16, f32, bf16)
+    assert common.is_result_type_compatible_with_accumulator(bf16, bf16, f32, f32)
+    assert not common.is_result_type_compatible_with_accumulator(bf16, bf16, f32, f16)
+
+    # f16 inputs with f32 accumulator: allow f16 or f32 result
+    assert common.is_result_type_compatible_with_accumulator(f16, f16, f32, f16)
+    assert common.is_result_type_compatible_with_accumulator(f16, f16, f32, f32)
+    assert not common.is_result_type_compatible_with_accumulator(f16, f16, f32, bf16)
+
+    # i8 inputs with i32 accumulator: only i32 result
+    assert common.is_result_type_compatible_with_accumulator(i8, i8, i32, i32)
+    assert not common.is_result_type_compatible_with_accumulator(i8, i8, i32, i8)
+
+    # f32 inputs with f32 accumulator: only f32 result
+    assert common.is_result_type_compatible_with_accumulator(f32, f32, f32, f32)
+    assert not common.is_result_type_compatible_with_accumulator(f32, f32, f32, f16)
+
+
 def test_get_compatible_mfma_intrinsics(tuner_ctx: common.TunerContext) -> None:
     all_intrinsics = [
         iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16,

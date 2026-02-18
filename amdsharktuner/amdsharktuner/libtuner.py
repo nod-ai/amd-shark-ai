@@ -702,7 +702,7 @@ def run_iree_benchmark_module_command(benchmark_pack: BenchmarkPack):
         )
 
     mean_benchmark_time = sum(times) / float(len(times))
-    logging.info(
+    logging.debug(
         f"Candidate {candidate_id:3d}: {mean_benchmark_time:10.2f} us  (device: {device_id})"
     )
     return BenchmarkResult(

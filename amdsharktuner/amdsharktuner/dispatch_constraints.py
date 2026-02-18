@@ -642,16 +642,9 @@ def getMMAAttr(
         if not (m == mnk[0] and n == mnk[1] and k == mnk[2]):
             continue
         
-        # For bf16 inputs with f32 accumulator, allow bf16 output
-        if str(a_type) == 'bf16' and str(b_type) == 'bf16' and str(c_type) == 'f32':
-            if str(output_type) == 'bf16' or str(output_type) == 'f32':
-                return mma_attr
-        # For f16 inputs with f32 accumulator, allow f16 output
-        elif str(a_type) == 'f16' and str(b_type) == 'f16' and str(c_type) == 'f32':
-            if str(output_type) == 'f16' or str(output_type) == 'f32':
-                return mma_attr
-        # Otherwise, output type must match accumulator type
-        elif isinstance(c_type, type(output_type)):
+        if common.is_result_type_compatible_with_accumulator(
+            a_type, b_type, c_type, output_type
+        ):
             return mma_attr
 
     # If no matching intrinsic is found, raise an exception.
