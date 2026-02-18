@@ -694,7 +694,44 @@ def generate_allowed_pipeline_options(
     return pipeline_options_list
 
 
-def generate_compilation_infos(
+def _build_compilation_infos(
+    tuner_ctx: common.TunerContext,
+    lowering_config_args: dict,
+    workgroup_sizes: tuple[int, int, int],
+    subgroup_size: int,
+    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline,
+    pipeline_options_search_space: PipelineOptionsSearchSpace,
+    allowed_waves_per_eu: list[int],
+) -> list[iree_codegen.CompilationInfoAttr]:
+    """Private helper to build compilation info variants from lowering config and translation info."""
+    lowering_config = common.get_lowering_config(tuner_ctx, **lowering_config_args)
+
+    # Create the TranslationInfoAttr variants.
+    pipeline_attr = iree_codegen.DispatchLoweringPassPipelineAttr.get(codegen_pipeline)
+    pipeline_options_list = generate_allowed_pipeline_options(
+        pipeline_options_search_space
+    )
+    wg_x, wg_y, wg_z = workgroup_sizes
+
+    # Generate all combinations of pipeline options and waves_per_eu.
+    compilation_infos = [
+        iree_codegen.CompilationInfoAttr.get(
+            lowering_config,
+            iree_codegen.TranslationInfoAttr.get(
+                pipeline_attr,
+                None,
+                [wg_x, wg_y, wg_z],
+                subgroup_size,
+                rocm_common.get_translation_info_config(pipeline_options, waves_per_eu),
+            ),
+        )
+        for pipeline_options in pipeline_options_list
+        for waves_per_eu in allowed_waves_per_eu
+    ]
+    return compilation_infos
+
+
+def generate_tile_and_fuse_compilation_infos(
     tuner_ctx: common.TunerContext,
     mma_attr: iree_gpu.MMAAttr | iree_gpu.VirtualMMAAttr | None,
     workgroup_tile_sizes: list[int],
@@ -702,17 +739,57 @@ def generate_compilation_infos(
     subgroup_tile_sizes: list[int],
     workgroup_sizes: tuple[int, int, int],
     subgroup_size: int,
-    subgroup_basis_counts: list[int],
-    subgroup_basis_mapping: list[int],
     promote_operands: list[int],
-    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline,
     pipeline_options_search_space: PipelineOptionsSearchSpace,
     allowed_waves_per_eu: list[int],
     padding: Optional[list[int]] = None,
     padding_conv: Optional[list[int]] = None,
 ) -> list[iree_codegen.CompilationInfoAttr]:
+    """Generate compilation infos for LLVMGPUTileAndFuse pipeline."""
+    lowering_config_args = {
+        "workgroup": workgroup_tile_sizes,
+        "reduction": reduction_tile_sizes,
+        "subgroup": subgroup_tile_sizes,
+        "promote_operands": promote_operands,
+    }
+
+    if mma_attr is not None:
+        lowering_config_args["mma_kind"] = mma_attr
+
+    if padding is not None:
+        lowering_config_args["padding"] = padding
+
+    if padding_conv is not None:
+        lowering_config_args["padding_conv"] = padding_conv
+
+    return _build_compilation_infos(
+        tuner_ctx,
+        lowering_config_args,
+        workgroup_sizes,
+        subgroup_size,
+        iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
+        pipeline_options_search_space,
+        allowed_waves_per_eu,
+    )
+
+
+def generate_vector_distribute_compilation_infos(
+    tuner_ctx: common.TunerContext,
+    mma_attr: iree_gpu.MMAAttr | iree_gpu.VirtualMMAAttr | None,
+    workgroup_tile_sizes: list[int],
+    reduction_tile_sizes: list[int],
+    subgroup_basis_counts: list[int],
+    subgroup_basis_mapping: list[int],
+    workgroup_sizes: tuple[int, int, int],
+    subgroup_size: int,
+    promote_operands: list[int],
+    pipeline_options_search_space: PipelineOptionsSearchSpace,
+    allowed_waves_per_eu: list[int],
+    padding: Optional[list[int]] = None,
+    padding_conv: Optional[list[int]] = None,
+) -> list[iree_codegen.CompilationInfoAttr]:
+    """Generate compilation infos for LLVMGPUVectorDistribute pipeline."""
     subgroup_basis = [subgroup_basis_counts, subgroup_basis_mapping]
-    # Create the LoweringConfigAttr.
     lowering_config_args = {
         "workgroup": workgroup_tile_sizes,
         "reduction": reduction_tile_sizes,
@@ -729,31 +806,12 @@ def generate_compilation_infos(
     if padding_conv is not None:
         lowering_config_args["padding_conv"] = padding_conv
 
-    if codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
-        lowering_config_args["subgroup"] = subgroup_tile_sizes
-
-    lowering_config = common.get_lowering_config(tuner_ctx, **lowering_config_args)
-
-    # Create the TranslationInfoAttr.
-    pipeline_attr = iree_codegen.DispatchLoweringPassPipelineAttr.get(codegen_pipeline)
-    pipeline_options_list = generate_allowed_pipeline_options(
-        pipeline_options_search_space
+    return _build_compilation_infos(
+        tuner_ctx,
+        lowering_config_args,
+        workgroup_sizes,
+        subgroup_size,
+        iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
+        pipeline_options_search_space,
+        allowed_waves_per_eu,
     )
-    wg_x, wg_y, wg_z = workgroup_sizes
-    compilation_infos = []
-    for pipeline_options in pipeline_options_list:
-        for waves_per_eu in allowed_waves_per_eu:
-            config_dict = rocm_common.get_translation_info_config(
-                pipeline_options, waves_per_eu
-            )
-            translation_info = iree_codegen.TranslationInfoAttr.get(
-                pipeline_attr,
-                None,
-                [wg_x, wg_y, wg_z],
-                subgroup_size,
-                config_dict,
-            )
-            compilation_infos.append(
-                iree_codegen.CompilationInfoAttr.get(lowering_config, translation_info)
-            )
-    return compilation_infos

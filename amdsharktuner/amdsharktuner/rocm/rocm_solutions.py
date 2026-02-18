@@ -303,23 +303,49 @@ def generate_generic_contraction_solutions(
         subgroup_basis_counts[n_dim] = z3_assignment.sg_n_cnt
         subgroup_basis_mapping = list(range(num_loops))
 
-        compilation_infos = rocm_dispatch_constraints.generate_compilation_infos(
-            tuner_ctx,
-            mma_attr,
-            workgroup_tile_sizes,
-            reduction_tile_sizes,
-            subgroup_tile_sizes,
-            (z3_assignment.wg_x, z3_assignment.wg_y, z3_assignment.wg_z),
-            z3_assignment.subgroup_size,
-            subgroup_basis_counts,
-            subgroup_basis_mapping,
-            promote_operands,
-            codegen_pipeline,
-            pipeline_options_search_space,
-            allowed_waves_per_eu,
-            padding=padding,
-            padding_conv=padding_conv,
-        )
+        if (
+            codegen_pipeline
+            == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
+        ):
+            compilation_infos = (
+                rocm_dispatch_constraints.generate_tile_and_fuse_compilation_infos(
+                    tuner_ctx,
+                    mma_attr,
+                    workgroup_tile_sizes,
+                    reduction_tile_sizes,
+                    subgroup_tile_sizes,
+                    (z3_assignment.wg_x, z3_assignment.wg_y, z3_assignment.wg_z),
+                    z3_assignment.subgroup_size,
+                    promote_operands,
+                    pipeline_options_search_space,
+                    allowed_waves_per_eu,
+                    padding=padding,
+                    padding_conv=padding_conv,
+                )
+            )
+        elif (
+            codegen_pipeline
+            == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
+        ):
+            compilation_infos = (
+                rocm_dispatch_constraints.generate_vector_distribute_compilation_infos(
+                    tuner_ctx,
+                    mma_attr,
+                    workgroup_tile_sizes,
+                    reduction_tile_sizes,
+                    subgroup_basis_counts,
+                    subgroup_basis_mapping,
+                    (z3_assignment.wg_x, z3_assignment.wg_y, z3_assignment.wg_z),
+                    z3_assignment.subgroup_size,
+                    promote_operands,
+                    pipeline_options_search_space,
+                    allowed_waves_per_eu,
+                    padding=padding,
+                    padding_conv=padding_conv,
+                )
+            )
+        else:
+            assert False, f"Unsupported codegen pipeline: {codegen_pipeline}"
 
         knob_assignment = None
         for compilation_info in compilation_infos:
@@ -520,21 +546,21 @@ def generate_attention_solutions(
         pipeline_options_search_space.prefetch_num_stages = [2 if layouts_match else 0]
 
         promote_operands = [0, 1, 2]
-        compilation_infos = rocm_dispatch_constraints.generate_compilation_infos(
-            tuner_ctx,
-            None,
-            workgroup_tile_sizes,
-            reduction_tile_sizes,
-            [0, 0, 0],
-            (workgroup_size, 1, 1),
-            lookup(subgroup_size),
-            subgroup_basis_counts,
-            subgroup_basis_mapping,
-            promote_operands,
-            codegen_pipeline,
-            pipeline_options_search_space,
-            allowed_waves_per_eu,
-            padding=None,
+        compilation_infos = (
+            rocm_dispatch_constraints.generate_vector_distribute_compilation_infos(
+                tuner_ctx,
+                None,
+                workgroup_tile_sizes,
+                reduction_tile_sizes,
+                subgroup_basis_counts,
+                subgroup_basis_mapping,
+                (workgroup_size, 1, 1),
+                lookup(subgroup_size),
+                promote_operands,
+                pipeline_options_search_space,
+                allowed_waves_per_eu,
+                padding=None,
+            )
         )
         solver.add(z3.simplify(z3.Not(z3.And(list(x == model[x] for x in all_vars)))))
         i += 1
