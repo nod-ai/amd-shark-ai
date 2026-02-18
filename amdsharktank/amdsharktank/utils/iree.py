@@ -196,7 +196,7 @@ def get_iree_compiler_flags(
         ]
         res += ["--iree-llvmcpu-target-cpu=host"]
     elif iree_hal_target_device.startswith("hip"):
-        res += [f"--iree-hip-target={iree_hip_target}"]
+        res += [f"--iree-rocm-target={iree_hip_target}"]
     else:
         raise ValueError(
             f'"{iree_hal_target_device}" is not a supported IREE HAL target device'

@@ -130,7 +130,7 @@ def get_modules(
             f"--model={modelname}",
             f"--force-update={force_update}",
             f"--iree-hal-target-device={device}",
-            f"--iree-hip-target={target}",
+            f"--iree-rocm-target={target}",
             f"--iree-compile-extra-args={ireec_extra_args}",
         ]
         logger.info(f"Preparing runtime artifacts for {modelname}...")

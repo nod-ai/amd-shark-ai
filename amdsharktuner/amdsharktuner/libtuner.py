@@ -25,7 +25,6 @@ import tempfile
 import os
 import random
 import time
-import csv
 from collections import defaultdict
 from datetime import datetime
 from enum import Enum
@@ -33,7 +32,7 @@ from pathlib import Path
 from tqdm import tqdm
 import hashlib
 from dataclasses import dataclass, field
-from typing import Type, Optional, Callable, Protocol
+from typing import Type, Optional, Callable
 from abc import ABC, abstractmethod
 
 import iree.runtime as ireert  # type: ignore
@@ -44,10 +43,10 @@ from . import (
     candidate_gen,
     candidate_ordering,
     common,
-    dispatch_constraints,
     dispatch_parser,
     process_utils,
 )
+from .rocm import rocm_candidate_ordering, rocm_common, rocm_dispatch_constraints
 
 
 # Default random seed.
@@ -178,30 +177,15 @@ class CompilePack:
     candidate_tracker: CandidateTracker
 
 
-class BenchmarkToolConfig(Protocol):
-    """Marker base class for benchmark tool configuration objects."""
-
-    benchmark_fn: Callable
-
-
 @dataclass
-class IreeBenchmarkModuleConfig(BenchmarkToolConfig):
+class IreeBenchmarkModuleConfig(common.BenchmarkToolConfig):
     benchmark_fn: Callable
     iree_benchmark_module_flags: list[str]
-
-
-@dataclass
-class RocProfConfig(BenchmarkToolConfig):
-    benchmark_fn: Callable
-    iree_benchmark_module_flags: list[str]
-    rocprof_output_dir: Path
-    rocprof_output_filename_prefix: str
-    rocprof_output_format: str
 
 
 @dataclass
 class BenchmarkPack:
-    benchmark_tool_config: BenchmarkToolConfig
+    benchmark_tool_config: common.BenchmarkToolConfig
     benchmark_timeout: Optional[float]
     candidate_tracker: CandidateTracker
 
@@ -432,9 +416,10 @@ def parse_arguments(
     candidate_gen_args.add_argument(
         "--codegen-pipeline",
         choices=[x.value for x in CodegenPipelines],
-        default=CodegenPipelines.llvmgpu_vector_distribute,
+        default=CodegenPipelines.llvmgpu_tile_and_fuse,
         help="Codegen pipeline to tune for",
     )
+
     candidate_gen_args.add_argument(
         "--starter-td-spec",
         type=Path,
@@ -546,8 +531,7 @@ def handle_error(
 
 
 def flatten_nested_td_spec(td_spec_str: str, output_path: Path) -> None:
-    iree_opt = ireec.binaries.find_tool("iree-opt")  # type: ignore
-    assert iree_opt, "iree-opt tool not found"
+    iree_opt: str = ireec.binaries.find_tool("iree-opt")  # type: ignore[attr-defined]
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = os.path.join(tmpdir, "tmp_input.mlir")
         with open(input_path, "w") as f:
@@ -558,7 +542,7 @@ def flatten_nested_td_spec(td_spec_str: str, output_path: Path) -> None:
             "--iree-codegen-link-tuning-specs",
             input_path,
             "-o",
-            output_path,
+            str(output_path),
         ]
 
         process_utils.run_command(process_utils.RunPack(command=link_command))
@@ -584,8 +568,7 @@ def run_iree_compile_command(compile_pack: CompilePack) -> Optional[int]:
     crash_dump_path = f"{output_path}.crash_report.mlir"
     assert candidate_tracker.mlir_path, "expected input mlir file path"
     input_file = candidate_tracker.mlir_path.as_posix()
-    iree_compile = ireec.binaries.find_tool("iree-compile")  # type: ignore
-    assert iree_compile, "iree-compile tool not found"
+    iree_compile: str = ireec.binaries.find_tool("iree-compile")  # type: ignore[attr-defined]
     compile_command = [
         iree_compile,
         input_file,
@@ -712,108 +695,6 @@ def run_iree_benchmark_module_command(benchmark_pack: BenchmarkPack):
     )
 
 
-def compute_rocprof_avg_kernel_time(trace_rows: list[dict]) -> float:
-    if not trace_rows:
-        raise ValueError("Rocprof kernel trace is empty.")
-
-    required_cols = {"Kernel_Name", "Start_Timestamp", "End_Timestamp"}
-    # Only need to check the first row.
-    row_keys = set(trace_rows[0].keys())
-    missing = required_cols - row_keys
-    if missing:
-        raise ValueError(
-            f"Missing required columns in rocprof kernel trace snippet rows: {sorted(missing)}"
-        )
-
-    # Skip warm-up iterations.
-    if len(trace_rows) >= 20:
-        trace_rows = trace_rows[10:]  # Drop first 10 rows.
-    else:
-        logging.warning(
-            "Rocprof kernel trace CSV contains insufficient records; timing results may be unreliable or noisy."
-        )
-
-    init_dispatch_fn_name_key = "_buffer"
-    if any(init_dispatch_fn_name_key in str(row["Kernel_Name"]) for row in trace_rows):
-        raise RuntimeError(
-            "Rocprof measured the initializer dispatch instead of the main kernel computation."
-        )
-
-    clk_diffs_ns = []
-    for row in trace_rows:
-        start = float(row["Start_Timestamp"])
-        end = float(row["End_Timestamp"])
-        clk_diffs_ns.append(end - start)
-
-    avg_clk_ns = sum(clk_diffs_ns) / len(clk_diffs_ns)
-    avg_clk_us = avg_clk_ns / 1000.0
-
-    return avg_clk_us
-
-
-def run_rocprof_command(benchmark_pack: BenchmarkPack):
-    assert isinstance(benchmark_pack.benchmark_tool_config, RocProfConfig)
-    benchmark_tool_config: RocProfConfig = benchmark_pack.benchmark_tool_config
-    candidate_tracker = benchmark_pack.candidate_tracker
-
-    candidate_id = candidate_tracker.candidate_id
-    vmfb_path = candidate_tracker.compiled_vmfb_path
-    worker_ctx = process_utils.WorkerContextManager.get()
-    assert (
-        worker_ctx is not None
-    ), "Missing WorkerContext. Did you forget to set it in baseline?"
-    device_id = worker_ctx.device_id
-
-    output_file = f"{benchmark_tool_config.rocprof_output_dir}/{candidate_id}"
-    rocprof_command = [
-        "rocprofv3",
-        "--kernel-trace",
-        f"--output-file={output_file}",
-        f"--output-format={benchmark_tool_config.rocprof_output_format}",
-    ]
-    benchmark_command = [
-        "iree-benchmark-module",
-        f"--module={vmfb_path}",
-        f"--device={device_id}",
-    ]
-    benchmark_command += (
-        benchmark_pack.benchmark_tool_config.iree_benchmark_module_flags
-    )
-    measure_cmd = rocprof_command + ["--"] + benchmark_command
-
-    result = process_utils.run_command(
-        process_utils.RunPack(
-            command=measure_cmd,
-            timeout_seconds=benchmark_pack.benchmark_timeout,
-        )
-    )
-
-    if result.is_timeout:
-        return BenchmarkResult(
-            candidate_id=candidate_id,
-            time=math.inf,
-            device_id=str(device_id),
-        )
-
-    trace_path = Path(
-        f"{output_file}{benchmark_tool_config.rocprof_output_filename_prefix}.{benchmark_tool_config.rocprof_output_format}"
-    )
-    benchmark_pack.candidate_tracker.kernel_trace_path = trace_path
-    if not os.path.exists(trace_path):
-        raise FileNotFoundError(f"File not found: {trace_path}")
-    with open(trace_path, newline="") as f:
-        trace_reader = csv.DictReader(f)
-        trace_rows = list(trace_reader)
-
-    time = compute_rocprof_avg_kernel_time(trace_rows)
-    logging.debug(f"Rocprof benchmark time of candidate {candidate_id}: {time:.2f} us")
-    return BenchmarkResult(
-        candidate_id=candidate_id,
-        time=time,
-        device_id=str(device_id),
-    )
-
-
 def calculate_md5(file_path: Path) -> str:
     md5 = hashlib.md5()
     with open(file_path, "rb") as f:
@@ -878,7 +759,7 @@ def generate_candidate_specs(
         mlir_text = candidate_gen.strip_compilation_info(path_config.template_mlir)
         mlir_module = dispatch_parser.parse_mlir(mlir_text, tuning_client.tuner_context)
         logging.debug("Captured messages from candidate_gen.py:")
-        pipeline_options_search_space = dispatch_constraints.PipelineOptionsSearchSpace(
+        pipeline_options_search_space = rocm_dispatch_constraints.PipelineOptionsSearchSpace(
             prefetch_num_stages=args.prefetch_num_stages_options,
             no_reduce_shared_memory_bank_conflicts=args.no_reduce_shared_memory_bank_conflicts_options,
         )
@@ -887,8 +768,22 @@ def generate_candidate_specs(
             with open(args.starter_td_spec, "r") as f:
                 starter_td_spec = ir.Module.parse(f.read())
 
-        dispatch_tuner = candidate_gen.set_dispatch_tuner(
-            input_module=mlir_module, tuner_ctx=tuning_client.tuner_context
+        tuning_client.target_info = common.get_target_info(mlir_module)
+        assert tuning_client.target_info, "Failed to query target info."
+        if args.candidate_order == candidate_ordering.CandidateOrderKind.heuristic:
+            assert tuning_client.target_info.workgroup_count != 0, (
+                "Failed to retrieve the number of CUs required for the candidate reordering heuristic. "
+                "Try compiling with the GPU SKU specified in the flags (e.g., --iree-rocm-target=mi300x)."
+            )
+
+        dispatch_tuners = candidate_gen.get_supported_dispatch_tuners(
+            tuning_client.target_info.arch,
+            get_iree_codegen_pipeline(args.codegen_pipeline),
+        )
+        dispatch_tuner = candidate_gen.instantiate_dispatch_tuner(
+            input_module=mlir_module,
+            tuner_ctx=tuning_client.tuner_context,
+            dispatch_tuners=dispatch_tuners,
         )
         if not dispatch_tuner:
             candidate_gen_logger.warning(
@@ -906,8 +801,7 @@ def generate_candidate_specs(
                 )
             codegen_pipeline = CodegenPipelines.llvmgpu_vector_distribute
 
-        tuning_client.target_info = common.get_target_info(mlir_module)
-        assert tuning_client.target_info, "Failed to query target info."
+        solution_gen_start_time = time.perf_counter()
         solutions_iter = candidate_gen.generate_solutions(
             dispatch_tuner=dispatch_tuner,
             target_info=tuning_client.target_info,
@@ -917,13 +811,17 @@ def generate_candidate_specs(
             pipeline_options_search_space=pipeline_options_search_space,
             codegen_pipeline=get_iree_codegen_pipeline(codegen_pipeline),
         )
-
         if args.enable_random_seed:
             random.seed()
         else:
             random.seed(args.search_space_shuffle_seed)
 
         solutions = list(solutions_iter)
+        solution_gen_end_time = time.perf_counter()
+        elapsed_time = solution_gen_end_time - solution_gen_start_time
+        logging.debug(f"Completed candidate generation in {elapsed_time:.6f}s\n")
+        logging.debug(f"Max search space size: {len(solutions)}")
+
         knobs: list[Optional[common.KnobAssignment]] = [
             dispatch_tuner.get_knob_assignment(s) for s in solutions
         ]
@@ -932,6 +830,7 @@ def generate_candidate_specs(
             knobs=knobs,
             strategy=args.candidate_order,
             target_info=tuning_client.target_info,
+            sort_key_map=rocm_candidate_ordering.ROCM_SORT_KEY_MAP,
         )
         solutions = [solutions[i] for i in sorted_order] if sorted_order else solutions
         solutions = solutions[: args.num_candidates]
@@ -949,7 +848,11 @@ def generate_candidate_specs(
             candidate_ordering.build_tuning_records_from_order(knobs, sorted_order)
         )
 
-        knob_assignments = [dispatch_tuner.get_knob_assignment(s) for s in solutions]
+        # Prepend None for the baseline config (no knob assignment) at index 0.
+        knob_assignments = [None] + [
+            dispatch_tuner.get_knob_assignment(s) for s in solutions
+        ]
+        assert len(config_specs) == len(knob_assignments)
         logging.debug("candidate_gen.py ends")
         handle_error(
             condition=(len(solutions) == 0), msg="Failed to generate any candidates"
@@ -998,8 +901,7 @@ def generate_candidate_specs(
                 candidate_id=candidate_num,
                 spec_path=spec_path,
                 td_spec_str=td_spec_str,
-                # No knob_assignment for baseline.
-                knob_assignment=knob if candidate_num != 0 else None,
+                knob_assignment=knob,
             )
             tuning_client.candidate_trackers.append(new_candidate)
     except Exception as e:
@@ -1046,7 +948,7 @@ def benchmark_candidates(
     candidate_indices: list[int],
     devices: list[str],
     tuning_client: TuningClient,
-    benchmark_tool_config: BenchmarkToolConfig,
+    benchmark_tool_config: common.BenchmarkToolConfig,
     timeout_reference: Optional[float] = None,
     benchmark_time: Optional[
         float
@@ -1094,7 +996,7 @@ def benchmark_baseline(
     devices: list[str],
     tuning_client: TuningClient,
     candidate_tracker: CandidateTracker,
-    benchmark_tool_config: BenchmarkToolConfig,
+    benchmark_tool_config: common.BenchmarkToolConfig,
 ) -> tuple[list[BenchmarkResult], float]:
     baseline_results = list()
 
@@ -1396,7 +1298,7 @@ def benchmark(
         return []
 
     # Configure benchmark timing tool.
-    benchmark_tool_config: BenchmarkToolConfig
+    benchmark_tool_config: common.BenchmarkToolConfig
     match args.benchmark_timing_method:
         case BenchmarkTimingMethod.iree_benchmark_module:
             benchmark_tool_config = IreeBenchmarkModuleConfig(
@@ -1413,8 +1315,8 @@ def benchmark(
             )
             # Rocprof will dump results into files.
             path_config.kernel_traces_dir.mkdir(parents=True, exist_ok=True)
-            benchmark_tool_config = RocProfConfig(
-                benchmark_fn=run_rocprof_command,
+            benchmark_tool_config = rocm_common.RocProfConfig(
+                benchmark_fn=rocm_common.run_rocprof_command,
                 iree_benchmark_module_flags=tuning_client.get_iree_benchmark_module_flags(),
                 rocprof_output_dir=path_config.kernel_traces_dir,
                 rocprof_output_filename_prefix=path_config.get_candidate_kernel_trace_filename_prefix(),

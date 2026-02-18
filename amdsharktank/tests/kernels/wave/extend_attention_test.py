@@ -39,7 +39,7 @@ from amdsharktank.ops import attention_impls
 class TestExtendAttention:
     def hip_flags(self):
         return [
-            f"--iree-hip-target={self.iree_hip_target}",
+            f"--iree-rocm-target={self.iree_hip_target}",
             f"--iree-hal-target-device={self.iree_hal_target_device}",
             "--iree-opt-level=O3",
             "--iree-dispatch-creation-propagate-collapse-across-expands=true",

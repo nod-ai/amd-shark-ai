@@ -54,8 +54,8 @@ is_llama_8b = pytest.mark.skipif(
     'config.getoption("llama3_8b_f16_model_path") is None',
     reason="Run llama tests if --llama3-8b-f16-model-path is passed",
 )
-is_mi300x = pytest.mark.skipif("config.getoption('iree_hip_target') != 'gfx942'")
-is_mi350x = pytest.mark.skipif("config.getoption('iree_hip_target') != 'gfx950'")
+is_mi300x = pytest.mark.skipif("config.getoption('iree_rocm_target') != 'gfx942'")
+is_mi350x = pytest.mark.skipif("config.getoption('iree_rocm_target') != 'gfx950'")
 is_cpu_condition = (
     "exec('from amdsharktank.utils.testing import is_iree_hal_target_device_cpu') or "
     "is_iree_hal_target_device_cpu(config.getoption('iree_hal_target_device'))"
@@ -801,7 +801,9 @@ def _eval_condition(c: bool | str | None) -> bool:
 def get_random_test_text_prompts(
     num_prompts: int, min_prompt_length: int | None = None
 ):
-    prompts = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")["text"]
+    prompts = load_dataset("Salesforce/wikitext", "wikitext-2-raw-v1", split="test")[
+        "text"
+    ]
     if min_prompt_length is not None:
         prompts = [p for p in prompts if len(p) >= min_prompt_length]
     return random.sample(prompts, num_prompts)

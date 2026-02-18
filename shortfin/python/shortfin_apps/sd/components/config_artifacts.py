@@ -9,7 +9,7 @@ from iree.build import *
 from shortfin_apps.utils import *
 
 ARTIFACT_VERSION = "09022025"
-SDXL_CONFIG_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/amdsharkpublic/sdxl/{ARTIFACT_VERSION}/configs/"
+SDXL_CONFIG_BUCKET = f"https://amdsharkpublic.blob.core.windows.net/ciartifacts/image_models/sdxl/{ARTIFACT_VERSION}/configs/"
 
 
 @entrypoint(description="Retreives a set of SDXL configuration files.")

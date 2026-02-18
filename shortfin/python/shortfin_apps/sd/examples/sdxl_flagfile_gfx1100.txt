@@ -1,6 +1,6 @@
 all
 --iree-hal-target-device=hip
---iree-hip-target=gfx1100
+--iree-rocm-target=gfx1100
 --iree-execution-model=async-external
 --iree-global-opt-propagate-transposes=1
 --iree-opt-const-eval=0

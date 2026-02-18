@@ -262,7 +262,7 @@ def get_modules(args, model_config, flagfile, td_spec):
             f"--output-dir={args.artifacts_dir}",
             f"--model={modelname}",
             f"--iree-hal-target-device={args.device}",
-            f"--iree-hip-target={args.target}",
+            f"--iree-rocm-target={args.target}",
             f"--iree-compile-extra-args={ireec_extra_args}",
         ]
         logger.info(f"Preparing runtime artifacts for {modelname}...")

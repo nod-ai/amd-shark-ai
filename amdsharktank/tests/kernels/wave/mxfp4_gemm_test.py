@@ -31,7 +31,7 @@ from amdsharktank.utils.testing import is_mi350x, IreeFlags
 class TestWaveFp4Gemm:
     def hip_flags(self):
         return [
-            "--iree-hip-target=gfx950",
+            "--iree-rocm-target=gfx950",
             "--iree-hal-target-device=hip",
             "--iree-opt-level=O3",
             "--iree-dispatch-creation-propagate-collapse-across-expands=true",

@@ -208,9 +208,9 @@ def pytest_addoption(parser):
         help="List an IREE device from 'iree-run-module --list_devices'",
     )
     parser.addoption(
-        "--iree-hip-target",
+        "--iree-rocm-target",
         action="store",
-        help="Specify the iree-hip target version (e.g., gfx942)",
+        help="Specify the iree-rocm target version (e.g., gfx942)",
     )
     parser.addoption(
         "--iree-hal-target-device",
@@ -354,7 +354,7 @@ def iree_flags(request: FixtureRequest) -> IreeFlags:
         iree_device = iree_device[0]
     set_fixture(request, "iree_device", iree_device)
     iree_hip_target = set_fixture_from_cli_option(
-        request, "--iree-hip-target", "iree_hip_target"
+        request, "--iree-rocm-target", "iree_hip_target"
     )
     iree_hal_target_device = set_fixture_from_cli_option(
         request, "--iree-hal-target-device", "iree_hal_target_device"
