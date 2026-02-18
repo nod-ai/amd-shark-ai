@@ -776,30 +776,41 @@ def generate_candidate_specs(
                 "Try compiling with the GPU SKU specified in the flags (e.g., --iree-rocm-target=mi300x)."
             )
 
+        codegen_pipeline = args.codegen_pipeline
         dispatch_tuners = candidate_gen.get_supported_dispatch_tuners(
             tuning_client.target_info.arch,
-            get_iree_codegen_pipeline(args.codegen_pipeline),
+            get_iree_codegen_pipeline(codegen_pipeline),
         )
+        # Attention only supports VectorDistribute, so always include
+        # VectorDistribute tuners to allow attention ops to be matched.
+        if codegen_pipeline != CodegenPipelines.llvmgpu_vector_distribute:
+            vd_tuners = candidate_gen.get_supported_dispatch_tuners(
+                tuning_client.target_info.arch,
+                get_iree_codegen_pipeline(CodegenPipelines.llvmgpu_vector_distribute),
+            )
+            dispatch_tuners += [t for t in vd_tuners if t not in dispatch_tuners]
+
         dispatch_tuner = candidate_gen.instantiate_dispatch_tuner(
             input_module=mlir_module,
             tuner_ctx=tuning_client.tuner_context,
             dispatch_tuners=dispatch_tuners,
         )
-        if not dispatch_tuner:
-            candidate_gen_logger.warning(
-                "Failed to set up dispatch tuner. No candidates will be generated."
-            )
-            return []
-
-        # Attention only supports VectorDistribute.
-        codegen_pipeline = args.codegen_pipeline
-        if dispatch_tuner.get_dispatch_kind() == common.DispatchKind.attention:
+        if (
+            dispatch_tuner
+            and dispatch_tuner.get_dispatch_kind() == common.DispatchKind.attention
+        ):
             if codegen_pipeline != CodegenPipelines.llvmgpu_vector_distribute:
                 logging.info(
                     f"Attention operation detected. Overriding codegen pipeline "
                     f"from {codegen_pipeline} to llvmgpu_vector_distribute"
                 )
-            codegen_pipeline = CodegenPipelines.llvmgpu_vector_distribute
+                codegen_pipeline = CodegenPipelines.llvmgpu_vector_distribute
+
+        if not dispatch_tuner:
+            candidate_gen_logger.warning(
+                "Failed to set up dispatch tuner. No candidates will be generated."
+            )
+            return []
 
         solution_gen_start_time = time.perf_counter()
         solutions_iter = candidate_gen.generate_solutions(
