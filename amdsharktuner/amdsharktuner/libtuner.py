@@ -776,20 +776,42 @@ def generate_candidate_specs(
                 "Try compiling with the GPU SKU specified in the flags (e.g., --iree-rocm-target=mi300x)."
             )
 
+        codegen_pipeline = args.codegen_pipeline
         dispatch_tuners = candidate_gen.get_supported_dispatch_tuners(
             tuning_client.target_info.arch,
-            get_iree_codegen_pipeline(args.codegen_pipeline),
+            get_iree_codegen_pipeline(codegen_pipeline),
         )
+        # Attention only supports VectorDistribute, so always include
+        # VectorDistribute tuners to allow attention ops to be matched.
+        if codegen_pipeline != CodegenPipelines.llvmgpu_vector_distribute:
+            vd_tuners = candidate_gen.get_supported_dispatch_tuners(
+                tuning_client.target_info.arch,
+                get_iree_codegen_pipeline(CodegenPipelines.llvmgpu_vector_distribute),
+            )
+            dispatch_tuners += [t for t in vd_tuners if t not in dispatch_tuners]
+
         dispatch_tuner = candidate_gen.instantiate_dispatch_tuner(
             input_module=mlir_module,
             tuner_ctx=tuning_client.tuner_context,
             dispatch_tuners=dispatch_tuners,
         )
+        if (
+            dispatch_tuner
+            and dispatch_tuner.get_dispatch_kind() == common.DispatchKind.attention
+        ):
+            if codegen_pipeline != CodegenPipelines.llvmgpu_vector_distribute:
+                logging.info(
+                    f"Attention operation detected. Overriding codegen pipeline "
+                    f"from {codegen_pipeline} to llvmgpu_vector_distribute"
+                )
+                codegen_pipeline = CodegenPipelines.llvmgpu_vector_distribute
+
         if not dispatch_tuner:
             candidate_gen_logger.warning(
                 "Failed to set up dispatch tuner. No candidates will be generated."
             )
             return []
+
         solution_gen_start_time = time.perf_counter()
         solutions_iter = candidate_gen.generate_solutions(
             dispatch_tuner=dispatch_tuner,
@@ -798,7 +820,7 @@ def generate_candidate_specs(
             num_subgroups=args.num_subgroups,
             allowed_waves_per_eu=args.waves_per_eu_options,
             pipeline_options_search_space=pipeline_options_search_space,
-            codegen_pipeline=get_iree_codegen_pipeline(args.codegen_pipeline),
+            codegen_pipeline=get_iree_codegen_pipeline(codegen_pipeline),
         )
         if args.enable_random_seed:
             random.seed()
@@ -844,8 +866,13 @@ def generate_candidate_specs(
         assert len(config_specs) == len(knob_assignments)
         logging.debug("candidate_gen.py ends")
         handle_error(
-            condition=(len(solutions) <= 1), msg="Failed to generate any candidates"
+            condition=(len(solutions) == 0), msg="Failed to generate any candidates"
         )
+        if len(solutions) == 1:
+            logging.warning(
+                f"Only generated 1 candidate (plus baseline). "
+                f"Constraints may be too restrictive for this problem size."
+            )
 
         # Create candidate trackers.
         candidates = []

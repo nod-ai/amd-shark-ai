@@ -95,10 +95,10 @@ def get_compatible_mma_intrinsics(
             else iree_gpu.MMAAttr.get(mma)
         )
         a_type, b_type, c_type = mma_attr.abc_element_types
-        return (
-            lhs_type.element_type == a_type
-            and rhs_type.element_type == b_type
-            and res_type.element_type == c_type
+        if lhs_type.element_type != a_type or rhs_type.element_type != b_type:
+            return False
+        return common.is_result_type_compatible_with_accumulator(
+            a_type, b_type, c_type, res_type.element_type
         )
 
     return list(filter(is_compatible, mma_intrinsics))
@@ -106,14 +106,17 @@ def get_compatible_mma_intrinsics(
 
 # Generate a config dictionary used in translation_info attribute.
 def get_translation_info_config(
-    pipeline_options: iree_gpu.PipelineOptionsAttr, waves_per_eu: int
+    pipeline_options: iree_gpu.PipelineOptionsAttr,
+    waves_per_eu: int,
+    denorm_flushing: bool = False,
 ) -> ir.DictAttr:
     """
     Example IR
     translation_info = #iree_codegen.translation_info<
                     pipeline = LLVMGPUVectorDistribute workgroup_size = [512, 1, 1] subgroup_size = 64,
                     {gpu_pipeline_options = #iree_gpu.pipeline_options<...>,
-                     llvm_func_attrs = {"amdgpu-waves-per-eu" = "3"}
+                     llvm_func_attrs = {"amdgpu-waves-per-eu" = "3"},
+                     iree_codegen.denormal_fp_math_f32 = #iree_codegen.denormal_fp_math<"preserve-sign">
                     }
                 >
     """
@@ -124,12 +127,20 @@ def get_translation_info_config(
         {WAVES_PER_EU_KEY: ir.StringAttr.get(waves_per_eu_str)}
     )
 
-    config_dict = ir.DictAttr.get(
-        {
-            common.GPU_PIPELINE_OPTIONS_KEY: pipeline_options,
-            common.LLVM_FUNC_ATTRS_KEY: waves_per_eu_dict,
-        }
-    )
+    config_dict_entries: dict[str, ir.Attribute] = {
+        common.GPU_PIPELINE_OPTIONS_KEY: pipeline_options,
+        common.LLVM_FUNC_ATTRS_KEY: waves_per_eu_dict,
+    }
+
+    # Add denormal_fp_math_f32 attribute if denorm_flushing is specified.
+    # When denorm_flushing is True, use "preserve-sign" to flush denormals to zero.
+    if denorm_flushing:
+        denorm_attr = ir.Attribute.parse(
+            '#iree_codegen.denormal_fp_math<"preserve-sign">'
+        )
+        config_dict_entries[common.DENORMAL_FP_MATH_F32_KEY] = denorm_attr
+
+    config_dict = ir.DictAttr.get(config_dict_entries)
 
     return config_dict
 

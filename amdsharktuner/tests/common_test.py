@@ -75,6 +75,34 @@ def test_get_map_result_dim_positions(tuner_ctx: common.TunerContext) -> None:
     assert result is None, "Expected None for non-projected permutation"
 
 
+def test_is_result_type_compatible_with_accumulator(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    bf16 = tuner_ctx.type.bf16
+    f16 = tuner_ctx.type.f16
+    f32 = tuner_ctx.type.f32
+    i8 = tuner_ctx.type.i8
+    i32 = tuner_ctx.type.i32
+
+    # bf16 inputs with f32 accumulator: allow bf16 or f32 result
+    assert common.is_result_type_compatible_with_accumulator(bf16, bf16, f32, bf16)
+    assert common.is_result_type_compatible_with_accumulator(bf16, bf16, f32, f32)
+    assert not common.is_result_type_compatible_with_accumulator(bf16, bf16, f32, f16)
+
+    # f16 inputs with f32 accumulator: allow f16 or f32 result
+    assert common.is_result_type_compatible_with_accumulator(f16, f16, f32, f16)
+    assert common.is_result_type_compatible_with_accumulator(f16, f16, f32, f32)
+    assert not common.is_result_type_compatible_with_accumulator(f16, f16, f32, bf16)
+
+    # i8 inputs with i32 accumulator: only i32 result
+    assert common.is_result_type_compatible_with_accumulator(i8, i8, i32, i32)
+    assert not common.is_result_type_compatible_with_accumulator(i8, i8, i32, i8)
+
+    # f32 inputs with f32 accumulator: only f32 result
+    assert common.is_result_type_compatible_with_accumulator(f32, f32, f32, f32)
+    assert not common.is_result_type_compatible_with_accumulator(f32, f32, f32, f16)
+
+
 def test_get_lowering_config(tuner_ctx: common.TunerContext) -> None:
     lowering_config = common.get_lowering_config(
         tuner_ctx=tuner_ctx,
@@ -210,9 +238,9 @@ def test_link_tuning_specs_raises_error(tuner_ctx: common.TunerContext) -> None:
     """
 
     module = ir.Module.parse(module_str, context)
-    module.operation.attributes[
-        "iree_codegen.tuning_spec_with_default_entrypoint"
-    ] = ir.UnitAttr.get()
+    module.operation.attributes["iree_codegen.tuning_spec_with_default_entrypoint"] = (
+        ir.UnitAttr.get()
+    )
     with pytest.raises(RuntimeError) as exc_info:
         common.link_tuning_specs(tuner_ctx, [module, module])
         # iree-opt should fail due to missing named sequence @__kernel_config entrypoint required
@@ -473,7 +501,11 @@ def test_calculate_padded_dimensions(
 
         # Test with non-transposed LHS: (m, k) x (k, n) -> (m, n).
         # LHS map: (d0, d1, d2) -> (d0, d2)  # M=d0, K=d2 (non-transposed).
-        (M_padded, N_padded, padding_applied,) = common.calculate_padded_dimensions(
+        (
+            M_padded,
+            N_padded,
+            padding_applied,
+        ) = common.calculate_padded_dimensions(
             M=[200],
             N=[300],
             contraction_dims=contraction_dims,
@@ -487,7 +519,11 @@ def test_calculate_padded_dimensions(
         # LHS map: (d0, d1, d2) -> (d2, d0)  # K=d2, M=d0 (transposed).
         lhs_transposed_map = ir.AffineMap.get(3, 0, [dim2, dim0])
 
-        (M_padded, N_padded, padding_applied,) = common.calculate_padded_dimensions(
+        (
+            M_padded,
+            N_padded,
+            padding_applied,
+        ) = common.calculate_padded_dimensions(
             M=[200],
             N=[300],
             contraction_dims=contraction_dims,
