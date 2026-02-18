@@ -635,13 +635,15 @@ def getMMAAttr(
 
         a_type, b_type, c_type = mma_attr.abc_element_types
         mnk = mma_attr.mnk_shape
-        
+
         # Check if input types and mnk match
-        if not (isinstance(a_type, type(lhs_type)) and isinstance(b_type, type(rhs_type))):
+        if not (
+            isinstance(a_type, type(lhs_type)) and isinstance(b_type, type(rhs_type))
+        ):
             continue
         if not (m == mnk[0] and n == mnk[1] and k == mnk[2]):
             continue
-        
+
         if common.is_result_type_compatible_with_accumulator(
             a_type, b_type, c_type, output_type
         ):
@@ -662,21 +664,19 @@ class PipelineOptionsSearchSpace:
         default_factory=lambda: [None]
     )
     use_igemm_convolution: list[Optional[bool]] = field(default_factory=lambda: [None])
-    denorm_flushing: list[Optional[bool]] = field(default_factory=lambda: [True])
+    denorm_flushing: list[bool] = field(default_factory=lambda: [False])
 
 
 def generate_allowed_pipeline_options(
     pipeline_options_search_space: PipelineOptionsSearchSpace,
-) -> list[tuple[iree_gpu.PipelineOptionsAttr, Optional[bool]]]:
+) -> list[tuple[iree_gpu.PipelineOptionsAttr, bool]]:
     """
     Generate a list of (PipelineOptionsAttr, denorm_flushing) tuples.
 
     denorm_flushing is passed separately since it's applied via llvm_func_attrs
     rather than through PipelineOptionsAttr.
     """
-    pipeline_options_list: list[tuple[iree_gpu.PipelineOptionsAttr, Optional[bool]]] = (
-        []
-    )
+    pipeline_options_list: list[tuple[iree_gpu.PipelineOptionsAttr, bool]] = []
     for pns in pipeline_options_search_space.prefetch_num_stages:
         for (
             nrbc

@@ -293,10 +293,18 @@ def is_result_type_compatible_with_accumulator(
     allow either the input precision or f32 as the result type. Otherwise
     the result type must match the accumulator type exactly.
     """
-    if isinstance(a_type, ir.BF16Type) and isinstance(b_type, ir.BF16Type) and isinstance(c_type, ir.F32Type):
+    if (
+        isinstance(a_type, ir.BF16Type)
+        and isinstance(b_type, ir.BF16Type)
+        and isinstance(c_type, ir.F32Type)
+    ):
         return isinstance(res_type, (ir.BF16Type, ir.F32Type))
 
-    if isinstance(a_type, ir.F16Type) and isinstance(b_type, ir.F16Type) and isinstance(c_type, ir.F32Type):
+    if (
+        isinstance(a_type, ir.F16Type)
+        and isinstance(b_type, ir.F16Type)
+        and isinstance(c_type, ir.F32Type)
+    ):
         return isinstance(res_type, (ir.F16Type, ir.F32Type))
 
     return res_type == c_type
@@ -326,6 +334,8 @@ def get_compatible_mfma_intrinsics(
         )
 
     return list(filter(is_compatible, mma_intrinsics))
+
+
 # The key name for GPUPipelineOptionsAttr in the translation info config dictionary.
 GPU_PIPELINE_OPTIONS_KEY = "gpu_pipeline_options"
 # The key name for llvm_func_attrs attribute in the translation info config dictionary.
@@ -345,7 +355,14 @@ def get_lowering_config(
         # A local variable to hold the transformed value.
         promoted_value = value
         match key:
-            case "workgroup" | "reduction" | "subgroup" | "promote_operands" | "padding" | "padding_conv":
+            case (
+                "workgroup"
+                | "reduction"
+                | "subgroup"
+                | "promote_operands"
+                | "padding"
+                | "padding_conv"
+            ):
                 if isinstance(value, Sequence):
                     promoted_value = ir.ArrayAttr.get(
                         [tuner_ctx.type.getI64(x) for x in value]
@@ -385,7 +402,7 @@ def get_lowering_config(
 def get_translation_info_config(
     pipeline_options: iree_gpu.PipelineOptionsAttr,
     waves_per_eu: int,
-    denorm_flushing: Optional[bool] = None,
+    denorm_flushing: bool = False,
 ) -> ir.DictAttr:
     """
     Example IR
@@ -413,9 +430,11 @@ def get_translation_info_config(
 
     # Add denormal_fp_math_f32 attribute if denorm_flushing is specified.
     # When denorm_flushing is True, use "preserve-sign" to flush denormals to zero.
-    # When denorm_flushing is False/None, don't add the attribute (uses default IEEE behavior).
-    if denorm_flushing is True:
-        denorm_attr = ir.Attribute.parse('#iree_codegen.denormal_fp_math<"preserve-sign">')
+    # When denorm_flushing is False, don't add the attribute (uses default IEEE behavior).
+    if denorm_flushing:
+        denorm_attr = ir.Attribute.parse(
+            '#iree_codegen.denormal_fp_math<"preserve-sign">'
+        )
         config_dict_entries[DENORMAL_FP_MATH_F32_KEY] = denorm_attr
 
     config_dict = ir.DictAttr.get(config_dict_entries)
@@ -432,9 +451,9 @@ def combine_tuning_specs(
     """
     with tuner_ctx.mlir_ctx as ctx, ir.Location.unknown():
         top_module = ir.Module.create()
-        top_module.operation.attributes[
-            "transform.with_named_sequence"
-        ] = ir.UnitAttr.get()
+        top_module.operation.attributes["transform.with_named_sequence"] = (
+            ir.UnitAttr.get()
+        )
 
         for td_spec in td_specs:
             top_module.body.append(td_spec.operation.clone())

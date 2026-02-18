@@ -896,14 +896,15 @@ def generate_candidate_specs(
             )
             return []
 
-        # For attention ops, use VectorDistribute pipeline instead of TileAndFuse
+        # Attention only supports VectorDistribute.
+        codegen_pipeline = args.codegen_pipeline
         if dispatch_tuner.get_dispatch_kind() == common.DispatchKind.attention:
-            if args.codegen_pipeline != CodegenPipelines.llvmgpu_vector_distribute:
+            if codegen_pipeline != CodegenPipelines.llvmgpu_vector_distribute:
                 logging.info(
                     f"Attention operation detected. Overriding codegen pipeline "
-                    f"from {args.codegen_pipeline} to llvmgpu_vector_distribute"
+                    f"from {codegen_pipeline} to llvmgpu_vector_distribute"
                 )
-                args.codegen_pipeline = CodegenPipelines.llvmgpu_vector_distribute
+            codegen_pipeline = CodegenPipelines.llvmgpu_vector_distribute
 
         tuning_client.target_info = common.get_target_info(mlir_module)
         assert tuning_client.target_info, "Failed to query target info."
@@ -914,7 +915,7 @@ def generate_candidate_specs(
             num_subgroups=args.num_subgroups,
             allowed_waves_per_eu=args.waves_per_eu_options,
             pipeline_options_search_space=pipeline_options_search_space,
-            codegen_pipeline=get_iree_codegen_pipeline(args.codegen_pipeline),
+            codegen_pipeline=get_iree_codegen_pipeline(codegen_pipeline),
         )
 
         if args.enable_random_seed:
