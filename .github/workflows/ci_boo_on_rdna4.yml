@@ -38,7 +38,7 @@ jobs:
       matrix:
         version: [3.12]
       fail-fast: false
-    runs-on: "shark-mkm-1-for-boo"
+    runs-on: "shark41-rdna4"
     defaults:
       run:
         shell: bash
@@ -63,7 +63,7 @@ jobs:
       run: |
         mkdir -p output_artifacts
         source ${VENV_DIR}/bin/activate
-        pip install --index-url https://rocm.nightlies.amd.com/v2/gfx120X-all/ torch torchaudio torchvision
+        pip install --index-url https://rocm.nightlies.amd.com/v2/gfx120X-all/ torch==2.9.1+rocm7.12.0a20260208
         pip install "git+https://github.com/iree-org/iree-turbine.git"
         pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
         pip freeze  > $(pwd)/output_artifacts/version.txt
@@ -78,8 +78,10 @@ jobs:
        git checkout main
        cd -
        source ${VENV_DIR}/bin/activate
+       pip freeze
        export MIOPEN_FIND_ENFORCE=3
        export PYTHONUNBUFFERED=1
+       export ROCR_VISIBLE_DEVICES="0"
 
        echo "============ 1. Running Prod Conv shape with MIOpen and IREE without tuning ==================="
        iree-boo-driver \
@@ -115,7 +117,7 @@ jobs:
     - name: Run hipblaslt-bench
       run: |
         source ${VENV_DIR}/bin/activate
-        tarFileName=` /home/yrathore/bin/aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx120X | sort -r | head -1 |  awk '{print $NF}'`
+        tarFileName=` /home/praveeng/.local/bin/aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx120X | sort -r | head -1 |  awk '{print $NF}'`
         echo "Installing $tarFileName"
         wget https://therock-nightly-tarball.s3.us-east-2.amazonaws.com/${tarFileName}
         mkdir install
