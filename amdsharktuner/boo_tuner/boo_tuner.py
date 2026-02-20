@@ -367,6 +367,9 @@ def process_boo_command(
 
             except Exception as err:
                 traceback.print_exception(err)
+            finally:
+                # Remove handler from logger to prevent log accumulation.
+                root_logger.removeHandler(summary_handler)
 
     return args.output_td_spec if best_spec_path else None
 
@@ -376,6 +379,10 @@ def main() -> None:
     # pytorch's inferred tensor layouts on AMDGPU, even when not actually using
     # MIOpen kernels, and are required for performance.
     os.environ.setdefault("PYTORCH_MIOPEN_SUGGEST_NHWC", "1")
+
+    # Suppress verbose DEBUG output from turbine library by setting environment variable
+    # This must be set before turbine modules are imported.
+    os.environ.setdefault("TURBINE_LOG_LEVEL", "WARNING")
 
     parsed_args: tuple[argparse.Namespace, list[str]] = parse_args()
     args, miopen_op_args = parsed_args
@@ -397,8 +404,6 @@ def main() -> None:
         logging.info("Validating devices")
         libtuner.validate_devices(args.devices)
         logging.info("Validation successful!")
-
-    logging.getLogger("turbine").setLevel(logging.WARNING)
 
     mio_args = load_commands_from_file_or_args(args.commands_file, miopen_op_args)
 
