@@ -15,7 +15,7 @@ import tempfile
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
 from typing_extensions import override
 
 from amdsharktuner import common, libtuner
@@ -83,13 +83,17 @@ def insert_placeholder_input_file(argv: list[str]) -> list[str]:
     return [argv[0], "fusilli.mlir"] + argv[1:]
 
 
-def parse_args() -> tuple[argparse.Namespace, list[str]]:
+def parse_args(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
     """Parse command line arguments.
+
+    Args:
+        argv: Command line arguments to parse (typically sys.argv).
 
     Returns:
         A tuple of (parsed_args, fusilli_op_args) where fusilli_op_args contains
         the Fusilli operation arguments (conv, matmul parameters).
     """
+
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -138,10 +142,17 @@ def parse_args() -> tuple[argparse.Namespace, list[str]]:
     # Placeholder to satisfy libtuner's required input_file argument.
     # Fusilli generates benchmark files at runtime, not from a pre-existing file.
     # TODO(Bangtian): Remove dispatch tuner's input file requirement, then use dispatch tuner.
-    sys.argv = insert_placeholder_input_file(sys.argv)
-    args = libtuner.parse_arguments(parser)
+    argv_with_placeholder = insert_placeholder_input_file(argv)
 
-    if "--codegen-pipeline" not in sys.argv:
+    # Temporarily override sys.argv for libtuner.parse_arguments.
+    original_argv = sys.argv
+    sys.argv = argv_with_placeholder
+    try:
+        args = libtuner.parse_arguments(parser)
+    finally:
+        sys.argv = original_argv
+
+    if "--codegen-pipeline" not in argv_with_placeholder:
         # Default to tile_and_fuse for Fusilli operations.
         args.codegen_pipeline = libtuner.CodegenPipelines.llvmgpu_tile_and_fuse
 
@@ -174,12 +185,12 @@ def load_commands_from_file_or_args(
 
 
 def build_compile_args(compile_command: str, benchmarks_dir: Path) -> list[str]:
-    fusilli_compile_flags = shlex.split(compile_command)
+    fusilli_compile_flags: list[str] = shlex.split(compile_command)
 
     # Start with iree-compile and filter out unwanted flags from fusilli flags.
     # See fusilli/include/fusilli/backend/compile_command.h for flag formats.
-    compile_args = ["iree-compile"]
-    args_iter = iter(fusilli_compile_flags[1:])
+    compile_args: list[str] = ["iree-compile"]
+    args_iter: Iterator[str] = iter(fusilli_compile_flags[1:])
     for arg in args_iter:
         # Skip output flag (Fusilli generates "-o" as separate argument + path).
         if arg == "-o":
@@ -211,61 +222,81 @@ def run_fusilli_benchmark_driver(
 ) -> None:
     # Use --dump to generate MLIR and compile command artifacts, --iter 1 since
     # we only need file generation (not actual benchmarking).
-    cmd = [fusilli_driver, "--dump", "--iter", "1"] + cli_args
+    cmd: list[str] = [fusilli_driver, "--dump", "--iter", "1"] + cli_args
 
     # Override FUSILLI_CACHE_DIR to control where Fusilli dumps the generated
     # MLIR and compilation flags.
-    env = os.environ.copy()
+    env: dict[str, str] = os.environ.copy()
     env["FUSILLI_CACHE_DIR"] = str(cache_dir)
 
     logging.info(f"> {shlex.join(cmd)}")
     logging.info(f"  FUSILLI_CACHE_DIR={cache_dir}")
 
-    result = subprocess.run(cmd, env=env, capture_output=True, text=True)
+    result: subprocess.CompletedProcess[str] = subprocess.run(
+        cmd, env=env, capture_output=True, text=True
+    )
 
-    # Log stdout even on success for debugging
-    if result.stdout:
-        logging.debug(f"Fusilli benchmark driver stdout:\n{result.stdout}")
-
-    if result.returncode != 0:
-        logging.error(
-            f"Fusilli benchmark driver failed with return code {result.returncode}"
-        )
+    # Exit early on success.
+    if result.returncode == 0:
         if result.stdout:
-            logging.error(f"stdout: {result.stdout}")
-        if result.stderr:
-            logging.error(f"stderr: {result.stderr}")
-        raise RuntimeError(
-            f"Fusilli benchmark driver failed with code {result.returncode}"
-        )
+            logging.debug(f"Fusilli benchmark driver stdout:\n{result.stdout}")
+        return
+
+    # Handle failure.
+    logging.error(
+        f"Fusilli benchmark driver failed with return code {result.returncode}"
+    )
+    if result.stdout:
+        logging.error(f"stdout: {result.stdout}")
+    if result.stderr:
+        logging.error(f"stderr: {result.stderr}")
+    raise RuntimeError(f"Fusilli benchmark driver failed with code {result.returncode}")
 
 
-def find_cached_artifacts(cache_dir: Path) -> tuple[Path, Path]:
+def find_cached_artifacts(base_dir: Path) -> tuple[Path, Path]:
     """Find source MLIR and compile command from Fusilli cache.
+
+    Fusilli cache structure controlled by FUSILLI_CACHE_DIR environment variable:
+        base_dir/                     # User-specified or temp directory (FUSILLI_CACHE_DIR)
+          .cache/fusilli/             # Fusilli's internal cache structure
+            <graph_hash>/             # Graph-specific directory (one per operation)
+              iree-compile-input.mlir # Generated MLIR for the operation
+              iree-compile-command.txt # Compile command used by Fusilli
+
+    Args:
+        base_dir: The base directory where FUSILLI_CACHE_DIR environment variable was set to.
+                  Fusilli creates its cache at base_dir/.cache/fusilli/
 
     Returns:
         Tuple of (source_mlir_path, compile_command_path).
     """
-    fusilli_cache = cache_dir / ".cache" / "fusilli"
+    fusilli_cache: Path = base_dir / ".cache" / "fusilli"
 
     if not fusilli_cache.exists():
         raise FileNotFoundError(f"Fusilli cache not found at {fusilli_cache}")
 
     # Find the graph directory (there should be exactly one after running
     # with --dump).
-    graph_dirs = list(fusilli_cache.iterdir())
+    graph_dirs: list[Path] = list(fusilli_cache.iterdir())
     if not graph_dirs:
         raise FileNotFoundError(f"No graph directories found in {fusilli_cache}")
 
-    graph_dir = graph_dirs[0]
+    graph_dir: Path = graph_dirs[0]
 
-    source_mlir_path = graph_dir / "iree-compile-input.mlir"
-    compile_command_path = graph_dir / "iree-compile-command.txt"
+    source_mlir_path: Path = graph_dir / "iree-compile-input.mlir"
+    compile_command_path: Path = graph_dir / "iree-compile-command.txt"
 
     if not source_mlir_path.exists():
         raise FileNotFoundError(f"Source MLIR not found at {source_mlir_path}")
     if not compile_command_path.exists():
         raise FileNotFoundError(f"Compile command not found at {compile_command_path}")
+
+    # Validate paths to prevent path traversal attacks.
+    try:
+        source_mlir_path.resolve().relative_to(base_dir.resolve())
+        compile_command_path.resolve().relative_to(base_dir.resolve())
+    except ValueError as e:
+        raise ValueError(f"Path traversal detected: {e}")
 
     return source_mlir_path, compile_command_path
 
@@ -345,12 +376,11 @@ def process_fusilli_command(
     # Set up temporary directory.
     if args.tmp_dir:
         tmp_dir = Path(args.tmp_dir)
-        if tmp_dir.exists():
-            logging.warning(f"Removing existing temporary directory: {tmp_dir}")
-            shutil.rmtree(tmp_dir)
         tmp_dir.mkdir(parents=True, exist_ok=True)
         logging.info(f"Using user-specified temporary directory: {tmp_dir}")
     else:
+        # Ensure parent directory exists before creating temp directory.
+        Path("fusilli_tuner").mkdir(exist_ok=True)
         tmp_dir = Path(tempfile.mkdtemp(dir="fusilli_tuner", prefix="fusilli_cache_"))
         logging.info(f"Created temporary directory: {tmp_dir}")
 
@@ -445,8 +475,7 @@ def process_fusilli_command(
 
 def main() -> None:
     """Main entry point for the Fusilli tuner."""
-    parsed_args = parse_args()
-    args, fusilli_op_args = parsed_args
+    args, fusilli_op_args = parse_args(sys.argv)
 
     if args.commands_file and fusilli_op_args:
         raise ValueError("Cannot specify both --commands-file and --fusilli-args")
