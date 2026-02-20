@@ -68,15 +68,31 @@ jobs:
         pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
         pip freeze  > $(pwd)/output_artifacts/version.txt
 
-    - name: Run all proxy config
+    - name: Download config files
       run: |
        echo "Getting config files"
        git clone --filter=blob:none --no-checkout https://x-access-token:${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}@github.com/nod-ai/amd-shark-ai-reports.git
        cd amd-shark-ai-reports
        git sparse-checkout init --cone
-       git sparse-checkout set boo/all_proxy_config.txt boo/prod_conv_config.txt boo/gemm_config.txt boo/hipblaslt-bench.sh boo/all_proxy_config_nchw.txt boo/prod_conv_config_nchw.txt
+       git sparse-checkout set boo/all_proxy_config.txt boo/prod_conv_config.txt boo/gemm_config.txt boo/hipblaslt-bench.sh boo/all_proxy_config_nchw.txt boo/prod_conv_config_nchw.txt boo/batch_norm_config.txt
        git checkout main
        cd -
+
+    - name: Run hipblaslt-bench
+      run: |
+        source ${VENV_DIR}/bin/activate
+        tarFileName=$( /home/praveeng/.local/bin/aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx120X | sort -r | head -1 |  awk '{print $NF}' || true )
+        echo "Installing $tarFileName"
+        wget https://therock-nightly-tarball.s3.us-east-2.amazonaws.com/${tarFileName}
+        mkdir install
+        tar -xf *.tar.gz -C install
+        export PATH=$PWD/install/bin:$PATH
+
+        echo "============= Running Gemm Shape with hipblaslt =============================="
+        bash amd-shark-ai-reports/boo/hipblaslt-bench.sh >& output_artifacts/rdna4_gemm_hipBlaslt-bench.csv
+
+    - name: Run all proxy config
+      run: |
        source ${VENV_DIR}/bin/activate
        pip freeze
        export MIOPEN_FIND_ENFORCE=3
@@ -113,19 +129,6 @@ jobs:
        # iree-boo-driver \
        #      --commands-file amd-shark-ai-reports/boo/all_proxy_config_nchw.txt --csv output_artifacts/rdna4_all_proxy_miopen_iree_nchw.csv \
        #      --backend=torch --backend=iree_boo_experimental || true
-
-    - name: Run hipblaslt-bench
-      run: |
-        source ${VENV_DIR}/bin/activate
-        tarFileName=` /home/praveeng/.local/bin/aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx120X | sort -r | head -1 |  awk '{print $NF}'`
-        echo "Installing $tarFileName"
-        wget https://therock-nightly-tarball.s3.us-east-2.amazonaws.com/${tarFileName}
-        mkdir install
-        tar -xf *.tar.gz -C install
-        export PATH=$PWD/install/bin:$PATH
-
-        echo "============= 4. Running Gemm Shape with hipblaslt =============================="
-        bash amd-shark-ai-reports/boo/hipblaslt-bench.sh >& output_artifacts/rdna4_gemm_hipBlaslt-bench.csv
 
     - name: Upload log files
       if: always()
