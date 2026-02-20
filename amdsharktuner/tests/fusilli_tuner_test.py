@@ -133,12 +133,13 @@ def test_insert_placeholder_input_file() -> None:
 
 def test_find_cached_artifacts(tmp_path: Path) -> None:
     """Test find_cached_artifacts for success and error cases."""
+    # Success case: auto-detect .mlir and .txt files by extension.
     base_dir = tmp_path / "success_cache"
     fusilli_cache = base_dir / ".cache" / "fusilli"
     graph_dir = fusilli_cache / "graph_12345"
     graph_dir.mkdir(parents=True)
-    mlir_file = graph_dir / "iree-compile-input.mlir"
-    command_file = graph_dir / "iree-compile-command.txt"
+    mlir_file = graph_dir / "some_input.mlir"
+    command_file = graph_dir / "some_command.txt"
     mlir_file.write_text("module { }")
     command_file.write_text("iree-compile input.mlir")
 
@@ -155,24 +156,51 @@ def test_find_cached_artifacts(tmp_path: Path) -> None:
     # Error case: empty cache (no graph directories).
     empty_base = tmp_path / "empty_base"
     (empty_base / ".cache" / "fusilli").mkdir(parents=True)
-    with pytest.raises(FileNotFoundError, match="No graph directories found"):
+    with pytest.raises(FileNotFoundError, match="Expected exactly one graph directory"):
         find_cached_artifacts(empty_base)
 
-    # Error case: missing MLIR file.
+    # Error case: multiple graph directories.
+    multi_base = tmp_path / "multi_base"
+    (multi_base / ".cache" / "fusilli" / "graph_1").mkdir(parents=True)
+    (multi_base / ".cache" / "fusilli" / "graph_2").mkdir(parents=True)
+    with pytest.raises(FileNotFoundError, match="Expected exactly one graph directory"):
+        find_cached_artifacts(multi_base)
+
+    # Error case: no MLIR files.
     mlir_missing_base = tmp_path / "mlir_missing_base"
     mlir_missing_graph = mlir_missing_base / ".cache" / "fusilli" / "graph_1"
     mlir_missing_graph.mkdir(parents=True)
-    (mlir_missing_graph / "iree-compile-command.txt").write_text("cmd")
-    with pytest.raises(FileNotFoundError, match="Source MLIR not found"):
+    (mlir_missing_graph / "command.txt").write_text("cmd")
+    with pytest.raises(FileNotFoundError, match="Expected exactly one .mlir file"):
         find_cached_artifacts(mlir_missing_base)
 
-    # Error case: missing compile command file.
-    cmd_missing_base = tmp_path / "cmd_missing_base"
-    cmd_missing_graph = cmd_missing_base / ".cache" / "fusilli" / "graph_2"
-    cmd_missing_graph.mkdir(parents=True)
-    (cmd_missing_graph / "iree-compile-input.mlir").write_text("module { }")
-    with pytest.raises(FileNotFoundError, match="Compile command not found"):
-        find_cached_artifacts(cmd_missing_base)
+    # Error case: no txt files.
+    txt_missing_base = tmp_path / "txt_missing_base"
+    txt_missing_graph = txt_missing_base / ".cache" / "fusilli" / "graph_2"
+    txt_missing_graph.mkdir(parents=True)
+    (txt_missing_graph / "input.mlir").write_text("module { }")
+    with pytest.raises(FileNotFoundError, match="Expected exactly one .txt file"):
+        find_cached_artifacts(txt_missing_base)
+
+    # Error case: multiple MLIR files.
+    multi_mlir_base = tmp_path / "multi_mlir_base"
+    multi_mlir_graph = multi_mlir_base / ".cache" / "fusilli" / "graph_3"
+    multi_mlir_graph.mkdir(parents=True)
+    (multi_mlir_graph / "input1.mlir").write_text("module { }")
+    (multi_mlir_graph / "input2.mlir").write_text("module { }")
+    (multi_mlir_graph / "command.txt").write_text("cmd")
+    with pytest.raises(FileNotFoundError, match="Expected exactly one .mlir file"):
+        find_cached_artifacts(multi_mlir_base)
+
+    # Error case: multiple txt files.
+    multi_txt_base = tmp_path / "multi_txt_base"
+    multi_txt_graph = multi_txt_base / ".cache" / "fusilli" / "graph_4"
+    multi_txt_graph.mkdir(parents=True)
+    (multi_txt_graph / "input.mlir").write_text("module { }")
+    (multi_txt_graph / "command1.txt").write_text("cmd1")
+    (multi_txt_graph / "command2.txt").write_text("cmd2")
+    with pytest.raises(FileNotFoundError, match="Expected exactly one .txt file"):
+        find_cached_artifacts(multi_txt_base)
 
 
 def test_build_compile_args() -> None:

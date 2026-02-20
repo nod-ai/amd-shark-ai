@@ -12,7 +12,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Iterator, Optional
@@ -260,8 +259,10 @@ def find_cached_artifacts(base_dir: Path) -> tuple[Path, Path]:
         base_dir/                     # User-specified or temp directory (FUSILLI_CACHE_DIR)
           .cache/fusilli/             # Fusilli's internal cache structure
             <graph_hash>/             # Graph-specific directory (one per operation)
-              iree-compile-input.mlir # Generated MLIR for the operation
-              iree-compile-command.txt # Compile command used by Fusilli
+              *.mlir                  # Generated MLIR for the operation
+              *.txt                   # Compile command used by Fusilli
+
+    Exactly one .mlir and one .txt file are expected in the graph directory.
 
     Args:
         base_dir: The base directory where FUSILLI_CACHE_DIR environment variable was set to.
@@ -278,18 +279,28 @@ def find_cached_artifacts(base_dir: Path) -> tuple[Path, Path]:
     # Find the graph directory (there should be exactly one after running
     # with --dump).
     graph_dirs: list[Path] = list(fusilli_cache.iterdir())
-    if not graph_dirs:
-        raise FileNotFoundError(f"No graph directories found in {fusilli_cache}")
+    if len(graph_dirs) != 1:
+        raise FileNotFoundError(
+            f"Expected exactly one graph directory in {fusilli_cache}, found {len(graph_dirs)}"
+        )
 
     graph_dir: Path = graph_dirs[0]
 
-    source_mlir_path: Path = graph_dir / "iree-compile-input.mlir"
-    compile_command_path: Path = graph_dir / "iree-compile-command.txt"
+    # Automatically detect MLIR and compile command files by extension.
+    mlir_files: list[Path] = list(graph_dir.glob("*.mlir"))
+    txt_files: list[Path] = list(graph_dir.glob("*.txt"))
 
-    if not source_mlir_path.exists():
-        raise FileNotFoundError(f"Source MLIR not found at {source_mlir_path}")
-    if not compile_command_path.exists():
-        raise FileNotFoundError(f"Compile command not found at {compile_command_path}")
+    if len(mlir_files) != 1:
+        raise FileNotFoundError(
+            f"Expected exactly one .mlir file in {graph_dir}, found {len(mlir_files)}"
+        )
+    if len(txt_files) != 1:
+        raise FileNotFoundError(
+            f"Expected exactly one .txt file in {graph_dir}, found {len(txt_files)}"
+        )
+
+    source_mlir_path: Path = mlir_files[0]
+    compile_command_path: Path = txt_files[0]
 
     # Validate paths to prevent path traversal attacks.
     try:
@@ -462,8 +473,8 @@ def process_fusilli_command(
             print("Check the summary in:")
             print(summary_log_file.resolve())
 
-        except Exception as err:
-            traceback.print_exception(err)
+        except Exception:
+            logging.exception(f"Error tuning benchmark {benchmark_path}")
 
         finally:
             # Remove handler from logger to prevent log accumulation.
