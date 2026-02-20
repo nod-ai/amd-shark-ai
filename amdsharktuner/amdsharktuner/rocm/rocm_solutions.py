@@ -303,32 +303,26 @@ def generate_generic_contraction_solutions(
         subgroup_basis_counts[n_dim] = z3_assignment.sg_n_cnt
         subgroup_basis_mapping = list(range(num_loops))
 
-        if (
-            codegen_pipeline
-            == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
-        ):
-            compilation_infos = (
-                rocm_dispatch_constraints.generate_tile_and_fuse_compilation_infos(
-                    tuner_ctx,
-                    mma_attr,
-                    workgroup_tile_sizes,
-                    reduction_tile_sizes,
-                    subgroup_tile_sizes,
-                    (z3_assignment.wg_x, z3_assignment.wg_y, z3_assignment.wg_z),
-                    z3_assignment.subgroup_size,
-                    promote_operands,
-                    pipeline_options_search_space,
-                    allowed_waves_per_eu,
-                    padding=padding,
-                    padding_conv=padding_conv,
+        match codegen_pipeline:
+            case iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
+                compilation_infos = (
+                    rocm_dispatch_constraints.generate_tile_and_fuse_compilation_infos(
+                        tuner_ctx,
+                        mma_attr,
+                        workgroup_tile_sizes,
+                        reduction_tile_sizes,
+                        subgroup_tile_sizes,
+                        (z3_assignment.wg_x, z3_assignment.wg_y, z3_assignment.wg_z),
+                        z3_assignment.subgroup_size,
+                        promote_operands,
+                        pipeline_options_search_space,
+                        allowed_waves_per_eu,
+                        padding=padding,
+                        padding_conv=padding_conv,
+                    )
                 )
-            )
-        elif (
-            codegen_pipeline
-            == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
-        ):
-            compilation_infos = (
-                rocm_dispatch_constraints.generate_vector_distribute_compilation_infos(
+            case iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute:
+                compilation_infos = rocm_dispatch_constraints.generate_vector_distribute_compilation_infos(
                     tuner_ctx,
                     mma_attr,
                     workgroup_tile_sizes,
@@ -343,9 +337,8 @@ def generate_generic_contraction_solutions(
                     padding=padding,
                     padding_conv=padding_conv,
                 )
-            )
-        else:
-            assert False, f"Unsupported codegen pipeline: {codegen_pipeline}"
+            case _:
+                assert False, f"Unsupported codegen pipeline: {codegen_pipeline}"
 
         knob_assignment = None
         for compilation_info in compilation_infos:

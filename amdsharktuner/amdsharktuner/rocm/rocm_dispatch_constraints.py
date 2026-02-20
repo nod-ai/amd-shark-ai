@@ -9,7 +9,7 @@
 
 import math
 import z3  # type: ignore
-from typing import Optional
+from typing import Any, Optional
 from dataclasses import dataclass, field
 
 from iree.compiler import ir  # type: ignore
@@ -696,7 +696,7 @@ def generate_allowed_pipeline_options(
 
 def _build_compilation_infos(
     tuner_ctx: common.TunerContext,
-    lowering_config_args: dict,
+    lowering_config_args: dict[str, Any],
     workgroup_sizes: tuple[int, int, int],
     subgroup_size: int,
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline,
@@ -704,13 +704,17 @@ def _build_compilation_infos(
     allowed_waves_per_eu: list[int],
 ) -> list[iree_codegen.CompilationInfoAttr]:
     """Private helper to build compilation info variants from lowering config and translation info."""
-    lowering_config = common.get_lowering_config(tuner_ctx, **lowering_config_args)
+    lowering_config: iree_gpu.LoweringConfigAttr = common.get_lowering_config(
+        tuner_ctx, **lowering_config_args
+    )
 
     # Create the TranslationInfoAttr variants.
-    pipeline_attr = iree_codegen.DispatchLoweringPassPipelineAttr.get(codegen_pipeline)
-    pipeline_options_list = generate_allowed_pipeline_options(
-        pipeline_options_search_space
+    pipeline_attr: iree_codegen.DispatchLoweringPassPipelineAttr = (
+        iree_codegen.DispatchLoweringPassPipelineAttr.get(codegen_pipeline)
     )
+    pipeline_options_list: list[
+        iree_gpu.PipelineOptionsAttr
+    ] = generate_allowed_pipeline_options(pipeline_options_search_space)
     wg_x, wg_y, wg_z = workgroup_sizes
 
     # Generate all combinations of pipeline options and waves_per_eu.
