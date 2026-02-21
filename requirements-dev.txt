@@ -6,5 +6,5 @@ mypy==1.19.1
 types-requests==2.32.4.20260107
 
 # Testing
-pytest==9.0.2
+pytest==8.3.5
 pytest-xdist==3.8.0

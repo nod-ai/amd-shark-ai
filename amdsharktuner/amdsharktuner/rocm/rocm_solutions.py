@@ -368,7 +368,7 @@ def generate_attention_solutions(
         or codegen_pipeline
         != iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
     ):
-        return []
+        return
 
     m_var = z3.Int("m_tile")
     n_var = z3.Int("n_tile")
