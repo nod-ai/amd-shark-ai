@@ -15,6 +15,15 @@ name: CI - Boo on RDNA4
 
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Runner to use for the job'
+        required: false
+        default: 'shark-mkm-1-for-boo'
+        type: choice
+        options:
+          - shark-mkm-1-for-boo
+          - shark41-rdna4
   schedule:
     - cron: "54 11 * * *"
 
@@ -38,7 +47,7 @@ jobs:
       matrix:
         version: [3.12]
       fail-fast: false
-    runs-on: "shark41-rdna4"
+    runs-on: ${{ github.event.inputs.runner || 'shark-mkm-1-for-boo' }}
     defaults:
       run:
         shell: bash
@@ -81,7 +90,7 @@ jobs:
     - name: Run hipblaslt-bench
       run: |
         source ${VENV_DIR}/bin/activate
-        tarFileName=$( /home/praveeng/.local/bin/aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx120X | sort -r | head -1 |  awk '{print $NF}' || true )
+        tarFileName=$( aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx120X | sort -r | head -1 |  awk '{print $NF}' || true )
         echo "Installing $tarFileName"
         wget https://therock-nightly-tarball.s3.us-east-2.amazonaws.com/${tarFileName}
         mkdir install
