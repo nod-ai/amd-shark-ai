@@ -31,8 +31,8 @@ builtin.module{{
                 {lhs_map},
                 {rhs_map},
                 {res_map}],
-            iterator_types = {iterator_types}}}
-            {{root_op}}
+            iterator_types = {iterator_types},
+            root_op = #iree_codegen.root_op<set = 0>}}
             ins(%arg0, %arg1 : {lhs_type}, {rhs_type})
             outs(%1 : {res_type}) {{
         ^bb0(%in: f16, %in_0: f16, %out: f32):
@@ -131,7 +131,9 @@ def test_get_matmul_named_op(tuner_ctx: common.TunerContext) -> None:
                     outputs=[c],
                     indexing_maps=[a_map, b_map, c_map],
                 )
-                matmul_op.operation.attributes["root_op"] = ir.UnitAttr.get()
+                matmul_op.operation.attributes[
+                    "root_op"
+                ] = iree_codegen.RootOpAttr.get()
 
         root_op_list = iree_codegen.get_tuner_root_ops(module)
         assert len(root_op_list) == 1, "Expected one root op"
@@ -170,7 +172,7 @@ def test_get_named_contraction_op(tuner_ctx: common.TunerContext):
                     outputs=[res],
                     indexing_maps=[lhs_map, rhs_map, res_map],
                 )
-                contraction_op.attributes["root_op"] = ir.UnitAttr.get()
+                contraction_op.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
         root_op_list = iree_codegen.get_tuner_root_ops(module)
         assert len(root_op_list) == 1
@@ -276,7 +278,7 @@ def test_get_attention_operation(tuner_ctx: common.TunerContext) -> None:
         %scale : f16,
         %output : tensor<20x4096x64xf16>
     ) -> tensor<20x4096x64xf16> {
-            %result = iree_linalg_ext.attention { root_op,
+            %result = iree_linalg_ext.attention { root_op = #iree_codegen.root_op<set = 0>,
                 indexing_maps = [
                 affine_map<(d0, d1, d2, d3, d4) -> (d0, d1, d2)>,
                 affine_map<(d0, d1, d2, d3, d4) -> (d0, d3, d2)>,

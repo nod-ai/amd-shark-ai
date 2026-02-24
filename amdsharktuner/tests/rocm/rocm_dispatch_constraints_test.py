@@ -8,7 +8,7 @@ import pytest
 import z3  # type: ignore
 
 from iree.compiler import ir  # type: ignore
-from iree.compiler.dialects import iree_gpu  # type: ignore
+from iree.compiler.dialects import iree_codegen, iree_gpu  # type: ignore
 
 from amdsharktuner import common
 from amdsharktuner.rocm import rocm_dispatch_constraints
@@ -513,3 +513,81 @@ def test_generate_attention_vector_distribute_constraints(
     solver = z3.Solver()
     solver.add(constraints)
     assert solver.check() == z3.unsat
+
+
+@pytest.fixture
+def mma_attr(tuner_ctx: common.TunerContext) -> iree_gpu.MMAAttr:
+    """Create a sample MMA attribute for testing."""
+    return iree_gpu.MMAAttr.get(iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16)
+
+
+def test_generate_tile_and_fuse_compilation_infos(
+    tuner_ctx: common.TunerContext, mma_attr: iree_gpu.MMAAttr
+) -> None:
+    """Verify TileAndFuse pipeline uses 'subgroup' attribute, not 'subgroup_basis'."""
+    workgroup_tile_sizes = [128, 128, 0]
+    reduction_tile_sizes = [0, 0, 16]
+    subgroup_tile_sizes = [2, 2, 0]
+
+    compilation_infos = rocm_dispatch_constraints.generate_tile_and_fuse_compilation_infos(
+        tuner_ctx=tuner_ctx,
+        mma_attr=mma_attr,
+        workgroup_tile_sizes=workgroup_tile_sizes,
+        reduction_tile_sizes=reduction_tile_sizes,
+        subgroup_tile_sizes=subgroup_tile_sizes,
+        workgroup_sizes=(256, 1, 1),
+        subgroup_size=64,
+        promote_operands=[0, 1],
+        pipeline_options_search_space=rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
+        allowed_waves_per_eu=[2],
+    )
+
+    assert len(compilation_infos) == 1
+
+    compilation_info_str = str(compilation_infos[0])
+
+    # TileAndFuse should have "subgroup" attribute, not "subgroup_basis".
+    assert "subgroup = [2, 2, 0]" in compilation_info_str
+    assert "subgroup_basis" not in compilation_info_str
+
+    # Verify MMA attribute is set correctly.
+    assert (
+        "mma_kind = #iree_gpu.mma_layout<MFMA_F32_16x16x16_F16>" in compilation_info_str
+    )
+
+
+def test_generate_vector_distribute_compilation_infos(
+    tuner_ctx: common.TunerContext, mma_attr: iree_gpu.MMAAttr
+) -> None:
+    """Verify VectorDistribute pipeline uses 'subgroup_basis' attribute, not 'subgroup'."""
+    workgroup_tile_sizes = [128, 128, 0]
+    reduction_tile_sizes = [0, 0, 16]
+    subgroup_basis_counts = [1, 4, 1]
+    subgroup_basis_mapping = [0, 1, 2]
+
+    compilation_infos = rocm_dispatch_constraints.generate_vector_distribute_compilation_infos(
+        tuner_ctx=tuner_ctx,
+        mma_attr=mma_attr,
+        workgroup_tile_sizes=workgroup_tile_sizes,
+        reduction_tile_sizes=reduction_tile_sizes,
+        subgroup_basis_counts=subgroup_basis_counts,
+        subgroup_basis_mapping=subgroup_basis_mapping,
+        workgroup_sizes=(256, 1, 1),
+        subgroup_size=64,
+        promote_operands=[0, 1],
+        pipeline_options_search_space=rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
+        allowed_waves_per_eu=[2],
+    )
+
+    assert len(compilation_infos) == 1
+
+    compilation_info_str = str(compilation_infos[0])
+
+    # VectorDistribute should have "subgroup_basis" attribute, not "subgroup".
+    assert "subgroup_basis = [[1, 4, 1], [0, 1, 2]]" in compilation_info_str
+    assert "subgroup = " not in compilation_info_str
+
+    # Verify MMA attribute is set correctly.
+    assert (
+        "mma_kind = #iree_gpu.mma_layout<MFMA_F32_16x16x16_F16>" in compilation_info_str
+    )

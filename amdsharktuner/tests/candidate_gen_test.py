@@ -50,8 +50,8 @@ def test_get_td_spec_contraction(tuner_ctx: common.TunerContext) -> None:
                         affine_map<(d0, d1, d2) -> (d0, d2)>,
                         affine_map<(d0, d1, d2) -> (d1, d2)>,
                         affine_map<(d0, d1, d2) -> (d0, d1)>],
-                    iterator_types = ["parallel", "parallel", "reduction"]}
-                    {root_op}
+                    iterator_types = ["parallel", "parallel", "reduction"],
+                    root_op = #iree_codegen.root_op<set = 0>}
                     ins(%arg0, %arg1 : tensor<2048x2048xf16>, tensor<2048x2048xf16>)
                     outs(%1 : tensor<2048x2048xf32>) {
                 ^bb0(%in: f16, %in_0: f16, %out: f32):
@@ -143,7 +143,7 @@ def test_get_td_spec_convolution(tuner_ctx: common.TunerContext) -> None:
                 %cst = arith.constant 0 : i32
                 %0 = tensor.empty() : tensor<2x32x32x2048xi32>
                 %1 = linalg.fill ins(%cst : i32) outs(%0 : tensor<2x32x32x2048xi32>) -> tensor<2x32x32x2048xi32>
-                %2 = linalg.conv_2d_nhwc_hwcf {root_op}
+                %2 = linalg.conv_2d_nhwc_hwcf {root_op = #iree_codegen.root_op<set = 0>}
                     ins(%arg0, %arg1 : tensor<2x34x34x2048xi8>, tensor<3x3x2048x2048xi8>)
                     outs(%1 : tensor<2x32x32x2048xi32>) -> tensor<2x32x32x2048xi32>
                 return %2 : tensor<2x32x32x2048xi32>
@@ -229,7 +229,7 @@ def test_instantiate_dispatch_tuner_with_matvec(tuner_ctx: common.TunerContext) 
         builtin.module{
             func.func @test(%A: tensor<8x224xf32>, %x: tensor<224xf32>) -> tensor<8xf32> {
                 %init = tensor.empty() : tensor<8xf32>
-                %y = linalg.matvec {root_op}
+                %y = linalg.matvec {root_op = #iree_codegen.root_op<set = 0>}
                     ins(%A, %x : tensor<8x224xf32>, tensor<224xf32>)
                     outs(%init : tensor<8xf32>) -> tensor<8xf32>
                 return %y : tensor<8xf32>
@@ -259,7 +259,7 @@ def test_instantiate_dispatch_tuner_with_unsupported_conv(
                 %cst = arith.constant 0 : i32
                 %0 = tensor.empty() : tensor<2x2048x32x32xi32>
                 %1 = linalg.fill ins(%cst : i32) outs(%0 : tensor<2x2048x32x32xi32>) -> tensor<2x2048x32x32xi32>
-                %2 = linalg.conv_2d_nchw_fchw {root_op}
+                %2 = linalg.conv_2d_nchw_fchw {root_op = #iree_codegen.root_op<set = 0>}
                     ins(%arg0, %arg1 : tensor<2x2048x34x34xi8>, tensor<2048x2048x3x3xi8>)
                     outs(%1 : tensor<2x2048x32x32xi32>) -> tensor<2x2048x32x32xi32>
                 return %2 : tensor<2x2048x32x32xi32>
@@ -309,10 +309,10 @@ def test_instantiate_dispatch_tuner_multiple_root_ops(
     module_str = """
         builtin.module{
             func.func @test(%arg0: tensor<256xf32>, %arg1: tensor<256xf32>) -> tensor<256xf32> {
-                %0 = linalg.add {root_op}
+                %0 = linalg.add {root_op = #iree_codegen.root_op<set = 0>}
                     ins(%arg0, %arg1 : tensor<256xf32>, tensor<256xf32>)
                     outs(%arg0 : tensor<256xf32>) -> tensor<256xf32>
-                %1 = linalg.mul {root_op}
+                %1 = linalg.mul {root_op = #iree_codegen.root_op<set = 0>}
                     ins(%0, %0 : tensor<256xf32>, tensor<256xf32>)
                     outs(%0 : tensor<256xf32>) -> tensor<256xf32>
                 return %1 : tensor<256xf32>

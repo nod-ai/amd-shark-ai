@@ -63,7 +63,9 @@ def create_generic_module(tuner_ctx: common.TunerContext) -> ir.Module:
                     indexing_maps=indexing_maps,
                     iterator_types=iterator_types_attr,
                 )
-                generic_op.operation.attributes["root_op"] = ir.UnitAttr.get()
+                generic_op.operation.attributes[
+                    "root_op"
+                ] = iree_codegen.RootOpAttr.get()
 
                 block = generic_op.regions[0].blocks.append(f16, f16, f32)
                 with ir.InsertionPoint(block):
@@ -123,7 +125,9 @@ def create_batch_matmul_module(tuner_ctx: common.TunerContext) -> ir.Module:
                     indexing_maps=indexing_maps,
                     iterator_types=iterator_types_attr,
                 )
-                generic_op.operation.attributes["root_op"] = ir.UnitAttr.get()
+                generic_op.operation.attributes[
+                    "root_op"
+                ] = iree_codegen.RootOpAttr.get()
 
                 block = generic_op.regions[0].blocks.append(f16, f16, f32)
                 with ir.InsertionPoint(block):

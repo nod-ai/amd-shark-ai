@@ -11,7 +11,7 @@ Usage: python -m pytest constraint_generator_test.py
 import z3  # type: ignore
 
 from iree.compiler import ir  # type: ignore
-from iree.compiler.dialects import arith, func, linalg  # type: ignore
+from iree.compiler.dialects import arith, func, iree_codegen, linalg  # type: ignore
 
 from amdsharktuner import (
     common,
@@ -49,7 +49,7 @@ def build_func_with_matmul(
                 outputs=[c],
                 indexing_maps=[a_map, b_map, c_map],
             )
-            matmul_op.operation.attributes["root_op"] = ir.UnitAttr.get()
+            matmul_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
 
 def build_func_with_conv2d_nhwc_hwcf(
@@ -76,7 +76,7 @@ def build_func_with_conv2d_nhwc_hwcf(
                 outputs=[arg2],
                 result_tensors=[output_tensor_type],
             )
-            conv_op.operation.attributes["root_op"] = ir.UnitAttr.get()
+            conv_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
 
 def build_func_with_conv2d_nchw_fchw(
@@ -103,7 +103,7 @@ def build_func_with_conv2d_nchw_fchw(
                 outputs=[arg2],
                 result_tensors=[output_tensor_type],
             )
-            conv_op.operation.attributes["root_op"] = ir.UnitAttr.get()
+            conv_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
 
 def build_func_with_conv2d_nhwc_fhwc(
@@ -158,7 +158,7 @@ def build_func_with_conv2d_nhwc_fhwc(
                 mul = arith.MulFOp(in0, in1).result
                 add = arith.AddFOp(block.arguments[2], mul).result
                 linalg.YieldOp([add])
-            generic_op.operation.attributes["root_op"] = ir.UnitAttr.get()
+            generic_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
 
 def build_func_with_group_conv2d_nhwgc_gfhwc(
@@ -215,7 +215,7 @@ def build_func_with_group_conv2d_nhwgc_gfhwc(
                 add = arith.AddFOp(block.arguments[2], mul).result
                 linalg.YieldOp([add])
 
-            generic_op.operation.attributes["root_op"] = ir.UnitAttr.get()
+            generic_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
 
 def build_func_with_conv2d_chwn_chwf(
@@ -272,7 +272,7 @@ def build_func_with_conv2d_chwn_chwf(
                 mul = arith.MulFOp(in0, in1).result
                 add = arith.AddFOp(block.arguments[2], mul).result
                 linalg.YieldOp([add])
-            generic_op.operation.attributes["root_op"] = ir.UnitAttr.get()
+            generic_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
 
 def test_ContractionZ3Constants_to_meta() -> None:
