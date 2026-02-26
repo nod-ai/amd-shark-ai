@@ -75,6 +75,34 @@ def test_get_map_result_dim_positions(tuner_ctx: common.TunerContext) -> None:
     assert result is None, "Expected None for non-projected permutation"
 
 
+def test_is_result_type_compatible_with_accumulator(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    bf16 = tuner_ctx.type.bf16
+    f16 = tuner_ctx.type.f16
+    f32 = tuner_ctx.type.f32
+    i8 = tuner_ctx.type.i8
+    i32 = tuner_ctx.type.i32
+
+    # bf16 inputs with f32 accumulator: allow bf16 or f32 result
+    assert common.is_result_type_compatible_with_accumulator(bf16, bf16, f32, bf16)
+    assert common.is_result_type_compatible_with_accumulator(bf16, bf16, f32, f32)
+    assert not common.is_result_type_compatible_with_accumulator(bf16, bf16, f32, f16)
+
+    # f16 inputs with f32 accumulator: allow f16 or f32 result
+    assert common.is_result_type_compatible_with_accumulator(f16, f16, f32, f16)
+    assert common.is_result_type_compatible_with_accumulator(f16, f16, f32, f32)
+    assert not common.is_result_type_compatible_with_accumulator(f16, f16, f32, bf16)
+
+    # i8 inputs with i32 accumulator: only i32 result
+    assert common.is_result_type_compatible_with_accumulator(i8, i8, i32, i32)
+    assert not common.is_result_type_compatible_with_accumulator(i8, i8, i32, i8)
+
+    # f32 inputs with f32 accumulator: only f32 result
+    assert common.is_result_type_compatible_with_accumulator(f32, f32, f32, f32)
+    assert not common.is_result_type_compatible_with_accumulator(f32, f32, f32, f16)
+
+
 def test_get_lowering_config(tuner_ctx: common.TunerContext) -> None:
     lowering_config = common.get_lowering_config(
         tuner_ctx=tuner_ctx,

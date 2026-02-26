@@ -264,6 +264,35 @@ def get_map_result_dim_positions(map: ir.AffineMap) -> Optional[list[int]]:
     return [ir.AffineDimExpr(expr).position for expr in map.results]
 
 
+def is_result_type_compatible_with_accumulator(
+    a_type: ir.Type,
+    b_type: ir.Type,
+    c_type: ir.Type,
+    res_type: ir.Type,
+) -> bool:
+    """Check if a result element type is compatible with the MMA accumulator type.
+
+    For bf16/f16 inputs with f32 accumulator, the hardware can cast, so we
+    allow either the input precision or f32 as the result type. Otherwise
+    the result type must match the accumulator type exactly.
+    """
+    if (
+        isinstance(a_type, ir.BF16Type)
+        and isinstance(b_type, ir.BF16Type)
+        and isinstance(c_type, ir.F32Type)
+    ):
+        return isinstance(res_type, (ir.BF16Type, ir.F32Type))
+
+    if (
+        isinstance(a_type, ir.F16Type)
+        and isinstance(b_type, ir.F16Type)
+        and isinstance(c_type, ir.F32Type)
+    ):
+        return isinstance(res_type, (ir.F16Type, ir.F32Type))
+
+    return res_type == c_type
+
+
 # The key name for GPUPipelineOptionsAttr in the translation info config dictionary.
 GPU_PIPELINE_OPTIONS_KEY = "gpu_pipeline_options"
 # The key name for llvm_func_attrs attribute in the translation info config dictionary.
@@ -279,7 +308,14 @@ def get_lowering_config(
         # A local variable to hold the transformed value.
         promoted_value = value
         match key:
-            case "workgroup" | "reduction" | "subgroup" | "promote_operands" | "padding" | "padding_conv":
+            case (
+                "workgroup"
+                | "reduction"
+                | "subgroup"
+                | "promote_operands"
+                | "padding"
+                | "padding_conv"
+            ):
                 if isinstance(value, Sequence):
                     promoted_value = ir.ArrayAttr.get(
                         [tuner_ctx.type.getI64(x) for x in value]
