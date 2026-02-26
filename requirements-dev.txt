@@ -2,9 +2,9 @@
 pre-commit
 
 # Type checking
-mypy==1.8.0
-types-requests==2.31.0.20240125
+mypy==1.19.1
+types-requests==2.32.4.20260107
 
 # Testing
-pytest==8.0.0
-pytest-xdist==3.5.0
+pytest==8.3.5
+pytest-xdist==3.8.0

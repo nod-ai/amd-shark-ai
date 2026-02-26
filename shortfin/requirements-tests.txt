@@ -1,10 +1,10 @@
 # Pytest plugins
-pytest
+pytest==8.3.5
 pytest-asyncio
 pytest-subtests
 pytest-timeout
 pytest-cov
-pytest-xdist==3.5.0
+pytest-xdist==3.8.0
 
 # General server libraries
 requests

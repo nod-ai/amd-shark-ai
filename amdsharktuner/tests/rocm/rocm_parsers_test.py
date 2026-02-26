@@ -26,8 +26,8 @@ builtin.module{{
                 {lhs_map},
                 {rhs_map},
                 {res_map}],
-            iterator_types = {iterator_types}}}
-            {{root_op}}
+            iterator_types = {iterator_types},
+            root_op = #iree_codegen.root_op<set = 0>}}
             ins(%arg0, %arg1 : {lhs_type}, {rhs_type})
             outs(%1 : {res_type}) {{
         ^bb0(%in: f16, %in_0: f16, %out: f32):
@@ -48,7 +48,7 @@ def test_build_conv_to_igemm_info(tuner_ctx: common.TunerContext) -> None:
     module_str = """
         builtin.module {
             func.func @test(%arg0: tensor<2x34x34x16xf16>, %arg1: tensor<3x3x16x32xf16>, %arg2: tensor<2x32x32x32xf32>) -> tensor<2x32x32x32xf32> {
-                %0 = linalg.conv_2d_nhwc_hwcf {root_op}
+                %0 = linalg.conv_2d_nhwc_hwcf {root_op = #iree_codegen.root_op<set = 0>}
                     ins(%arg0, %arg1 : tensor<2x34x34x16xf16>, tensor<3x3x16x32xf16>)
                     outs(%arg2 : tensor<2x32x32x32xf32>) -> tensor<2x32x32x32xf32>
                 return %0 : tensor<2x32x32x32xf32>
@@ -106,7 +106,7 @@ def test_get_conv_nhwc_hwcf_operation(tuner_ctx: common.TunerContext) -> None:
                 %cst = arith.constant 0 : i32
                 %0 = tensor.empty() : tensor<2x32x32x16xi32>
                 %1 = linalg.fill ins(%cst : i32) outs(%0 : tensor<2x32x32x16xi32>) -> tensor<2x32x32x16xi32>
-                %2 = linalg.conv_2d_nhwc_hwcf {root_op}
+                %2 = linalg.conv_2d_nhwc_hwcf {root_op = #iree_codegen.root_op<set = 0>}
                     ins(%arg0, %arg1 : tensor<2x34x34x16xi8>, tensor<3x3x16x16xi8>)
                     outs(%1 : tensor<2x32x32x16xi32>) -> tensor<2x32x32x16xi32>
                 return %2 : tensor<2x32x32x16xi32>
@@ -126,7 +126,7 @@ def test_get_group_conv_operation(tuner_ctx: common.TunerContext) -> None:
     module {
       func.func @test(%arg0: tensor<2x10x10x7x4xf32>, %arg1: tensor<7x16x3x3x4xf32>, %arg2: tensor<2x8x8x7x16xf32>) -> tensor<2x8x8x7x16xf32> {
         %0 = linalg.conv_2d_nhwgc_gfhwc {
-           root_op,
+           root_op = #iree_codegen.root_op<set = 0>,
            dilations = dense<1> : tensor<2xi64>, strides = dense<1> : tensor<2xi64>
         } ins(%arg0, %arg1: tensor<2x10x10x7x4xf32>, tensor<7x16x3x3x4xf32>)
           outs(%arg2: tensor<2x8x8x7x16xf32>) -> tensor<2x8x8x7x16xf32>

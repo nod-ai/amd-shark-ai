@@ -279,12 +279,12 @@ jobs:
 
             if [ "${{ inputs.run_prod_conv }}" = "true" ]; then
               echo "3"
-              python github-actions/new_boo_comp.py --current-file "../logs/prod_conv_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/prod_conv_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 591 || echo "failure in prod conv"
+              python github-actions/new_boo_comp.py --current-file "../logs/prod_conv_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/prod_conv_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 589 || echo "failure in prod conv"
             fi
 
             if [ "${{ inputs.run_batch_norm }}" = "true" ]; then
               echo "4"
-              python github-actions/new_boo_comp.py --current-file "../logs/batch_norm_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/batch_norm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_batch_norm_miopen_iree.md" --threshold 0.05 --total-arguments 476 || echo "Failure in batchnorm"
+              python github-actions/new_boo_comp.py --current-file "../logs/batch_norm_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/batch_norm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_batch_norm_miopen_iree.md" --threshold 0.05 --total-arguments 33 || echo "Failure in batchnorm"
             fi
 
             if [ "${{ inputs.run_hipblaslt }}" = "true" ] && [ "${{ inputs.run_gemm }}" = "true" ]; then

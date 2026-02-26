@@ -11,7 +11,7 @@ Usage: python -m pytest constraint_generator_test.py
 import z3  # type: ignore
 
 from iree.compiler import ir  # type: ignore
-from iree.compiler.dialects import arith, func, linalg  # type: ignore
+from iree.compiler.dialects import arith, func, iree_codegen, linalg  # type: ignore
 
 from amdsharktuner import (
     common,
@@ -49,7 +49,7 @@ def build_func_with_matmul(
                 outputs=[c],
                 indexing_maps=[a_map, b_map, c_map],
             )
-            matmul_op.operation.attributes["root_op"] = ir.UnitAttr.get()
+            matmul_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
 
 def build_func_with_conv2d_nhwc_hwcf(
@@ -76,7 +76,7 @@ def build_func_with_conv2d_nhwc_hwcf(
                 outputs=[arg2],
                 result_tensors=[output_tensor_type],
             )
-            conv_op.operation.attributes["root_op"] = ir.UnitAttr.get()
+            conv_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
 
 def build_func_with_conv2d_nchw_fchw(
@@ -103,7 +103,7 @@ def build_func_with_conv2d_nchw_fchw(
                 outputs=[arg2],
                 result_tensors=[output_tensor_type],
             )
-            conv_op.operation.attributes["root_op"] = ir.UnitAttr.get()
+            conv_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
 
 def build_func_with_conv2d_nhwc_fhwc(
@@ -158,7 +158,64 @@ def build_func_with_conv2d_nhwc_fhwc(
                 mul = arith.MulFOp(in0, in1).result
                 add = arith.AddFOp(block.arguments[2], mul).result
                 linalg.YieldOp([add])
-            generic_op.operation.attributes["root_op"] = ir.UnitAttr.get()
+            generic_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
+
+
+def build_func_with_group_conv2d_nhwgc_gfhwc(
+    module: ir.Module,
+    input_shape: tuple[int, int, int, int, int],
+    kernel_shape: tuple[int, int, int, int, int],
+    output_shape: tuple[int, int, int, int, int],
+    input_type: ir.Type,
+    kernel_type: ir.Type,
+    output_type: ir.Type,
+) -> None:
+    input_tensor_type = ir.RankedTensorType.get(input_shape, input_type)
+    kernel_tensor_type = ir.RankedTensorType.get(kernel_shape, kernel_type)
+    output_tensor_type = ir.RankedTensorType.get(output_shape, output_type)
+
+    with ir.InsertionPoint(module.body):
+
+        @func.FuncOp.from_py_func(
+            input_tensor_type, kernel_tensor_type, output_tensor_type
+        )
+        def group_conv_func(arg0, arg1, arg2):
+            # Group conv: (d0, d1, d2, d3, d4, d5, d6, d7).
+            # input:  (d0, d1+d5, d2+d6, d3, d7) - (N, H+kH, W+kW, G, C).
+            # filter: (d3, d4, d5, d6, d7) - (G, F, kH, kW, C).
+            # output: (d0, d1, d2, d3, d4) - (N, H, W, G, F).
+            d0, d1, d2, d3, d4, d5, d6, d7 = [ir.AffineDimExpr.get(i) for i in range(8)]
+            input_map = ir.AffineMap.get(8, 0, [d0, d1 + d5, d2 + d6, d3, d7])
+            kernel_map = ir.AffineMap.get(8, 0, [d3, d4, d5, d6, d7])
+            output_map = ir.AffineMap.get(8, 0, [d0, d1, d2, d3, d4])
+
+            generic_op = linalg.GenericOp(
+                result_tensors=[output_tensor_type],
+                inputs=[arg0, arg1],
+                outputs=[arg2],
+                indexing_maps=[input_map, kernel_map, output_map],
+                iterator_types=[
+                    linalg.IteratorType.parallel,
+                    linalg.IteratorType.parallel,
+                    linalg.IteratorType.parallel,
+                    linalg.IteratorType.parallel,
+                    linalg.IteratorType.parallel,
+                    linalg.IteratorType.reduction,
+                    linalg.IteratorType.reduction,
+                    linalg.IteratorType.reduction,
+                ],
+            )
+            block = generic_op.regions[0].blocks.append(
+                input_type, kernel_type, output_type
+            )
+            with ir.InsertionPoint(block):
+                in0 = arith.ExtFOp(output_type, block.arguments[0]).result
+                in1 = arith.ExtFOp(output_type, block.arguments[1]).result
+                mul = arith.MulFOp(in0, in1).result
+                add = arith.AddFOp(block.arguments[2], mul).result
+                linalg.YieldOp([add])
+
+            generic_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
 
 def build_func_with_conv2d_chwn_chwf(
@@ -215,7 +272,7 @@ def build_func_with_conv2d_chwn_chwf(
                 mul = arith.MulFOp(in0, in1).result
                 add = arith.AddFOp(block.arguments[2], mul).result
                 linalg.YieldOp([add])
-            generic_op.operation.attributes["root_op"] = ir.UnitAttr.get()
+            generic_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
 
 def test_ContractionZ3Constants_to_meta() -> None:
