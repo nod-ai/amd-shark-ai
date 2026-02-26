@@ -728,7 +728,7 @@ def _build_compilation_infos(
         iree_codegen.DispatchLoweringPassPipelineAttr.get(codegen_pipeline)
     )
     pipeline_options_list: list[
-        iree_gpu.PipelineOptionsAttr
+        tuple[iree_gpu.PipelineOptionsAttr, bool]
     ] = generate_allowed_pipeline_options(pipeline_options_search_space)
     wg_x, wg_y, wg_z = workgroup_sizes
 
@@ -741,10 +741,12 @@ def _build_compilation_infos(
                 None,
                 [wg_x, wg_y, wg_z],
                 subgroup_size,
-                rocm_common.get_translation_info_config(pipeline_options, waves_per_eu),
+                rocm_common.get_translation_info_config(
+                    pipeline_options, waves_per_eu, denorm_flushing
+                ),
             ),
         )
-        for pipeline_options in pipeline_options_list
+        for pipeline_options, denorm_flushing in pipeline_options_list
         for waves_per_eu in allowed_waves_per_eu
     ]
     return compilation_infos
@@ -834,21 +836,3 @@ def generate_vector_distribute_compilation_infos(
         pipeline_options_search_space,
         allowed_waves_per_eu,
     )
-    wg_x, wg_y, wg_z = workgroup_sizes
-    compilation_infos = []
-    for pipeline_options, denorm_flushing in pipeline_options_list:
-        for waves_per_eu in allowed_waves_per_eu:
-            config_dict = rocm_common.get_translation_info_config(
-                pipeline_options, waves_per_eu, denorm_flushing
-            )
-            translation_info = iree_codegen.TranslationInfoAttr.get(
-                pipeline_attr,
-                None,
-                [wg_x, wg_y, wg_z],
-                subgroup_size,
-                config_dict,
-            )
-            compilation_infos.append(
-                iree_codegen.CompilationInfoAttr.get(lowering_config, translation_info)
-            )
-    return compilation_infos
