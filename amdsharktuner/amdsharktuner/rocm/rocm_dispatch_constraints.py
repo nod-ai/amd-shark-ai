@@ -673,24 +673,35 @@ class PipelineOptionsSearchSpace:
         default_factory=lambda: [None]
     )
     use_igemm_convolution: list[Optional[bool]] = field(default_factory=lambda: [None])
+    denorm_flushing: list[bool] = field(default_factory=lambda: [False])
 
 
 def generate_allowed_pipeline_options(
     pipeline_options_search_space: PipelineOptionsSearchSpace,
-) -> list[iree_gpu.PipelineOptionsAttr]:
-    pipeline_options_list = []
+) -> list[tuple[iree_gpu.PipelineOptionsAttr, bool]]:
+    """
+    Generate a list of (PipelineOptionsAttr, denorm_flushing) tuples.
+
+    denorm_flushing is passed separately since it's applied via llvm_func_attrs
+    rather than through PipelineOptionsAttr.
+    """
+    pipeline_options_list: list[tuple[iree_gpu.PipelineOptionsAttr, bool]] = []
     for pns in pipeline_options_search_space.prefetch_num_stages:
         for (
             nrbc
         ) in pipeline_options_search_space.no_reduce_shared_memory_bank_conflicts:
             for igemm in pipeline_options_search_space.use_igemm_convolution:
-                pipeline_options_list.append(
-                    iree_gpu.PipelineOptionsAttr.get(
-                        pns,
-                        nrbc,
-                        igemm,
+                for denorm in pipeline_options_search_space.denorm_flushing:
+                    pipeline_options_list.append(
+                        (
+                            iree_gpu.PipelineOptionsAttr.get(
+                                prefetch_num_stages=pns,
+                                no_reduce_shared_memory_bank_conflicts=nrbc,
+                                use_igemm_convolution=igemm,
+                            ),
+                            denorm,
+                        )
                     )
-                )
     return pipeline_options_list
 
 
@@ -713,7 +724,7 @@ def _build_compilation_infos(
         iree_codegen.DispatchLoweringPassPipelineAttr.get(codegen_pipeline)
     )
     pipeline_options_list: list[
-        iree_gpu.PipelineOptionsAttr
+        tuple[iree_gpu.PipelineOptionsAttr, bool]
     ] = generate_allowed_pipeline_options(pipeline_options_search_space)
     wg_x, wg_y, wg_z = workgroup_sizes
 
@@ -726,10 +737,12 @@ def _build_compilation_infos(
                 None,
                 [wg_x, wg_y, wg_z],
                 subgroup_size,
-                rocm_common.get_translation_info_config(pipeline_options, waves_per_eu),
+                rocm_common.get_translation_info_config(
+                    pipeline_options, waves_per_eu, denorm_flushing
+                ),
             ),
         )
-        for pipeline_options in pipeline_options_list
+        for pipeline_options, denorm_flushing in pipeline_options_list
         for waves_per_eu in allowed_waves_per_eu
     ]
     return compilation_infos
