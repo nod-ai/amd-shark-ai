@@ -361,9 +361,9 @@ def combine_tuning_specs(
     """
     with tuner_ctx.mlir_ctx as ctx, ir.Location.unknown():
         top_module = ir.Module.create()
-        top_module.operation.attributes["transform.with_named_sequence"] = (
-            ir.UnitAttr.get()
-        )
+        top_module.operation.attributes[
+            "transform.with_named_sequence"
+        ] = ir.UnitAttr.get()
 
         for td_spec in td_specs:
             top_module.body.append(td_spec.operation.clone())

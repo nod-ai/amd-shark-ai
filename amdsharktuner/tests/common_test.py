@@ -238,9 +238,9 @@ def test_link_tuning_specs_raises_error(tuner_ctx: common.TunerContext) -> None:
     """
 
     module = ir.Module.parse(module_str, context)
-    module.operation.attributes["iree_codegen.tuning_spec_with_default_entrypoint"] = (
-        ir.UnitAttr.get()
-    )
+    module.operation.attributes[
+        "iree_codegen.tuning_spec_with_default_entrypoint"
+    ] = ir.UnitAttr.get()
     with pytest.raises(RuntimeError) as exc_info:
         common.link_tuning_specs(tuner_ctx, [module, module])
         # iree-opt should fail due to missing named sequence @__kernel_config entrypoint required
@@ -501,11 +501,7 @@ def test_calculate_padded_dimensions(
 
         # Test with non-transposed LHS: (m, k) x (k, n) -> (m, n).
         # LHS map: (d0, d1, d2) -> (d0, d2)  # M=d0, K=d2 (non-transposed).
-        (
-            M_padded,
-            N_padded,
-            padding_applied,
-        ) = common.calculate_padded_dimensions(
+        (M_padded, N_padded, padding_applied,) = common.calculate_padded_dimensions(
             M=[200],
             N=[300],
             contraction_dims=contraction_dims,
@@ -519,11 +515,7 @@ def test_calculate_padded_dimensions(
         # LHS map: (d0, d1, d2) -> (d2, d0)  # K=d2, M=d0 (transposed).
         lhs_transposed_map = ir.AffineMap.get(3, 0, [dim2, dim0])
 
-        (
-            M_padded,
-            N_padded,
-            padding_applied,
-        ) = common.calculate_padded_dimensions(
+        (M_padded, N_padded, padding_applied,) = common.calculate_padded_dimensions(
             M=[200],
             N=[300],
             contraction_dims=contraction_dims,
