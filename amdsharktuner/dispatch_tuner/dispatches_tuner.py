@@ -20,11 +20,11 @@ failed_list = [
 
 ]
 
-DEVICE="hip://0,hip://1,hip://2,hip://3,hip://4,hip://5,hip://6,hip://7"
-TUNING_TASKS=["llvmgpu_tile_and_fuse", "llvmgpu_vector_distribute"]
+DEVICE="hip://2,hip://5,hip://6,hip://7"
+TUNING_TASKS=["llvmgpu_tile_and_fuse"]
 NUM_CAN=10000
-TIMING_METHOD="rocprof"
-SORT_METHOD="heuristic"
+TIMING_METHOD="iree_benchmark_module"
+SORT_METHOD="shuffle"
 REP=5
 
 
@@ -102,7 +102,7 @@ def main():
     ensure_mlir_record(mlir_record_path)
     
     logger.debug(f"Arch: {arch}")
-    mlir_benchmark_folder_path = (base_path / "bench_dump").expanduser().resolve()
+    mlir_benchmark_folder_path = (base_path / "conv_dump").expanduser().resolve()
     logger.debug(f"In MLIR_benchmark folder {mlir_benchmark_folder_path}: ")
     mlir_benchmark_files = sorted(mlir_benchmark_folder_path.glob("*.mlir"))
     for f in mlir_benchmark_files:
