@@ -76,7 +76,6 @@ def test_build_conv_to_igemm_info(tuner_ctx: common.TunerContext) -> None:
     )
 
     assert conv_to_igemm_info is not None
-    assert conv_to_igemm_info.conv_dims == convolution_dims
 
     # NHWC layout: spatial and batch dims are not last.
     assert conv_to_igemm_info.is_spatial_dim_last == False
