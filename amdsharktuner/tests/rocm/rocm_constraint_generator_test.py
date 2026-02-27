@@ -310,7 +310,8 @@ def test_generate_solutions_tile_and_fuse_conv_padding(
 
             lowering_config = config.configuration.lowering_config
             assert "padding =" in str(lowering_config)
-            assert "padding_conv =" in str(lowering_config)
+            # Note: padding_conv is optional and IGEMM-specific. May be absent based on
+            # layout (NCHW), dimension alignment, or unsupported dimension mappings.
             promote = [int(x) for x in lowering_config.attributes["promote_operands"]]
             assert promote == [0, 1]
 
@@ -616,6 +617,11 @@ def test_generate_solutions_tile_and_fuse_conv_chwn_chwf(
 def test_generate_solutions_tile_and_fuse_group_conv(
     tuner_ctx: common.TunerContext, gpu_target_info: iree_gpu.TargetInfo
 ) -> None:
+    """Test group convolution with TileAndFuse pipeline.
+
+    Note: Requires Z3 15.4 or compatible version.
+    See https://github.com/nod-ai/amd-shark-ai/issues/2827
+    """
     context = tuner_ctx.mlir_ctx
     f16 = tuner_ctx.type.f16
     f32 = tuner_ctx.type.f32
@@ -672,3 +678,173 @@ def test_generate_solutions_tile_and_fuse_group_conv(
 
             assert config.name == "compilation_info"
             assert isinstance(config.configuration, iree_codegen.CompilationInfoAttr)
+
+
+def test_direct_conv_compute_dimensions(
+    tuner_ctx: common.TunerContext, gpu_target_info: iree_gpu.TargetInfo
+) -> None:
+    """Test that _compute_direct_conv_dimensions correctly maps conv dims to M/N/K.
+
+    Direct convolution (without IGEMM) should:
+    - M = batch + output_image
+    - N = output_channel
+    - K = input_channel only (filter loops excluded from schedule)
+    """
+    context = tuner_ctx.mlir_ctx
+    f32 = tuner_ctx.type.f32
+
+    # NCHW: (batch=2, channels=64, height=32, width=32)
+    # Filter: (out_channels=32, in_channels=64, kH=3, kW=3)
+    # Output: (batch=2, channels=32, height=30, width=30)
+    input_shape = (2, 64, 32, 32)
+    kernel_shape = (32, 64, 3, 3)
+    output_shape = (2, 32, 30, 30)
+
+    with ir.Location.unknown(context):
+        module = ir.Module.create()
+        build_func_with_conv2d_nchw_fchw(
+            module=module,
+            input_shape=input_shape,
+            kernel_shape=kernel_shape,
+            output_shape=output_shape,
+            input_type=f32,
+            kernel_type=f32,
+            output_type=f32,
+        )
+
+        root_ops = iree_codegen.get_tuner_root_ops(module)
+        assert len(root_ops) == 1
+        root_op = root_ops[0]
+
+        # Parse as IGEMM convolution.
+        parser = rocm_parsers.IGEMMConvolutionParser(root_op, tuner_ctx)
+        op_info = parser.get_op_info()
+
+        # Verify convolution_dims is set.
+        assert op_info.convolution_dims is not None
+        conv_dims = op_info.convolution_dims
+
+        # Check convolution dimension indices for NCHW_FCHW layout.
+        # Indexing map: (d0, d1, d2, d3, d4, d5, d6)
+        # d0=batch, d1=out_ch, d2=out_H, d3=out_W, d4=in_ch, d5=filter_H, d6=filter_W
+        assert list(conv_dims.batch) == [0]
+        assert list(conv_dims.output_image) == [2, 3]
+        assert list(conv_dims.output_channel) == [1]
+        assert list(conv_dims.filter_loop) == [5, 6]
+        assert list(conv_dims.input_channel) == [4]
+
+        gen = rocm_constraint_generators.ROCmConvolutionTileAndFuseConstraintGenerator(
+            op_info
+        )
+
+        # Test _compute_direct_conv_dimensions.
+        direct_dims, direct_sizes = gen._compute_direct_conv_dimensions()
+
+        # Verify M = batch + output_image.
+        assert direct_dims.m == [0, 2, 3]
+        assert direct_sizes.M == [2, 30, 30]
+
+        # Verify N = output_channel.
+        assert direct_dims.n == [1]
+        assert direct_sizes.N == [32]
+
+        # Verify K = input_channel only (filter loops NOT included).
+        assert direct_dims.k == [4]
+        assert direct_sizes.K == [64]
+
+        # Verify batch/depth.
+        assert direct_dims.batch == []
+        assert direct_sizes.B == []
+
+
+def test_direct_conv_generates_both_strategies(
+    tuner_ctx: common.TunerContext, gpu_target_info: iree_gpu.TargetInfo
+) -> None:
+    """Test that unit-stride NHWC conv generates both IGEMM and direct conv candidates.
+
+    For a unit-stride convolution, the generator should yield:
+    - IGEMM candidates with use_igemm_convolution=true
+    - Direct conv candidates with use_igemm_convolution=false
+    """
+    context = tuner_ctx.mlir_ctx
+    f16 = tuner_ctx.type.f16
+    f32 = tuner_ctx.type.f32
+
+    # NHWC layout: (batch, height, width, channels)
+    input_shape = (2, 32, 32, 64)
+    kernel_shape = (3, 3, 64, 32)
+    output_shape = (2, 30, 30, 32)
+
+    with ir.Location.unknown(context):
+        module = ir.Module.create()
+        build_func_with_conv2d_nhwc_hwcf(
+            module=module,
+            input_shape=input_shape,
+            kernel_shape=kernel_shape,
+            output_shape=output_shape,
+            input_type=f16,
+            kernel_type=f16,
+            output_type=f32,
+        )
+
+        root_ops = iree_codegen.get_tuner_root_ops(module)
+        assert len(root_ops) == 1
+        root_op = root_ops[0]
+
+        parser = rocm_parsers.IGEMMConvolutionParser(root_op, tuner_ctx)
+        op_info = parser.get_op_info()
+        gen = rocm_constraint_generators.ROCmConvolutionTileAndFuseConstraintGenerator(
+            op_info
+        )
+
+        # Generate solutions - should include both strategies.
+        solutions = list(
+            gen.generate_solutions(
+                tuner_context=tuner_ctx,
+                gpu_target_info=gpu_target_info,
+                num_subgroups=4,
+            )
+        )
+
+        assert len(solutions) > 0, "No solutions generated"
+
+        # Extract use_igemm_convolution flags from compilation infos.
+        # Sample solutions from beginning, middle, and end to ensure we catch both strategies.
+        use_igemm_flags = []
+        sample_indices = list(range(min(25, len(solutions))))  # First 25.
+        sample_indices += list(
+            range(len(solutions) // 2, min(len(solutions) // 2 + 25, len(solutions)))
+        )  # Middle 25.
+        sample_indices += list(
+            range(max(0, len(solutions) - 25), len(solutions))
+        )  # Last 25.
+
+        for idx in sample_indices:
+            solution = solutions[idx]
+            assert len(solution) == 1
+            config = solution[0]
+            assert config.name == "compilation_info"
+            compilation_info = config.configuration
+
+            # Extract pipeline options.
+            translation_info = compilation_info.translation_info
+            if (
+                hasattr(translation_info, "configuration")
+                and translation_info.configuration
+            ):
+                pipeline_config = translation_info.configuration
+                if common.GPU_PIPELINE_OPTIONS_KEY in pipeline_config:
+                    pipeline_opts = pipeline_config[common.GPU_PIPELINE_OPTIONS_KEY]
+                    use_igemm_conv = pipeline_opts.use_igemm_convolution
+                    use_igemm_flags.append(use_igemm_conv)
+
+        # Verify we have both True and False (both strategies generated).
+        has_igemm = True in use_igemm_flags
+        has_direct = False in use_igemm_flags
+
+        assert (
+            has_igemm
+        ), f"No IGEMM strategy candidates found (checked {len(use_igemm_flags)} solutions)"
+        assert (
+            has_direct
+        ), f"No direct conv strategy candidates found (checked {len(use_igemm_flags)} solutions)"

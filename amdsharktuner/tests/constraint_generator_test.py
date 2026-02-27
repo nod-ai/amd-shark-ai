@@ -103,6 +103,9 @@ def build_func_with_conv2d_nchw_fchw(
                 outputs=[arg2],
                 result_tensors=[output_tensor_type],
             )
+            # Explicitly set unit strides and dilations as MLIR attributes.
+            conv_op.operation.attributes["strides"] = ir.DenseI64ArrayAttr.get([1, 1])
+            conv_op.operation.attributes["dilations"] = ir.DenseI64ArrayAttr.get([1, 1])
             conv_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
 

@@ -6,13 +6,25 @@
 
 import z3  # type: ignore
 import math
-from typing import Iterator, Optional
+import os
+from typing import Iterator, Optional, TypedDict
 
 from iree.compiler import ir  # type: ignore
-from iree.compiler.dialects import iree_codegen, iree_gpu  # type: ignore
+from iree.compiler.dialects import iree_codegen, iree_gpu, linalg  # type: ignore
 
 from .. import common, constraint_generator, dispatch_parser, process_utils
 from . import rocm_common, rocm_dispatch_constraints
+
+
+class DirectConvInfo(TypedDict):
+    """Information for direct convolution lowering strategy.
+
+    Contains filter loop dimension info that will be tiled to 1 in the final
+    configuration, following IREE's setDirectConvolutionLoweringConfig approach.
+    """
+
+    filter_loop_indices: list[int]
+    filter_loop_sizes: list[int]
 
 
 def generate_generic_contraction_z3_constraints(
@@ -113,26 +125,60 @@ def generate_generic_contraction_solutions(
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
     num_subgroups: int = 4,
     allowed_waves_per_eu: list[int] = [2],
-    pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
+    pipeline_options_search_space: Optional[
+        rocm_dispatch_constraints.PipelineOptionsSearchSpace
+    ] = None,
     igemm_details: Optional[iree_codegen.IGEMMGenericConvDetails] = None,
     conv_to_igemm_info: Optional[rocm_common.ConvToIgemmInfo] = None,
+    convolution_dims: Optional[linalg.ConvolutionDimensions] = None,
+    direct_conv_info: Optional[DirectConvInfo] = None,
 ) -> Iterator[list[common.TuningConfiguration]]:
-    # Set use_igemm_convolution for IGEMM convolutions.
+    """Generate tuning configurations for contraction-like operations.
+
+    Supports both IGEMM and direct convolution strategies for conv operations,
+    as well as standard matmul operations.
+
+    """
+    # Create pipeline options if not provided (avoid mutable default argument).
+    if pipeline_options_search_space is None:
+        pipeline_options_search_space = (
+            rocm_dispatch_constraints.PipelineOptionsSearchSpace()
+        )
+
+    # Set use_igemm_convolution based on strategy for TileAndFuse pipeline.
+    # - IGEMM convolution: igemm_details is provided → use_igemm_convolution = True.
+    # - Direct convolution: direct_conv_info is provided → use_igemm_convolution = False.
+    # - Other cases (e.g., VectorDistribute innerMNK): leave as default (None).
     if (
         codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
         and dispatch_kind == common.DispatchKind.conv
     ):
-        pipeline_options_search_space.use_igemm_convolution = [True]
+        if igemm_details is not None:
+            # IGEMM strategy: uses IGEMM transformation with flattened K dimension.
+            pipeline_options_search_space.use_igemm_convolution = [True]
+        elif direct_conv_info is not None:
+            # Direct convolution strategy: treats conv as matmul-like without IGEMM.
+            pipeline_options_search_space.use_igemm_convolution = [False]
+        else:
+            # TileAndFuse conv must have either IGEMM or direct conv info.
+            assert False, (
+                "TileAndFuse convolution must have either igemm_details or direct_conv_info. "
+                "This is an internal error in the constraint generator."
+            )
 
     # Apply padding for TileAndFuse pipeline to get better tile sizes.
+    # Note: Only apply for IGEMM convolutions. Direct convolution uses original
+    # convolution indexing maps which have complex affine expressions (e.g., d3 + d6)
+    # that cannot be cast to AffineDimExpr. Skip padding for direct conv.
     overpadding_applied = False
-    if codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
-        # Use IGEMM maps if available (dimensions were restructured), otherwise use original indexing maps.
-        padding_maps = indexing_maps
-        if igemm_details:
-            padding_maps = [
-                map_attr.value for map_attr in igemm_details.igemm_contraction_maps
-            ]
+    if (
+        codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
+        and igemm_details is not None
+    ):
+        # Use IGEMM contraction maps (dimensions are restructured).
+        padding_maps = [
+            map_attr.value for map_attr in igemm_details.igemm_contraction_maps
+        ]
 
         (
             matmul_size.M,
@@ -161,12 +207,22 @@ def generate_generic_contraction_solutions(
         num_subgroups=num_subgroups,
     )
 
-    num_loops = (
-        len(contraction_dims.m)
-        + len(contraction_dims.n)
-        + len(contraction_dims.k)
-        + len(contraction_dims.batch)
-    )
+    # For direct convolution, total loops includes filter loops that are tiled to 1.
+    if direct_conv_info:
+        num_loops = (
+            len(contraction_dims.m)
+            + len(contraction_dims.n)
+            + len(contraction_dims.k)
+            + len(direct_conv_info["filter_loop_indices"])
+            + len(contraction_dims.batch)
+        )
+    else:
+        num_loops = (
+            len(contraction_dims.m)
+            + len(contraction_dims.n)
+            + len(contraction_dims.k)
+            + len(contraction_dims.batch)
+        )
 
     constraint_payload_list = [
         constraint_generator.ConstraintPayload(
@@ -196,6 +252,11 @@ def generate_generic_contraction_solutions(
             z3_assignment.intrinsic_mn,
             z3_assignment.intrinsic_k,
         )
+        # TODO(Bangtian): Add transpose layout detection for matmul/conv tuners.
+        # - Detection formula: transposedLhs = (mPos > lhsKPos), transposedRhs = (rhsKPos > nPos).
+        # - IREE uses transpose to determine inner dimension for distributability checks.
+        # - Current state: matmul/conv assume non-transposed, attention does detect transpose.
+        # - Risk: Incompatible configs may cause compilation failures (IREE uses tuner config as-is).
         mma_attr = rocm_dispatch_constraints.getMMAAttr(
             res_type.element_type,
             *intrinsic_mnk_shape,
@@ -218,9 +279,7 @@ def generate_generic_contraction_solutions(
                 tile_sizes[dim] = size
 
         # Get workgroup tile sizes.
-        workgroup_tile_sizes = [0] * (
-            len(M) + len(N) + len(K) + len(contraction_dims.batch)
-        )
+        workgroup_tile_sizes = [0] * num_loops
         set_cdim_tile_sizes(
             workgroup_tile_sizes,
             contraction_dims.m,
@@ -236,11 +295,13 @@ def generate_generic_contraction_solutions(
             contraction_dims.batch,
             [1] * len(contraction_dims.batch),
         )
+        # For direct conv, add filter loop dimensions with tile size 1.
+        if direct_conv_info:
+            for filter_idx in direct_conv_info["filter_loop_indices"]:
+                workgroup_tile_sizes[filter_idx] = 1
 
         # Get subgroup tile sizes.
-        subgroup_tile_sizes = [0] * (
-            len(M) + len(N) + len(K) + len(contraction_dims.batch)
-        )
+        subgroup_tile_sizes = [0] * num_loops
         set_cdim_tile_sizes(
             subgroup_tile_sizes,
             contraction_dims.m,
@@ -256,16 +317,22 @@ def generate_generic_contraction_solutions(
             contraction_dims.batch,
             [1] * len(contraction_dims.batch),
         )
+        # For direct conv, subgroup tiles for filter loops are 1
+        if direct_conv_info:
+            for filter_idx in direct_conv_info["filter_loop_indices"]:
+                subgroup_tile_sizes[filter_idx] = 1
 
         # Get reduction tile sizes.
-        reduction_tile_sizes = [0] * (
-            len(M) + len(N) + len(K) + len(contraction_dims.batch)
-        )
+        reduction_tile_sizes = [0] * num_loops
         set_cdim_tile_sizes(
             reduction_tile_sizes,
             contraction_dims.k,
             z3_assignment.k_vals,
         )
+        # For direct conv, reduction tiles for filter loops are 1
+        if direct_conv_info:
+            for filter_idx in direct_conv_info["filter_loop_indices"]:
+                reduction_tile_sizes[filter_idx] = 1
 
         promote_operands = [0, 1]
         padding = None
@@ -282,7 +349,7 @@ def generate_generic_contraction_solutions(
             padding = padding_tile_sizes
 
             # Calculate padding_conv sizes for convolutions when using IGEMM.
-            if conv_to_igemm_info and igemm_details:
+            if conv_to_igemm_info and igemm_details and convolution_dims:
                 # Use IGEMM loop bounds directly from igemm_details.
                 bounds = list(igemm_details.igemm_loop_bounds)
                 igemm_iterator_types = [
@@ -293,6 +360,7 @@ def generate_generic_contraction_solutions(
                     padding_tile_sizes,
                     igemm_iterator_types,
                     conv_to_igemm_info,
+                    convolution_dims,
                 )
         # Setting subgroup basis.
         # TODO(Bangtian): Sync changes from IREE PR: https://github.com/iree-org/iree/pull/22000.
@@ -380,7 +448,9 @@ def generate_attention_solutions(
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
     num_subgroups: int = 4,
     allowed_waves_per_eu: list[int] = [2],
-    pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
+    pipeline_options_search_space: Optional[
+        rocm_dispatch_constraints.PipelineOptionsSearchSpace
+    ] = None,
 ) -> Iterator[list[common.TuningConfiguration]]:
     if (
         dispatch_kind != common.DispatchKind.attention
@@ -388,6 +458,12 @@ def generate_attention_solutions(
         != iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
     ):
         return
+
+    # Create pipeline options if not provided (avoid mutable default argument).
+    if pipeline_options_search_space is None:
+        pipeline_options_search_space = (
+            rocm_dispatch_constraints.PipelineOptionsSearchSpace()
+        )
 
     m_var = z3.Int("m_tile")
     n_var = z3.Int("n_tile")
