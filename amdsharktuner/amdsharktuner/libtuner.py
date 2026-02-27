@@ -800,7 +800,7 @@ def generate_candidate_specs(
             and dispatch_tuner.get_dispatch_kind() == common.DispatchKind.attention
         ):
             if codegen_pipeline != CodegenPipelines.llvmgpu_vector_distribute:
-                logging.info(
+                logging.warning(
                     f"Attention operation detected. Overriding codegen pipeline "
                     f"from {codegen_pipeline} to llvmgpu_vector_distribute"
                 )

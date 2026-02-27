@@ -150,9 +150,7 @@ def run_command(run_pack: RunPack) -> RunResult:
     is_timeout = False
     try:
         # Convert the command list to a command string for logging.
-        command_str = shlex.join(
-            [str(x) if not isinstance(x, str) else x for x in command]
-        )
+        command_str = shlex.join(command)
         logging.debug(f"Run: {command_str}")
 
         # Add timeout to subprocess.run call.

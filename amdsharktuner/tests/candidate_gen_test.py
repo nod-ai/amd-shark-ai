@@ -361,3 +361,28 @@ def test_get_supported_dispatch_tuners() -> None:
         )
         == []
     )
+
+
+def test_tile_and_fuse_includes_vector_distribute_tuners() -> None:
+    """Verify that when TileAndFuse is selected, VectorDistribute tuners are
+    merged in so that attention ops (which only support VectorDistribute)
+    can still be matched. This mirrors the logic in libtuner.py
+    generate_candidate_specs()."""
+    Pipeline = iree_codegen.DispatchLoweringPassPipeline
+
+    taf_tuners = candidate_gen.get_supported_dispatch_tuners(
+        "gfx942", Pipeline.LLVMGPUTileAndFuse
+    )
+    vd_tuners = candidate_gen.get_supported_dispatch_tuners(
+        "gfx942", Pipeline.LLVMGPUVectorDistribute
+    )
+
+    # Merge VD tuners into TaF tuners (same logic as libtuner.py lines 784-791).
+    merged = taf_tuners + [t for t in vd_tuners if t not in taf_tuners]
+
+    assert rocm_tuners.ROCmAttentionVectorDistributeTuner in merged
+    assert rocm_tuners.ROCmContractionTileAndFuseTuner in merged
+    assert rocm_tuners.ROCmConvolutionTileAndFuseTuner in merged
+    # VD-only tuners that are not in TaF should also be present.
+    assert rocm_tuners.ROCmContractionVectorDistributeTuner in merged
+    assert rocm_tuners.ROCmConvolutionVectorDistributeTuner in merged
