@@ -173,7 +173,7 @@ def build_compile_args(compile_command: str, benchmarks_dir: Path) -> list[str]:
     # Add tuner-specific flags.
     compile_args.extend(
         [
-            "--iree-config-add-tuner-attributes",
+            "--iree-codegen-add-tuner-attributes",
             "--iree-hal-dump-executable-benchmarks-to",
             str(benchmarks_dir),
             "-o",

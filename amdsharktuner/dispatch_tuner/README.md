@@ -12,13 +12,13 @@ This example uses the simple `dispatch_sample.mlir` file.
 
 ### Generate a benchmark file
 Use the usual `iree-compile` command for problem dispatch, add
-`--iree-hal-dump-executable-files-to=dump --iree-config-add-tuner-attributes`,
+`--iree-hal-dump-executable-files-to=dump --iree-codegen-add-tuner-attributes`,
 and get the dispatch benchmark that you want to tune. For example:
 
 ```shell
 iree-compile dispatch_sample.mlir --iree-hal-target-device=hip \
     --iree-rocm-target=gfx942 --iree-hal-dump-executable-files-to=tmp/dump \
-    --iree-config-add-tuner-attributes -o /dev/null
+    --iree-codegen-add-tuner-attributes -o /dev/null
 
 cp tmp/dump/module_main_dispatch_0_rocm_hsaco_fb_benchmark.mlir tmp/dispatch_sample_benchmark.mlir
 ```

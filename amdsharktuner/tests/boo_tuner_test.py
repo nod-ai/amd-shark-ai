@@ -125,7 +125,7 @@ def test_build_compile_args() -> None:
     assert "/path/to/output.vmfb" not in result
 
     # Check that tuner-specific flags are added.
-    assert "--iree-config-add-tuner-attributes" in result
+    assert "--iree-codegen-add-tuner-attributes" in result
     assert "--iree-hal-dump-executable-benchmarks-to" in result
     assert str(benchmarks_dir) in result
 
