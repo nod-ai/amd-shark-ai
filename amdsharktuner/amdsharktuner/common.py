@@ -308,14 +308,7 @@ def get_lowering_config(
         # A local variable to hold the transformed value.
         promoted_value = value
         match key:
-            case (
-                "workgroup"
-                | "reduction"
-                | "subgroup"
-                | "promote_operands"
-                | "padding"
-                | "padding_conv"
-            ):
+            case "workgroup" | "reduction" | "subgroup" | "promote_operands" | "padding" | "padding_conv":
                 if isinstance(value, Sequence):
                     promoted_value = ir.ArrayAttr.get(
                         [tuner_ctx.type.getI64(x) for x in value]
