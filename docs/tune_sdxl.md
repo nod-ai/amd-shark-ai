@@ -122,7 +122,7 @@ Indentify the dispatches either of `MatMul` or `Conv` which are taking time abov
 
 ```
 iree-compile <IR Path> \
---iree-config-add-tuner-attributes \
+--iree-codegen-add-tuner-attributes \
 --iree-hal-executable-debug-level=3 \
 --iree-hal-dump-executable-files-to=dispatchOutput \
 --iree-hal-target-backends=rocm \
