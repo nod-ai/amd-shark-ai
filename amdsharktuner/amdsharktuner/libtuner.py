@@ -419,6 +419,18 @@ def parse_arguments(
         default=CodegenPipelines.llvmgpu_tile_and_fuse,
         help="Codegen pipeline to tune for",
     )
+    candidate_gen_args.add_argument(
+        "--conv-strategy",
+        choices=[x.value for x in rocm_common.ConvolutionStrategy],
+        default=rocm_common.ConvolutionStrategy.both,
+        help=(
+            "[Advanced] convolution lowering strategy for TileAndFuse pipeline. "
+            "For advanced users to control internal lowering strategies. "
+            "'igemm': Use implicit GEMM transformation (flattens K dimension). "
+            "'direct': Treat convolution as matmul-like operation (unit strides only). "
+            "'both': Generate candidates from both strategies (default, recommended)."
+        ),
+    )
 
     candidate_gen_args.add_argument(
         "--starter-td-spec",
@@ -799,6 +811,7 @@ def generate_candidate_specs(
             allowed_waves_per_eu=args.waves_per_eu_options,
             pipeline_options_search_space=pipeline_options_search_space,
             codegen_pipeline=get_iree_codegen_pipeline(args.codegen_pipeline),
+            conv_strategy=args.conv_strategy,
         )
         if args.enable_random_seed:
             random.seed()

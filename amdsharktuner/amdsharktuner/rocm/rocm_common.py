@@ -9,6 +9,7 @@ import logging
 import math
 import os
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -25,6 +26,14 @@ WAVES_PER_EU_KEY = "amdgpu-waves-per-eu"
 ROCM_ARCHITECTURES = ["gfx942", "gfx950", "gfx1100", "gfx1201"]
 
 
+class ConvolutionStrategy(str, Enum):
+    """ROCm convolution lowering strategy for TileAndFuse pipeline."""
+
+    igemm = "igemm"
+    direct = "direct"
+    both = "both"
+
+
 @dataclass
 class ConvToIgemmInfo:
     """
@@ -33,9 +42,12 @@ class ConvToIgemmInfo:
 
     Corresponds to ConvToIgemmInfo struct in IREE:
     https://github.com/iree-org/iree/blob/d3440737cc56a4d1b20c72181d9a37f194bd3ce5/compiler/src/iree/compiler/Codegen/Dialect/GPU/TargetUtils/ConfigUtils.cpp#L373-L379
+
+    Note: convolution_dims is not included here because this struct is IGEMM-specific,
+    while convolution_dims is needed by both IGEMM and direct convolution strategies.
+    It's stored in ROCmConvolutionOpInfo instead.
     """
 
-    conv_dims: linalg.ConvolutionDimensions
     is_batch_dim_last: bool = False
     is_spatial_dim_last: bool = False
     conv_to_igemm_dim: dict[int, int] = field(default_factory=dict)
@@ -172,6 +184,7 @@ def get_padding_conv_sizes(
     padding_sizes: list[int],
     igemm_loop_iterators: list[str],
     conv_to_igemm_info: ConvToIgemmInfo,
+    convolution_dims: linalg.ConvolutionDimensions,
 ) -> Optional[list[int]]:
     """
     Computes padding_conv by mapping padding from IGEMM space to convolution space.
@@ -181,6 +194,7 @@ def get_padding_conv_sizes(
         padding_sizes: Padding sizes in IGEMM dimension space (M, N, K).
         igemm_loop_iterators: IGEMM loop iterator type strings ('"reduction"' or '"parallel"').
         conv_to_igemm_info: Convolution to IGEMM transformation info.
+        convolution_dims: Original convolution dimensions.
 
     Returns:
         Padding sizes in convolution dimension space, or None if no padding
@@ -192,15 +206,14 @@ def get_padding_conv_sizes(
 
     conv_to_igemm = conv_to_igemm_info.conv_to_igemm_dim
     padded_igemm_dims = set()
-    conv_dims = conv_to_igemm_info.conv_dims
-    input_channel_dims = set(conv_dims.input_channel)
+    input_channel_dims = set(convolution_dims.input_channel)
 
     padding_conv_sizes = [0] * len(conv_to_igemm)
 
     # For batch-last layout (e.g., CHWN), only pad the batch dimension to avoid
     # introducing pad op as the producer of collapse_shape op which may cause fusion problem.
     if conv_to_igemm_info.is_batch_dim_last:
-        last_batch_dim = list(conv_dims.batch)[-1]
+        last_batch_dim = list(convolution_dims.batch)[-1]
         igemm_batch_pos = conv_to_igemm[last_batch_dim]
 
         if (

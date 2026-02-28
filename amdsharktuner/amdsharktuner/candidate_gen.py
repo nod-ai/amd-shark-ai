@@ -96,6 +96,7 @@ def generate_solutions(
     allowed_waves_per_eu: list[int] = [2],
     pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
+    conv_strategy: rocm_common.ConvolutionStrategy = rocm_common.ConvolutionStrategy.both,
 ) -> Iterator[list[common.TuningConfiguration]]:
     if target_info.arch not in rocm_common.ROCM_ARCHITECTURES:
         print(f"Warning: Untested architecture '{target_info.arch}'.")
@@ -108,6 +109,7 @@ def generate_solutions(
         num_subgroups=num_subgroups,
         allowed_waves_per_eu=allowed_waves_per_eu,
         pipeline_options_search_space=pipeline_options_search_space,
+        conv_strategy=conv_strategy,
     )
 
 
