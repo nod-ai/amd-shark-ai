@@ -118,7 +118,7 @@ jobs:
       uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
 
     - name: "Setup Python ${{ matrix.python-version }}"
-      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: ${{ matrix.python-version }}
         cache: "pip"
@@ -164,7 +164,7 @@ jobs:
 
     - name: Upload coverage data
       if: ${{ matrix.name != 'Ubuntu (Clang)(host-only)' && !matrix.tracing && runner.os != 'Windows' }}
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
       with:
         name: coverage-data-${{ matrix.name }}-${{ matrix.python-version }}-${{ matrix.runs-on }}
         path: ${{ env.LIBSHORTFIN_DIR }}/.coverage.${{ matrix.name }}.${{ matrix.python-version }}.${{ matrix.runs-on }}
