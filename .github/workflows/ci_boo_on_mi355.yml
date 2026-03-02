@@ -76,7 +76,7 @@ concurrency:
 jobs:
   test_boo:
     if: ${{ github.repository_owner == 'nod-ai' || github.event_name != 'schedule' }}
-    timeout-minutes: 270
+    timeout-minutes: 360
     name: "Boo on Mi355"
     strategy:
       matrix:
