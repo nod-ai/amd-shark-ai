@@ -95,10 +95,10 @@ def get_compatible_mma_intrinsics(
             else iree_gpu.MMAAttr.get(mma)
         )
         a_type, b_type, c_type = mma_attr.abc_element_types
-        return (
-            lhs_type.element_type == a_type
-            and rhs_type.element_type == b_type
-            and res_type.element_type == c_type
+        if lhs_type.element_type != a_type or rhs_type.element_type != b_type:
+            return False
+        return common.is_result_type_compatible_with_accumulator(
+            a_type, b_type, c_type, res_type.element_type
         )
 
     return list(filter(is_compatible, mma_intrinsics))

@@ -648,13 +648,17 @@ def getMMAAttr(
 
         a_type, b_type, c_type = mma_attr.abc_element_types
         mnk = mma_attr.mnk_shape
-        if (
-            isinstance(a_type, type(lhs_type))
-            and isinstance(b_type, type(rhs_type))
-            and isinstance(c_type, type(output_type))
-            and m == mnk[0]
-            and n == mnk[1]
-            and k == mnk[2]
+
+        # Check if input types and mnk match
+        if not (
+            isinstance(a_type, type(lhs_type)) and isinstance(b_type, type(rhs_type))
+        ):
+            continue
+        if not (m == mnk[0] and n == mnk[1] and k == mnk[2]):
+            continue
+
+        if common.is_result_type_compatible_with_accumulator(
+            a_type, b_type, c_type, output_type
         ):
             return mma_attr
 
