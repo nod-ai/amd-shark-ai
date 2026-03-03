@@ -61,7 +61,7 @@ concurrency:
 jobs:
   test_boo_rdna4:
     if: ${{ github.repository_owner == 'nod-ai' || github.event_name != 'schedule' }}
-    timeout-minutes: 270
+    timeout-minutes: 360
     name: "Boo on RDNA 4"
     strategy:
       matrix:
