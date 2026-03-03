@@ -118,7 +118,7 @@ jobs:
           --pre torch
 
         #pip install "git+https://github.com/iree-org/iree-turbine.git"
-        git clone -b pravg/add_command_timeout https://github.com/pravg-amd/iree-turbine.git
+        git clone -b add_command_timeout https://github.com/pravg-amd/iree-turbine.git
         pip install -e iree-turbine
 
     - name: Install IREE Nightly Packages

@@ -73,7 +73,7 @@ jobs:
         mkdir -p output_artifacts
         source ${VENV_DIR}/bin/activate
         pip install --index-url https://rocm.nightlies.amd.com/v2/gfx120X-all/ torch==2.9.1+rocm7.12.0a20260208
-        git clone -b pravg/add_command_timeout https://github.com/pravg-amd/iree-turbine.git
+        git clone -b add_command_timeout https://github.com/pravg-amd/iree-turbine.git
         pip install -e iree-turbine
         pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
         pip freeze  > $(pwd)/output_artifacts/version.txt
