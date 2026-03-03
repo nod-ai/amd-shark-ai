@@ -190,7 +190,7 @@ jobs:
       if: always()
       run: |
         cp -v logs/*.csv $OUTPUT_DIR || true
-        cp -v logs/version.txt $OUTPUT_DIR
+        cp -v logs/version.txt $OUTPUT_DIR || true
         cd amd-shark-ai-reports/boo
         git pull
         git add .
