@@ -88,6 +88,16 @@ def instantiate_dispatch_tuner(
     return dispatch_tuner
 
 
+def get_convolution_kwargs(
+    dispatch_kind: common.DispatchKind,
+    conv_strategy: rocm_common.ConvolutionStrategy,
+) -> dict:
+    """Get kwargs for constraint generator, only including conv_strategy for convolutions."""
+    if dispatch_kind == common.DispatchKind.conv:
+        return {"conv_strategy": conv_strategy}
+    return {}
+
+
 def generate_solutions(
     dispatch_tuner: DispatchTuner,
     target_info: iree_gpu.TargetInfo,
@@ -103,13 +113,17 @@ def generate_solutions(
 
     constraint_generator = dispatch_tuner.get_constraint_generator()
 
+    extra_kwargs = get_convolution_kwargs(
+        dispatch_tuner.get_dispatch_kind(), conv_strategy
+    )
+
     return constraint_generator.generate_solutions(
         tuner_context,
         target_info,
         num_subgroups=num_subgroups,
         allowed_waves_per_eu=allowed_waves_per_eu,
         pipeline_options_search_space=pipeline_options_search_space,
-        conv_strategy=conv_strategy,
+        **extra_kwargs,
     )
 
 

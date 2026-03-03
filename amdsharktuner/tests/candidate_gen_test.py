@@ -361,3 +361,21 @@ def test_get_supported_dispatch_tuners() -> None:
         )
         == []
     )
+
+
+def test_get_convolution_kwargs() -> None:
+    """Test that get_convolution_kwargs only includes conv_strategy for convolutions."""
+    result = candidate_gen.get_convolution_kwargs(
+        common.DispatchKind.conv, rocm_common.ConvolutionStrategy.igemm
+    )
+    assert result == {"conv_strategy": rocm_common.ConvolutionStrategy.igemm}
+
+    result = candidate_gen.get_convolution_kwargs(
+        common.DispatchKind.contraction, rocm_common.ConvolutionStrategy.igemm
+    )
+    assert result == {}
+
+    result = candidate_gen.get_convolution_kwargs(
+        common.DispatchKind.attention, rocm_common.ConvolutionStrategy.both
+    )
+    assert result == {}
