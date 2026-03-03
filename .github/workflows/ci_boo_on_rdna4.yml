@@ -87,7 +87,7 @@ jobs:
       run: |
         python -m venv ${VENV_DIR}
         source ${VENV_DIR}/bin/activate
-        sudo ln -s python3 /usr/bin/python
+        sudo ln -s python3 /usr/bin/python || true
         echo "${VENV_DIR}/bin" >> $GITHUB_PATH
 
     - name: Install pip deps
