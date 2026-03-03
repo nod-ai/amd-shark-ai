@@ -76,7 +76,7 @@ concurrency:
 jobs:
   test_boo:
     if: ${{ github.repository_owner == 'nod-ai' || github.event_name != 'schedule' }}
-    timeout-minutes: 360
+    timeout-minutes: 600
     name: "Boo on Mi355"
     strategy:
       matrix:
@@ -196,7 +196,7 @@ jobs:
        iree-boo-driver \
             --commands-file amd-shark-ai-reports/boo/gemm_config.txt --csv output_artifacts/gemm_miopen_iree.csv \
             --backend=torch --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 \
-            --skip-commands-file amd-shark-ai-reports/boo/skip_gemm_config.txt --verbose --timeout 120 || true
+            --skip-commands-file amd-shark-ai-reports/boo/skip_gemm_config.txt --timeout 120 || true
 
     - name: Run Batch Norm
       if: always() && (github.event_name == 'schedule' || inputs.run_batch_norm == true)
