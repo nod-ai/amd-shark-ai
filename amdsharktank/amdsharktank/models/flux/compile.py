@@ -11,7 +11,6 @@ iree_compile_flags = [
     "--iree-opt-outer-dim-concat=1",
     "--iree-opt-aggressively-propagate-transposes=1",
     "--iree-codegen-llvmgpu-use-vector-distribution=1",
-    "--iree-llvmgpu-enable-prefetch=1",
     "--iree-opt-data-tiling=0",
     "--iree-vm-target-truncate-unsupported-floats",
     "--iree-dispatch-creation-enable-aggressive-fusion",
