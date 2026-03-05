@@ -15,6 +15,15 @@ name: CI - Boo on RDNA4
 
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Runner to use for the job'
+        required: false
+        default: 'shark-mkm-1-for-boo'
+        type: choice
+        options:
+          - shark-mkm-1-for-boo
+          - shark41-rdna4
   schedule:
     - cron: "54 11 * * *"
 
@@ -38,7 +47,7 @@ jobs:
       matrix:
         version: [3.12]
       fail-fast: false
-    runs-on: "shark41-rdna4"
+    runs-on: ${{ github.event.inputs.runner || 'shark-mkm-1-for-boo' }}
     defaults:
       run:
         shell: bash
