@@ -19,6 +19,7 @@ from fusilli_tuner.fusilli_tuner import (
     find_cached_artifacts,
     parse_args,
     run_fusilli_benchmark_driver,
+    main,
     FusilliPathConfig,
     FusilliTuner,
 )
@@ -306,3 +307,14 @@ def test_fusilli_tuner_getters() -> None:
     assert tuner.get_iree_benchmark_timeout_s() == 60.0
     assert tuner.is_auto_iree_benchmark_timeout() is False
     assert tuner.should_prune_slower_candidates() is True
+
+
+def test_main_requires_commands_or_args() -> None:
+    """Test that main() requires either --commands-file or --fusilli-args."""
+    with patch(
+        "fusilli_tuner.fusilli_tuner.sys.argv", ["fusilli_tuner", "--devices=hip://0"]
+    ):
+        with pytest.raises(
+            ValueError, match="Must specify either --commands-file or --fusilli-args"
+        ):
+            main()

@@ -356,7 +356,7 @@ def tune_fusilli_dispatch(
         )
 
         if not top_candidates:
-            logging.critical("No tuning candidates performed better than the baseline.")
+            logging.warning("No tuning candidates performed better than the baseline.")
             return None
 
         logging.info(f"Top dispatch candidates: {top_candidates}")
@@ -384,16 +384,17 @@ def process_fusilli_command(
     command_idx: int,
 ) -> Optional[Path]:
     """Process a single Fusilli command through compilation and tuning."""
-    # Set up temporary directory.
+    # Set up temporary directory. Use tempfile.mkdtemp to create a unique
+    # subdirectory for each command, avoiding cache pollution across commands
+    # and across multiple runs.
     if args.tmp_dir:
-        tmp_dir = Path(args.tmp_dir)
-        tmp_dir.mkdir(parents=True, exist_ok=True)
-        logging.info(f"Using user-specified temporary directory: {tmp_dir}")
+        base_tmp_dir = Path(args.tmp_dir)
+        base_tmp_dir.mkdir(parents=True, exist_ok=True)
+        tmp_dir = Path(tempfile.mkdtemp(dir=base_tmp_dir, prefix="fusilli_cache_"))
     else:
-        # Ensure parent directory exists before creating temp directory.
         Path("fusilli_tuner").mkdir(exist_ok=True)
         tmp_dir = Path(tempfile.mkdtemp(dir="fusilli_tuner", prefix="fusilli_cache_"))
-        logging.info(f"Created temporary directory: {tmp_dir}")
+    logging.info(f"Using temporary directory: {tmp_dir}")
 
     # Run Fusilli benchmark driver with --dump to generate source MLIR.
     run_fusilli_benchmark_driver(args.fusilli_driver, cli_args, tmp_dir)
@@ -490,6 +491,8 @@ def main() -> None:
 
     if args.commands_file and fusilli_op_args:
         raise ValueError("Cannot specify both --commands-file and --fusilli-args")
+    if not args.commands_file and not fusilli_op_args:
+        raise ValueError("Must specify either --commands-file or --fusilli-args")
 
     # Create main tuning directory.
     fusilli_path_config = FusilliPathConfig()
