@@ -15,6 +15,7 @@ from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import _builtin_ops_gen, iree_codegen, iree_gpu, transform  # type: ignore
 
 from amdsharktuner import common
+from amdsharktuner.rocm import rocm_common
 from amdsharktuner.test_utils import tuner_ctx
 
 
@@ -521,3 +522,24 @@ def test_is_affine_expr_function_of_dim(tuner_ctx: common.TunerContext) -> None:
         complex_expr = (d0 + d1) * 2
         assert common.is_affine_expr_function_of_dim(complex_expr, 0)
         assert common.is_affine_expr_function_of_dim(complex_expr, 1)
+
+
+def test_denorm_flushing_translation_info_config(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_num_stages=2)
+
+    # With denorm_flushing=True, the config should contain the denormal_fp_math attribute.
+    config_with_denorm = rocm_common.get_translation_info_config(
+        pipeline_options, waves_per_eu=2, denorm_flushing=True
+    )
+    config_str = str(config_with_denorm)
+    assert common.DENORMAL_FP_MATH_F32_KEY in config_str
+    assert "preserve-sign" in config_str
+
+    # With denorm_flushing=False (default), the attribute should be absent.
+    config_without_denorm = rocm_common.get_translation_info_config(
+        pipeline_options, waves_per_eu=2, denorm_flushing=False
+    )
+    config_str = str(config_without_denorm)
+    assert common.DENORMAL_FP_MATH_F32_KEY not in config_str
