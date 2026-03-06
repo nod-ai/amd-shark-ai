@@ -88,6 +88,16 @@ def instantiate_dispatch_tuner(
     return dispatch_tuner
 
 
+def get_convolution_kwargs(
+    dispatch_kind: common.DispatchKind,
+    conv_strategy: rocm_common.ConvolutionStrategy,
+) -> dict:
+    """Get kwargs for constraint generator, only including conv_strategy for convolutions."""
+    if dispatch_kind == common.DispatchKind.conv:
+        return {"conv_strategy": conv_strategy}
+    return {}
+
+
 def generate_solutions(
     dispatch_tuner: DispatchTuner,
     target_info: iree_gpu.TargetInfo,
@@ -96,11 +106,16 @@ def generate_solutions(
     allowed_waves_per_eu: list[int] = [2],
     pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
+    conv_strategy: rocm_common.ConvolutionStrategy = rocm_common.ConvolutionStrategy.both,
 ) -> Iterator[list[common.TuningConfiguration]]:
     if target_info.arch not in rocm_common.ROCM_ARCHITECTURES:
         print(f"Warning: Untested architecture '{target_info.arch}'.")
 
     constraint_generator = dispatch_tuner.get_constraint_generator()
+
+    extra_kwargs = get_convolution_kwargs(
+        dispatch_tuner.get_dispatch_kind(), conv_strategy
+    )
 
     return constraint_generator.generate_solutions(
         tuner_context,
@@ -108,6 +123,7 @@ def generate_solutions(
         num_subgroups=num_subgroups,
         allowed_waves_per_eu=allowed_waves_per_eu,
         pipeline_options_search_space=pipeline_options_search_space,
+        **extra_kwargs,
     )
 
 
