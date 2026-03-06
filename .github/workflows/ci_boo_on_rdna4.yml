@@ -90,7 +90,7 @@ jobs:
     - name: Run hipblaslt-bench
       run: |
         source ${VENV_DIR}/bin/activate
-        tarFileName=$( /home/praveeng/.local/bin/aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx120X | sort -r | head -1 |  awk '{print $NF}' || true )
+        tarFileName=$( /home/yrathore/bin/aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx120X | sort -r | head -1 |  awk '{print $NF}' || true )
         echo "Installing $tarFileName"
         wget https://therock-nightly-tarball.s3.us-east-2.amazonaws.com/${tarFileName}
         mkdir install
