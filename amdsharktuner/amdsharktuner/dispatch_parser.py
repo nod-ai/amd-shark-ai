@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from iree.compiler import ir  # type: ignore
+from iree.compiler._mlir_libs._mlir.ir import _OperationBase  # type: ignore
 from iree.compiler.dialects import func, iree_codegen, linalg  # type: ignore
 
 from . import common
@@ -20,12 +21,16 @@ from . import common
 def get_parent_function_name(root_op: ir.Operation) -> str:
     """
     Returns the parent function's symbol name from a root operation.
+    Walks up the operation hierarchy to find the enclosing func.func.
     """
-    # FIXME: This assumes the immediate parent is a function, but the root op
-    # could be nested inside other operations (e.g., scf.if).
-    func_op = root_op.parent.opview
-    assert isinstance(func_op, func.FuncOp), f"Expected func.func, got {func_op.name}"
-    return ir.StringAttr(func_op.name).value
+    current_op: Optional[_OperationBase] = root_op.parent
+    while current_op:
+        op_view = current_op.opview
+        if isinstance(op_view, func.FuncOp):
+            return ir.StringAttr(op_view.name).value
+        current_op = current_op.parent
+
+    raise RuntimeError(f"No enclosing func.func found for operation {root_op.name}")
 
 
 def parse_mlir(mlir_text: str, ctx: common.TunerContext) -> ir.Module:
