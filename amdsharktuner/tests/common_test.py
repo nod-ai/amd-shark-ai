@@ -15,6 +15,7 @@ from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import _builtin_ops_gen, iree_codegen, iree_gpu, transform  # type: ignore
 
 from amdsharktuner import common
+from amdsharktuner.rocm import rocm_common
 from amdsharktuner.test_utils import tuner_ctx
 
 
@@ -549,3 +550,42 @@ def test_is_affine_expr_function_of_dim(tuner_ctx: common.TunerContext) -> None:
         complex_expr = (d0 + d1) * 2
         assert common.is_affine_expr_function_of_dim(complex_expr, 0)
         assert common.is_affine_expr_function_of_dim(complex_expr, 1)
+
+
+def test_get_compatible_mma_intrinsics_mixed_types(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    """Test that get_compatible_mma_intrinsics returns intrinsics when the
+    result type differs from the accumulator type but is compatible via
+    relaxed matching (e.g., bf16 result with f32 accumulator MMA)."""
+    bf16 = tuner_ctx.type.bf16
+    f32 = tuner_ctx.type.f32
+
+    # MFMA_F32_16x16x16_BF16 has bf16 inputs and f32 accumulator.
+    mma_intrinsics = [iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_BF16]
+
+    # bf16 inputs, bf16 result — should match via relaxed matching
+    # (accumulator is f32, but bf16 result is allowed).
+    lhs = common.ShapedType([16, 16], bf16)
+    rhs = common.ShapedType([16, 16], bf16)
+    res_bf16 = common.ShapedType([16, 16], bf16)
+    compatible = rocm_common.get_compatible_mma_intrinsics(
+        lhs, rhs, res_bf16, mma_intrinsics
+    )
+    assert len(compatible) == 1
+
+    # bf16 inputs, f32 result — should also match (exact accumulator match).
+    res_f32 = common.ShapedType([16, 16], f32)
+    compatible = rocm_common.get_compatible_mma_intrinsics(
+        lhs, rhs, res_f32, mma_intrinsics
+    )
+    assert len(compatible) == 1
+
+    # f16 inputs with bf16 result — should NOT match (lhs type mismatch).
+    f16 = tuner_ctx.type.f16
+    lhs_f16 = common.ShapedType([16, 16], f16)
+    rhs_f16 = common.ShapedType([16, 16], f16)
+    compatible = rocm_common.get_compatible_mma_intrinsics(
+        lhs_f16, rhs_f16, res_bf16, mma_intrinsics
+    )
+    assert len(compatible) == 0
