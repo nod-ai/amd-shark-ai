@@ -285,10 +285,10 @@ def generate_generic_contraction_solutions(
             contraction_dims.batch,
             [1] * len(contraction_dims.batch),
         )
-        # For direct conv, add filter loop dimensions with tile size 1.
+        # For direct conv, filter loop dimensions are not tiled at workgroup level.
         if direct_conv_info:
             for filter_idx in direct_conv_info["filter_loop_indices"]:
-                workgroup_tile_sizes[filter_idx] = 1
+                workgroup_tile_sizes[filter_idx] = 0
 
         # Get subgroup tile sizes.
         subgroup_tile_sizes = [0] * num_loops
@@ -307,10 +307,10 @@ def generate_generic_contraction_solutions(
             contraction_dims.batch,
             [1] * len(contraction_dims.batch),
         )
-        # For direct conv, subgroup tiles for filter loops are 1
+        # For direct conv, filter loop dimensions are not tiled at subgroup level.
         if direct_conv_info:
             for filter_idx in direct_conv_info["filter_loop_indices"]:
-                subgroup_tile_sizes[filter_idx] = 1
+                subgroup_tile_sizes[filter_idx] = 0
 
         # Get reduction tile sizes.
         reduction_tile_sizes = [0] * num_loops
@@ -319,7 +319,7 @@ def generate_generic_contraction_solutions(
             contraction_dims.k,
             z3_assignment.k_vals,
         )
-        # For direct conv, reduction tiles for filter loops are 1
+        # For direct conv, reduction tiles for filter loops are 1.
         if direct_conv_info:
             for filter_idx in direct_conv_info["filter_loop_indices"]:
                 reduction_tile_sizes[filter_idx] = 1

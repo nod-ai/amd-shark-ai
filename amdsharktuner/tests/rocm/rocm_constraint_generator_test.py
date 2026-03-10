@@ -16,6 +16,7 @@ from amdsharktuner import (
     dispatch_parser,
 )
 from amdsharktuner.rocm import (
+    rocm_common,
     rocm_constraint_generators,
     rocm_dispatch_constraints,
     rocm_parsers,
@@ -931,3 +932,88 @@ def test_direct_conv_skipped_for_dynamic_dims(
         )
 
         assert not gen._supports_direct_convolution(tuner_ctx)
+
+
+def test_direct_conv_filter_loop_tile_sizes(
+    tuner_ctx: common.TunerContext, gpu_target_info: iree_gpu.TargetInfo
+) -> None:
+    """Test that direct conv sets filter loop tile sizes correctly in lowering config.
+
+    For direct convolution, the filter loop dimensions (kH, kW) should have:
+    - workgroup_tile_sizes[filter_idx] = 0 (not tiled at workgroup level)
+    - subgroup_tile_sizes[filter_idx] = 0 (not tiled at subgroup level)
+    - reduction_tile_sizes[filter_idx] = 1 (filter loops are reduction dims with size 1)
+
+    Setting workgroup/subgroup to 0 means these dimensions are not distributed,
+    while reduction = 1 means they iterate over the full filter dimension.
+    """
+    context = tuner_ctx.mlir_ctx
+    f16 = tuner_ctx.type.f16
+    f32 = tuner_ctx.type.f32
+
+    # NCHW: (batch=2, channels=64, height=32, width=32)
+    # Filter: (out_channels=32, in_channels=64, kH=3, kW=3)
+    # Output: (batch=2, channels=32, height=30, width=30)
+    # Use f16 inputs with f32 output to match available MMA intrinsics.
+    input_shape = (2, 64, 32, 32)
+    kernel_shape = (32, 64, 3, 3)
+    output_shape = (2, 32, 30, 30)
+
+    with ir.Location.unknown(context):
+        module = ir.Module.create()
+        build_func_with_conv2d_nchw_fchw(
+            module=module,
+            input_shape=input_shape,
+            kernel_shape=kernel_shape,
+            output_shape=output_shape,
+            input_type=f16,
+            kernel_type=f16,
+            output_type=f32,
+        )
+
+        root_ops = iree_codegen.get_tuner_root_ops(module)
+        assert len(root_ops) == 1
+        root_op = root_ops[0]
+
+        parser = rocm_parsers.IGEMMConvolutionParser(root_op, tuner_ctx)
+        op_info = parser.get_op_info()
+
+        # Get the filter loop indices from convolution_dims.
+        assert op_info.convolution_dims is not None
+        filter_loop_indices = list(op_info.convolution_dims.filter_loop)
+        # For NCHW_FCHW: d5=filter_H, d6=filter_W.
+        assert filter_loop_indices == [5, 6]
+
+        gen = rocm_constraint_generators.ROCmConvolutionTileAndFuseConstraintGenerator(
+            op_info
+        )
+
+        solutions = list(
+            gen.generate_solutions(
+                tuner_context=tuner_ctx,
+                gpu_target_info=gpu_target_info,
+                num_subgroups=4,
+                conv_strategy=rocm_common.ConvolutionStrategy.direct,
+            )
+        )
+
+        assert len(solutions) > 0, "No direct conv solutions generated"
+
+        # Check tile sizes for at least the first few solutions.
+        for solution in solutions[:5]:
+            assert len(solution) == 1
+            config = solution[0]
+            assert config.name == "compilation_info"
+            compilation_info = config.configuration
+            lowering_config = compilation_info.lowering_config
+
+            workgroup_tile_sizes = list(lowering_config.workgroup_tile_sizes)
+            subgroup_tile_sizes = [
+                int(x) for x in lowering_config.attributes["subgroup"]
+            ]
+            reduction_tile_sizes = list(lowering_config.reduction_tile_sizes)
+
+            for filter_idx in filter_loop_indices:
+                assert workgroup_tile_sizes[filter_idx] == 0
+                assert subgroup_tile_sizes[filter_idx] == 0
+                assert reduction_tile_sizes[filter_idx] == 1
