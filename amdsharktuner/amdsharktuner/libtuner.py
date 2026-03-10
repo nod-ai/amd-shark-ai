@@ -430,8 +430,8 @@ def parse_arguments(
     )
     candidate_gen_args.add_argument(
         "--conv-strategy",
-        choices=[x.value for x in rocm_common.ConvolutionStrategy],
-        default=rocm_common.ConvolutionStrategy.both,
+        choices=["igemm", "direct", "both"],
+        default="both",
         help=(
             "[Advanced] convolution lowering strategy for TileAndFuse pipeline. "
             "For advanced users to control internal lowering strategies. "
@@ -822,6 +822,14 @@ def generate_candidate_specs(
                 f"(kind={dispatch_tuner.get_dispatch_kind().name})."
             )
             allowed_denorm_flushing = [False]
+        # Convert conv_strategy string to IntFlag.
+        conv_strategy_map = {
+            "igemm": rocm_common.ConvolutionStrategy.igemm,
+            "direct": rocm_common.ConvolutionStrategy.direct,
+            "both": rocm_common.ConvolutionStrategy.igemm
+            | rocm_common.ConvolutionStrategy.direct,
+        }
+        conv_strategy = conv_strategy_map[args.conv_strategy]
 
         solution_gen_start_time = time.perf_counter()
         solutions_iter = candidate_gen.generate_solutions(
@@ -833,7 +841,7 @@ def generate_candidate_specs(
             allowed_denorm_flushing=allowed_denorm_flushing,
             pipeline_options_search_space=pipeline_options_search_space,
             codegen_pipeline=get_iree_codegen_pipeline(args.codegen_pipeline),
-            conv_strategy=args.conv_strategy,
+            conv_strategy=conv_strategy,
         )
         if args.enable_random_seed:
             random.seed()

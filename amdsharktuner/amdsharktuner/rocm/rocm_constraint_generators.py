@@ -154,7 +154,8 @@ class ROCmConvolutionTileAndFuseConstraintGenerator(
         self,
         tuner_context: common.TunerContext,
         gpu_target_info: iree_gpu.TargetInfo,
-        conv_strategy: rocm_common.ConvolutionStrategy = rocm_common.ConvolutionStrategy.both,
+        conv_strategy: rocm_common.ConvolutionStrategy = rocm_common.ConvolutionStrategy.igemm
+        | rocm_common.ConvolutionStrategy.direct,
         **pipeline_constraint_options,
     ) -> Iterator[list[common.TuningConfiguration]]:
         """Generate candidates from all applicable strategies (IGEMM and/or direct conv)."""
@@ -164,7 +165,7 @@ class ROCmConvolutionTileAndFuseConstraintGenerator(
         ), "convolution_dims must be set for convolution operations"
 
         # Generate IGEMM candidates.
-        if conv_strategy in ("igemm", "both"):
+        if conv_strategy & rocm_common.ConvolutionStrategy.igemm:
             tuner_context.logger.info(
                 "Generating convolution candidates using IGEMM strategy"
             )
@@ -186,7 +187,7 @@ class ROCmConvolutionTileAndFuseConstraintGenerator(
             )
 
         # Generate direct convolution candidates if supported.
-        if conv_strategy in ("direct", "both"):
+        if conv_strategy & rocm_common.ConvolutionStrategy.direct:
             if self._supports_direct_convolution(tuner_context):
                 tuner_context.logger.info(
                     "Generating convolution candidates using direct strategy"

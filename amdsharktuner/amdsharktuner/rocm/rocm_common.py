@@ -9,7 +9,7 @@ import logging
 import math
 import os
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import IntFlag
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -26,12 +26,11 @@ WAVES_PER_EU_KEY = "amdgpu-waves-per-eu"
 ROCM_ARCHITECTURES = ["gfx942", "gfx950", "gfx1100", "gfx1201"]
 
 
-class ConvolutionStrategy(str, Enum):
+class ConvolutionStrategy(IntFlag):
     """ROCm convolution lowering strategy for TileAndFuse pipeline."""
 
-    igemm = "igemm"
-    direct = "direct"
-    both = "both"
+    igemm = 1
+    direct = 2
 
 
 @dataclass
