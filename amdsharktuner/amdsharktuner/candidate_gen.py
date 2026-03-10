@@ -64,7 +64,7 @@ def instantiate_dispatch_tuner(
     if len(root_op_list) == 0:
         tune_logger.error(
             "No root ops found. Did you forget to pass "
-            "--iree-config-add-tuner-attributes during compilation?"
+            "--iree-codegen-add-tuner-attributes during compilation?"
         )
         return None
     elif len(root_op_list) > 1:
