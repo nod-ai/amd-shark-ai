@@ -123,14 +123,15 @@ jobs:
 
     - name: Setup environment variables
       run: |
-       echo "MIOPEN_FIND_ENFORCE=3" >> $GITHUB_ENV
-       echo "PYTHONUNBUFFERED=1" >> $GITHUB_ENV
-       echo "ROCR_VISIBLE_DEVICES=0" >> $GITHUB_ENV
+        echo "MIOPEN_FIND_ENFORCE=3" >> $GITHUB_ENV
+        echo "PYTHONUNBUFFERED=1" >> $GITHUB_ENV
+        echo "ROCR_VISIBLE_DEVICES=0" >> $GITHUB_ENV
 
     - name: Run hipblaslt-bench
       if: always() && (github.event_name == 'schedule' || inputs.run_hipblaslt == true)
       run: |
-        tarFileName=$( aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx120X | sort -r | head -1 |  awk '{print $NF}' || true )
+        source ${VENV_DIR}/bin/activate
+        tarFileName=$( /home/yrathore/bin/aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx120X | sort -r | head -1 |  awk '{print $NF}' || true )
         echo "Installing $tarFileName"
         wget https://therock-nightly-tarball.s3.us-east-2.amazonaws.com/${tarFileName}
         mkdir install
