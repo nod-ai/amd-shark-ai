@@ -211,13 +211,31 @@ Program Program::Load(std::span<const ProgramModule> modules,
   // functionality (or module versions; iree_vm_module_dependency_t has the
   // minimum version required so you can switch between them, and whether they
   // are optional/required).
+
+  // Create device group from devices.
+  iree::hal_device_group_ptr device_group;
+  if (raw_devices.size() == 1) {
+    // Single device: use simplified creation.
+    SHORTFIN_THROW_IF_ERROR(iree_hal_device_group_create_from_device(
+        raw_devices[0], system->host_allocator(), device_group.for_output()));
+  } else {
+    // Multiple devices: use builder pattern.
+    iree_hal_device_group_builder_t builder;
+    iree_hal_device_group_builder_initialize(&builder);
+    for (auto *device : raw_devices) {
+      SHORTFIN_THROW_IF_ERROR(
+          iree_hal_device_group_builder_add_device(&builder, device));
+    }
+    SHORTFIN_THROW_IF_ERROR(iree_hal_device_group_builder_finalize(
+        &builder, system->host_allocator(), device_group.for_output()));
+  }
+
   iree::vm_module_ptr hal_module;
   SHORTFIN_THROW_IF_ERROR(                           //
       iree_hal_module_create(                        //
           system->vm_instance(),                     //
           iree_hal_module_device_policy_default(),   //
-          raw_devices.size(),                        //
-          raw_devices.data(),                        //
+          device_group,                              //
           IREE_HAL_MODULE_FLAG_NONE,                 //
           iree_hal_module_debug_sink_stdio(stderr),  //
           system->host_allocator(),                  //
