@@ -135,6 +135,7 @@ def get_translation_info_config(
     # Add denormal_fp_math_f32 attribute if denorm_flushing is specified.
     # When denorm_flushing is True, use "preserve-sign" to flush denormals to zero.
     if denorm_flushing:
+        logging.debug("Enabling denormal flushing (preserve-sign) for f32 operations")
         # TODO: Expose a Python binding for DenormalFpMathAttr instead of parsing.
         denorm_attr = ir.Attribute.parse(
             '#iree_codegen.denormal_fp_math<"preserve-sign">'
