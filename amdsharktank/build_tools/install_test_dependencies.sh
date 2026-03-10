@@ -56,6 +56,7 @@ if (($IREE_UNPINNED)); then
     pip uninstall -y wave-lang
     git clone https://github.com/iree-org/wave.git
     cd wave
+    git checkout 775987d38c7f7e63555fdecf000272edaf862a6a
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
     export PATH="$HOME/.cargo/bin:$PATH"
 
@@ -70,6 +71,7 @@ else
     pip uninstall -y wave-lang
     git clone https://github.com/iree-org/wave.git
     cd wave
+    git checkout 775987d38c7f7e63555fdecf000272edaf862a6a
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
     export PATH="$HOME/.cargo/bin:$PATH"
 
