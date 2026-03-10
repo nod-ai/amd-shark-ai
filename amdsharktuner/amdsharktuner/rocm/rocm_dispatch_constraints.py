@@ -7,7 +7,6 @@
 # Given an input dispatch, this code modifies the hyperparameters
 # in the code and runs it.
 
-import logging
 import math
 import z3  # type: ignore
 from typing import Any, Optional
@@ -661,12 +660,6 @@ def getMMAAttr(
                 a_type, b_type, c_type, output_type
             )
         ):
-            if output_type != c_type:
-                logging.debug(
-                    f"Relaxed MMA match: result type {output_type} differs from "
-                    f"accumulator type {c_type} for intrinsic with "
-                    f"m={m}, n={n}, k={k}."
-                )
             return mma_attr
 
     # If no matching intrinsic is found, raise an exception.
