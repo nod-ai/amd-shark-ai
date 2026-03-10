@@ -205,8 +205,7 @@ jobs:
        echo "============ Running Gemm shape with MIOpen and IREE without tuning ======================================="
        iree-boo-driver \
             --commands-file amd-shark-ai-reports/boo/gemm_config.txt --csv output_artifacts/gemm_miopen_iree.csv \
-            --backend=torch --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 10 --verbose --numerics-verbose \
-            --skip-commands-file amd-shark-ai-reports/boo/skip_gemm_config.txt || true
+            --backend=torch --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 10 --verbose --numerics-verbose || true
 
     - name: Run Batch Norm
       if: always() && (github.event_name == 'schedule' || inputs.run_batch_norm == true)
