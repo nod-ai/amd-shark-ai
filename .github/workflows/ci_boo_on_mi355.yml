@@ -298,7 +298,7 @@ jobs:
 
             if [ "${{ inputs.run_gemm }}" = "true" ]; then
               echo "2"
-              python github-actions/new_boo_comp.py --current-file "../logs/gemm_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/gemm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_gemm_iree.md" --threshold 0.05 --total-arguments 320 || echo "failure in gemm"
+              python github-actions/new_boo_comp.py --current-file "../logs/gemm_miopen_iree.csv" --baseline-file "boo/boo-nightly/${LATEST_DATE}/gemm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_gemm_iree.md" --threshold 0.05 --total-arguments 316 || echo "failure in gemm"
             fi
 
             if [ "${{ inputs.run_prod_conv }}" = "true" ]; then
