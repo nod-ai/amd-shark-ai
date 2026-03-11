@@ -36,6 +36,12 @@ class ROCmConvolutionOpInfo(dispatch_parser.ConvolutionOpInfo):
     # space (M, N, K) back to convolution space (batch, spatial, channels).
     conv_to_igemm_info: Optional[ConvToIgemmInfo] = None
 
+    # Original convolution dimensions.
+    # Used for both IGEMM and direct convolution dimension computations.
+    # Contains: batch, output_image, output_channel, filter_loop, input_channel, depth.
+    # Note: Always populated by parsers, but Optional due to dataclass field ordering.
+    convolution_dims: Optional[linalg.ConvolutionDimensions] = None
+
 
 def build_conv_to_igemm_info(
     convolution_dims: linalg.ConvolutionDimensions,
@@ -50,7 +56,7 @@ def build_conv_to_igemm_info(
     https://github.com/iree-org/iree/blob/d3440737cc56a4d1b20c72181d9a37f194bd3ce5/compiler/src/iree/compiler/Codegen/Dialect/GPU/TargetUtils/ConfigUtils.cpp#L872-L909
     """
     input_shape = input_type.shape
-    conv_to_igemm_info = ConvToIgemmInfo(conv_dims=convolution_dims)
+    conv_to_igemm_info = ConvToIgemmInfo()
 
     # Map input channel dimensions to their sizes in the input tensor.
     for dim in convolution_dims.input_channel:
@@ -152,6 +158,7 @@ class IGEMMConvolutionParser(dispatch_parser.ConvolutionOpInterfaceParser):
             dilations=info.dilations,
             igemm_details=igemm_details,
             conv_to_igemm_info=conv_to_igemm_info,
+            convolution_dims=info.convolution_dims,
         )
 
     def get_op_info(self) -> ROCmConvolutionOpInfo:
@@ -206,6 +213,7 @@ class InnerMNKConvolutionParser(dispatch_parser.ConvolutionOpInterfaceParser):
             depth_sizes=info.depth_sizes,
             strides=info.strides,
             dilations=info.dilations,
+            convolution_dims=info.convolution_dims,
         )
 
     def get_op_info(self) -> ROCmConvolutionOpInfo:

@@ -60,6 +60,8 @@ def build_func_with_conv2d_nhwc_hwcf(
     input_type: ir.Type,
     kernel_type: ir.Type,
     output_type: ir.Type,
+    strides: tuple[int, int] | None = None,
+    dilations: tuple[int, int] | None = None,
 ) -> None:
     input_tensor_type = ir.RankedTensorType.get(input_shape, input_type)
     kernel_tensor_type = ir.RankedTensorType.get(kernel_shape, kernel_type)
@@ -71,10 +73,17 @@ def build_func_with_conv2d_nhwc_hwcf(
             input_tensor_type, kernel_tensor_type, output_tensor_type
         )
         def conv2d_func(arg0, arg1, arg2):
+            # Convert strides/dilations to MLIR attributes if provided.
+            strides_attr = ir.DenseI64ArrayAttr.get(list(strides)) if strides else None
+            dilations_attr = (
+                ir.DenseI64ArrayAttr.get(list(dilations)) if dilations else None
+            )
             conv_op = linalg.Conv2DNhwcHwcfOp(
                 inputs=[arg0, arg1],
                 outputs=[arg2],
                 result_tensors=[output_tensor_type],
+                strides=strides_attr,
+                dilations=dilations_attr,
             )
             conv_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
@@ -103,6 +112,9 @@ def build_func_with_conv2d_nchw_fchw(
                 outputs=[arg2],
                 result_tensors=[output_tensor_type],
             )
+            # Explicitly set unit strides and dilations as MLIR attributes.
+            conv_op.operation.attributes["strides"] = ir.DenseI64ArrayAttr.get([1, 1])
+            conv_op.operation.attributes["dilations"] = ir.DenseI64ArrayAttr.get([1, 1])
             conv_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
 
@@ -273,6 +285,47 @@ def build_func_with_conv2d_chwn_chwf(
                 add = arith.AddFOp(block.arguments[2], mul).result
                 linalg.YieldOp([add])
             generic_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
+
+
+def build_func_with_conv2d_nhwc_hwcf_dynamic(
+    module: ir.Module,
+    input_shape: tuple[int, int, int, int],
+    kernel_shape: tuple[int, int, int, int],
+    output_shape: tuple[int, int, int, int],
+    input_type: ir.Type,
+    kernel_type: ir.Type,
+    output_type: ir.Type,
+    dynamic_dims: list[int] | None = None,
+) -> None:
+    """Build a convolution with optional dynamic dimensions.
+
+    Args:
+        dynamic_dims: List of indices in output_shape to mark as dynamic (-1).
+            For example, [3] marks the output channel dimension as dynamic.
+    """
+    actual_output_shape: tuple[int, ...] = output_shape
+    if dynamic_dims:
+        output_shape_list = list(output_shape)
+        for dim in dynamic_dims:
+            output_shape_list[dim] = ir.ShapedType.get_dynamic_size()
+        actual_output_shape = tuple(output_shape_list)
+
+    input_tensor_type = ir.RankedTensorType.get(input_shape, input_type)
+    kernel_tensor_type = ir.RankedTensorType.get(kernel_shape, kernel_type)
+    output_tensor_type = ir.RankedTensorType.get(actual_output_shape, output_type)
+
+    with ir.InsertionPoint(module.body):
+
+        @func.FuncOp.from_py_func(
+            input_tensor_type, kernel_tensor_type, output_tensor_type
+        )
+        def conv2d_func(arg0, arg1, arg2):
+            conv_op = linalg.Conv2DNhwcHwcfOp(
+                inputs=[arg0, arg1],
+                outputs=[arg2],
+                result_tensors=[output_tensor_type],
+            )
+            conv_op.operation.attributes["root_op"] = iree_codegen.RootOpAttr.get()
 
 
 def test_ContractionZ3Constants_to_meta() -> None:
