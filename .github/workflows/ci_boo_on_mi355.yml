@@ -180,6 +180,7 @@ jobs:
     - name: Setup environment variables
       run: |
        echo "MIOPEN_FIND_ENFORCE=3" >> $GITHUB_ENV
+       echo "PYTHONUNBUFFERED=1" >> $GITHUB_ENV
        echo "ROCR_VISIBLE_DEVICES=0" >> $GITHUB_ENV
 
     - name: Run Prod Conv
