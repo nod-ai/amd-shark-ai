@@ -17,15 +17,21 @@ from iree.compiler.dialects import func, iree_codegen, linalg  # type: ignore
 from . import common
 
 
-def get_parent_function_name(root_op: ir.Operation) -> str:
+def get_parent_function_name(root_op: ir.Operation) -> Optional[str]:
     """
     Returns the parent function's symbol name from a root operation.
+    Walks up the operation hierarchy to find the enclosing func.func.
+    Returns None if no enclosing func.func is found.
+
+    TODO(bangtian): This could be simplified once MLIR Python bindings support getParentOfType<T>().
+    See https://github.com/llvm/llvm-project/pull/185512.
     """
-    # FIXME: This assumes the immediate parent is a function, but the root op
-    # could be nested inside other operations (e.g., scf.if).
-    func_op = root_op.parent.opview
-    assert isinstance(func_op, func.FuncOp), f"Expected func.func, got {func_op.name}"
-    return ir.StringAttr(func_op.name).value
+    op: ir.Operation = root_op
+    while op := op.parent:
+        if isinstance(op.opview, func.FuncOp):
+            return ir.StringAttr(op.opview.name).value
+
+    return None
 
 
 def parse_mlir(mlir_text: str, ctx: common.TunerContext) -> ir.Module:

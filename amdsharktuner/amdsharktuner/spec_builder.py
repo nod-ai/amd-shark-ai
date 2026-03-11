@@ -23,7 +23,10 @@ def get_matcher_named_sequence_name(root_op: ir.Operation) -> str:
     """
     Returns the symbol name for a transform dialect named sequence matcher.
     """
-    return f"match_{get_parent_function_name(root_op)}"
+    func_name = get_parent_function_name(root_op)
+    if func_name is None:
+        raise RuntimeError(f"No enclosing func.func found for operation {root_op.name}")
+    return f"match_{func_name}"
 
 
 def get_placeholder_spec(context: ir.Context) -> ir.Module:
