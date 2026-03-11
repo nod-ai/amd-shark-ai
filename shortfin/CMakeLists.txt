@@ -245,7 +245,7 @@ if(SHORTFIN_IREE_SOURCE_DIR)
 else()
   message(STATUS "Fetching IREE sources from tag ${SHORTFIN_IREE_GIT_TAG}")
 
-  set(IREE_SUBMODULES "third_party/benchmark third_party/flatcc third_party/hip-build-deps")
+  set(IREE_SUBMODULES "third_party/benchmark third_party/flatcc third_party/hip-build-deps third_party/printf")
   if (SHORTFIN_BUILD_TESTS)
     set(IREE_BUILD_TESTS ON)
     set(IREE_SUBMODULES "${IREE_SUBMODULES} third_party/googletest")
