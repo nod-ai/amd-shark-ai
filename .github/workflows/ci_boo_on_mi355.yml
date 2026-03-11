@@ -66,11 +66,10 @@ permissions:
   contents: write
 
 concurrency:
-  # A PR number if a pull request and otherwise the commit hash. This cancels
-  # queued and in-progress runs for the same PR (presubmit) or commit
-  # (postsubmit). The workflow name is prepended to avoid conflicts between
-  # different workflows.
-  group: ${{ github.workflow }}-${{ github.event.number || github.sha }}
+  # Separate concurrency groups for scheduled vs manual runs to prevent them
+  # from cancelling each other. Scheduled jobs have higher priority and should
+  # not be interrupted by manual workflow_dispatch runs.
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.number || github.sha }}
   cancel-in-progress: true
 
 jobs:
