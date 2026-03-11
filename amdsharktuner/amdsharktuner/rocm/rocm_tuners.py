@@ -250,7 +250,7 @@ def get_tuners_for_pipeline(
     if codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
         return [
             ROCmContractionTileAndFuseTuner,
-            ROCmConvolutionTileAndFuseTuner,
+            ROCmConvolutionTileAndFuseTuner,  # Handles both IGEMM and direct conv strategies
         ]
 
     return []
