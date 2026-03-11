@@ -94,19 +94,34 @@ def generate_solutions(
     tuner_context: common.TunerContext,
     num_subgroups: int = 4,  # GPU spec, used to determine candidate generation constraints.
     allowed_waves_per_eu: list[int] = [2],
+    allowed_denorm_flushing: list[bool] = [False],
     pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
+    conv_strategy: rocm_common.ConvolutionStrategy = rocm_common.ConvolutionStrategy.igemm
+    | rocm_common.ConvolutionStrategy.direct,
 ) -> Iterator[list[common.TuningConfiguration]]:
     if target_info.arch not in rocm_common.ROCM_ARCHITECTURES:
         print(f"Warning: Untested architecture '{target_info.arch}'.")
 
     constraint_generator = dispatch_tuner.get_constraint_generator()
 
+    # Only pass conv_strategy for convolution dispatches.
+    if dispatch_tuner.get_dispatch_kind() == common.DispatchKind.conv:
+        return constraint_generator.generate_solutions(
+            tuner_context,
+            target_info,
+            num_subgroups=num_subgroups,
+            allowed_waves_per_eu=allowed_waves_per_eu,
+            pipeline_options_search_space=pipeline_options_search_space,
+            conv_strategy=conv_strategy,
+        )
+
     return constraint_generator.generate_solutions(
         tuner_context,
         target_info,
         num_subgroups=num_subgroups,
         allowed_waves_per_eu=allowed_waves_per_eu,
+        allowed_denorm_flushing=allowed_denorm_flushing,
         pipeline_options_search_space=pipeline_options_search_space,
     )
 

@@ -12,7 +12,7 @@ Usage: python -m pytest dispatch_parser_test.py
 import amdsharktuner
 
 from iree.compiler import ir  # type: ignore
-from iree.compiler.dialects import func, iree_codegen, iree_gpu, linalg  # type: ignore
+from iree.compiler.dialects import func, iree_codegen, iree_gpu, linalg, scf  # type: ignore
 
 from amdsharktuner import common, dispatch_parser
 from amdsharktuner.rocm import rocm_common
@@ -320,3 +320,62 @@ def test_get_attention_operation(tuner_ctx: common.TunerContext) -> None:
     assert result.k1_dims == [2]
     assert result.k2_dims == [3]
     assert result.n_dims == [4]
+
+
+def test_get_parent_function_name_with_split_reduction(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    """Test get_parent_function_name when root op is nested in scf.forall (split reduction)."""
+    context = tuner_ctx.mlir_ctx
+    # Simplified MLIR showing the nesting structure: func.func -> scf.forall -> linalg.matmul.
+    # This matches IREE's split reduction optimization pattern.
+    module_str = r"""
+    builtin.module {
+        func.func @split_reduction_test(%arg0: tensor<16x64xf16>, %arg1: tensor<64x32xf16>) -> tensor<16x32xf32> {
+            %init = tensor.empty() : tensor<16x32xf32>
+            %result = scf.forall (%i) in (4) shared_outs(%out = %init) -> (tensor<16x32xf32>) {
+                %matmul = linalg.matmul {root_op = #iree_codegen.root_op<set = 0>}
+                    ins(%arg0, %arg1 : tensor<16x64xf16>, tensor<64x32xf16>)
+                    outs(%out : tensor<16x32xf32>) -> tensor<16x32xf32>
+                scf.forall.in_parallel {
+                    tensor.parallel_insert_slice %matmul into %out[0, 0] [16, 32] [1, 1]
+                        : tensor<16x32xf32> into tensor<16x32xf32>
+                }
+            }
+            return %result : tensor<16x32xf32>
+        }
+    }
+    """
+    module = ir.Module.parse(module_str, context)
+    root_op_list = iree_codegen.get_tuner_root_ops(module)
+    assert len(root_op_list) == 1
+    root_op = root_op_list[0]
+
+    # The root op is nested: func.func -> scf.forall -> linalg.matmul.
+    # get_parent_function_name should walk up the hierarchy and find the function.
+    func_name = dispatch_parser.get_parent_function_name(root_op)
+    assert func_name == "split_reduction_test"
+
+    parser = dispatch_parser.ContractionOpInterfaceParser(root_op, tuner_ctx)
+    assert (
+        dispatch_parser.get_parent_function_name(parser.get_root_op())
+        == "split_reduction_test"
+    )
+
+
+def test_get_parent_function_name_no_function(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    """Test get_parent_function_name returns None when no func.func is found."""
+    context = tuner_ctx.mlir_ctx
+    module_str = r"""
+    builtin.module {
+        %cst = arith.constant 0.0 : f32
+    }
+    """
+    module = ir.Module.parse(module_str, context)
+    module_body = module.body
+    constant_op = module_body.operations[0]
+
+    func_name = dispatch_parser.get_parent_function_name(constant_op)
+    assert func_name is None

@@ -15,6 +15,7 @@ from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import _builtin_ops_gen, iree_codegen, iree_gpu, transform  # type: ignore
 
 from amdsharktuner import common
+from amdsharktuner.rocm import rocm_common
 from amdsharktuner.test_utils import tuner_ctx
 
 
@@ -73,6 +74,34 @@ def test_get_map_result_dim_positions(tuner_ctx: common.TunerContext) -> None:
     invalid_map = ir.AffineMap.get(3, 0, [sum_expr])
     result = common.get_map_result_dim_positions(invalid_map)
     assert result is None, "Expected None for non-projected permutation"
+
+
+def test_is_result_type_compatible_with_accumulator(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    bf16 = tuner_ctx.type.bf16
+    f16 = tuner_ctx.type.f16
+    f32 = tuner_ctx.type.f32
+    i8 = tuner_ctx.type.i8
+    i32 = tuner_ctx.type.i32
+
+    # bf16 inputs with f32 accumulator: allow bf16 or f32 result.
+    assert common.is_result_type_compatible_with_accumulator(bf16, bf16, f32, bf16)
+    assert common.is_result_type_compatible_with_accumulator(bf16, bf16, f32, f32)
+    assert not common.is_result_type_compatible_with_accumulator(bf16, bf16, f32, f16)
+
+    # f16 inputs with f32 accumulator: allow f16 or f32 result.
+    assert common.is_result_type_compatible_with_accumulator(f16, f16, f32, f16)
+    assert common.is_result_type_compatible_with_accumulator(f16, f16, f32, f32)
+    assert not common.is_result_type_compatible_with_accumulator(f16, f16, f32, bf16)
+
+    # i8 inputs with i32 accumulator: only i32 result.
+    assert common.is_result_type_compatible_with_accumulator(i8, i8, i32, i32)
+    assert not common.is_result_type_compatible_with_accumulator(i8, i8, i32, i8)
+
+    # f32 inputs with f32 accumulator: only f32 result.
+    assert common.is_result_type_compatible_with_accumulator(f32, f32, f32, f32)
+    assert not common.is_result_type_compatible_with_accumulator(f32, f32, f32, f16)
 
 
 def test_get_lowering_config(tuner_ctx: common.TunerContext) -> None:
@@ -521,3 +550,63 @@ def test_is_affine_expr_function_of_dim(tuner_ctx: common.TunerContext) -> None:
         complex_expr = (d0 + d1) * 2
         assert common.is_affine_expr_function_of_dim(complex_expr, 0)
         assert common.is_affine_expr_function_of_dim(complex_expr, 1)
+
+
+def test_get_compatible_mma_intrinsics_mixed_types(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    """Test that get_compatible_mma_intrinsics returns intrinsics when the
+    result type differs from the accumulator type but is compatible via
+    relaxed matching (e.g., bf16 result with f32 accumulator MMA)."""
+    bf16 = tuner_ctx.type.bf16
+    f32 = tuner_ctx.type.f32
+
+    # MFMA_F32_16x16x16_BF16 has bf16 inputs and f32 accumulator.
+    mma_intrinsics = [iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_BF16]
+
+    # bf16 inputs, bf16 result — should match via relaxed matching
+    # (accumulator is f32, but bf16 result is allowed).
+    lhs = common.ShapedType([16, 16], bf16)
+    rhs = common.ShapedType([16, 16], bf16)
+    res_bf16 = common.ShapedType([16, 16], bf16)
+    compatible = rocm_common.get_compatible_mma_intrinsics(
+        lhs, rhs, res_bf16, mma_intrinsics
+    )
+    assert len(compatible) == 1
+
+    # bf16 inputs, f32 result — should also match (exact accumulator match).
+    res_f32 = common.ShapedType([16, 16], f32)
+    compatible = rocm_common.get_compatible_mma_intrinsics(
+        lhs, rhs, res_f32, mma_intrinsics
+    )
+    assert len(compatible) == 1
+
+    # f16 inputs with bf16 result — should NOT match (lhs type mismatch).
+    f16 = tuner_ctx.type.f16
+    lhs_f16 = common.ShapedType([16, 16], f16)
+    rhs_f16 = common.ShapedType([16, 16], f16)
+    compatible = rocm_common.get_compatible_mma_intrinsics(
+        lhs_f16, rhs_f16, res_bf16, mma_intrinsics
+    )
+    assert len(compatible) == 0
+
+
+def test_denorm_flushing_translation_info_config(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_num_stages=2)
+
+    # With denorm_flushing=True, the config should contain the denormal_fp_math attribute.
+    config_with_denorm = rocm_common.get_translation_info_config(
+        pipeline_options, waves_per_eu=2, denorm_flushing=True
+    )
+    config_str = str(config_with_denorm)
+    assert common.DENORMAL_FP_MATH_F32_KEY in config_str
+    assert "preserve-sign" in config_str
+
+    # With denorm_flushing=False (default), the attribute should be absent.
+    config_without_denorm = rocm_common.get_translation_info_config(
+        pipeline_options, waves_per_eu=2, denorm_flushing=False
+    )
+    config_str = str(config_without_denorm)
+    assert common.DENORMAL_FP_MATH_F32_KEY not in config_str
