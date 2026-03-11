@@ -414,6 +414,15 @@ def parse_arguments(
         help="Comma-separated list of allowed values for the waves_per_eu config option. Possible values: Any positive integer value",
     )
     candidate_gen_args.add_argument(
+        "--denorm-flushing-options",
+        type=lambda t: [s.strip().lower() == "true" for s in t.split(",")],
+        default=[False],
+        help="Comma-separated list of allowed values for denorm flushing. "
+        "When True, sets denormal_fp_math_f32 to preserve-sign to flush "
+        "denormals to zero. Only applicable to attention ops. "
+        "Possible values: [True, False]",
+    )
+    candidate_gen_args.add_argument(
         "--codegen-pipeline",
         choices=[x.value for x in CodegenPipelines],
         default=CodegenPipelines.llvmgpu_tile_and_fuse,
@@ -790,6 +799,18 @@ def generate_candidate_specs(
                 "Failed to set up dispatch tuner. No candidates will be generated."
             )
             return []
+        allowed_denorm_flushing = args.denorm_flushing_options
+        if (
+            any(allowed_denorm_flushing)
+            and dispatch_tuner.get_dispatch_kind() != common.DispatchKind.attention
+        ):
+            logging.warning(
+                "Denorm flushing is only applicable to attention ops. "
+                "Ignoring --denorm-flushing-options for this dispatch "
+                f"(kind={dispatch_tuner.get_dispatch_kind().name})."
+            )
+            allowed_denorm_flushing = [False]
+
         solution_gen_start_time = time.perf_counter()
         solutions_iter = candidate_gen.generate_solutions(
             dispatch_tuner=dispatch_tuner,
@@ -797,6 +818,7 @@ def generate_candidate_specs(
             tuner_context=tuning_client.tuner_context,
             num_subgroups=args.num_subgroups,
             allowed_waves_per_eu=args.waves_per_eu_options,
+            allowed_denorm_flushing=allowed_denorm_flushing,
             pipeline_options_search_space=pipeline_options_search_space,
             codegen_pipeline=get_iree_codegen_pipeline(args.codegen_pipeline),
         )

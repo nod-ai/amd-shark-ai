@@ -113,6 +113,7 @@ def generate_generic_contraction_solutions(
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
     num_subgroups: int = 4,
     allowed_waves_per_eu: list[int] = [2],
+    allowed_denorm_flushing: list[bool] = [False],
     pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
     igemm_details: Optional[iree_codegen.IGEMMGenericConvDetails] = None,
     conv_to_igemm_info: Optional[rocm_common.ConvToIgemmInfo] = None,
@@ -319,6 +320,7 @@ def generate_generic_contraction_solutions(
                         allowed_waves_per_eu,
                         padding=padding,
                         padding_conv=padding_conv,
+                        allowed_denorm_flushing=allowed_denorm_flushing,
                     )
                 )
             case iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute:
@@ -336,6 +338,7 @@ def generate_generic_contraction_solutions(
                     allowed_waves_per_eu,
                     padding=padding,
                     padding_conv=padding_conv,
+                    allowed_denorm_flushing=allowed_denorm_flushing,
                 )
             case _:
                 assert False, f"Unsupported codegen pipeline: {codegen_pipeline}"
@@ -380,6 +383,7 @@ def generate_attention_solutions(
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
     num_subgroups: int = 4,
     allowed_waves_per_eu: list[int] = [2],
+    allowed_denorm_flushing: list[bool] = [False],
     pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
 ) -> Iterator[list[common.TuningConfiguration]]:
     if (
@@ -553,6 +557,7 @@ def generate_attention_solutions(
                 pipeline_options_search_space,
                 allowed_waves_per_eu,
                 padding=None,
+                allowed_denorm_flushing=allowed_denorm_flushing,
             )
         )
         solver.add(z3.simplify(z3.Not(z3.And(list(x == model[x] for x in all_vars)))))
