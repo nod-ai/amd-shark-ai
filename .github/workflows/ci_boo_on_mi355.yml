@@ -66,17 +66,16 @@ permissions:
   contents: write
 
 concurrency:
-  # A PR number if a pull request and otherwise the commit hash. This cancels
-  # queued and in-progress runs for the same PR (presubmit) or commit
-  # (postsubmit). The workflow name is prepended to avoid conflicts between
-  # different workflows.
-  group: ${{ github.workflow }}-${{ github.event.number || github.sha }}
+  # Separate concurrency groups for scheduled vs manual runs to prevent them
+  # from cancelling each other. Scheduled jobs have higher priority and should
+  # not be interrupted by manual workflow_dispatch runs.
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.number || github.sha }}
   cancel-in-progress: true
 
 jobs:
   test_boo:
     if: ${{ github.repository_owner == 'nod-ai' || github.event_name != 'schedule' }}
-    timeout-minutes: 270
+    timeout-minutes: 600
     name: "Boo on Mi355"
     strategy:
       matrix:
@@ -101,6 +100,18 @@ jobs:
       with:
         python-version: ${{matrix.version}}
 
+    - name: Print System Information
+      run: |
+        echo "============ CPU Information ============"
+        lscpu
+        echo ""
+        echo "============ GPU Information ============"
+        rocm-smi || true
+        rocminfo || true
+        echo ""
+        echo "============ ROCM Version ============"
+        cat /opt/rocm/.info/version || echo "ROCM version file not found"
+
     - name: Create Python venv
       run: |
         python -m venv ${VENV_DIR}
@@ -112,7 +123,6 @@ jobs:
       run: |
         mkdir -p output_artifacts
         echo "OUTPUT_ARTIFACTS=$PWD/output_artifacts" >> $GITHUB_ENV
-        source ${VENV_DIR}/bin/activate
         python -m pip install --force-reinstall \
           --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
           --pre torch
@@ -157,79 +167,91 @@ jobs:
     - name: Print packages
       run: cat $OUTPUT_ARTIFACTS/version.txt
 
-    - name: Run all proxy config
+    - name: Download config files
       run: |
        echo "Getting config files"
        git clone --filter=blob:none --no-checkout https://x-access-token:${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}@github.com/nod-ai/amd-shark-ai-reports.git
        cd amd-shark-ai-reports
        git sparse-checkout init --cone
-       git sparse-checkout set boo/all_proxy_config.txt boo/prod_conv_config.txt boo/gemm_config.txt boo/hipblaslt-bench.sh boo/all_proxy_config_nchw.txt boo/prod_conv_config_nchw.txt boo/batch_norm_config.txt
+       git sparse-checkout set boo/all_proxy_config.txt boo/prod_conv_config.txt boo/gemm_config.txt boo/hipblaslt-bench.sh boo/all_proxy_config_nchw.txt boo/prod_conv_config_nchw.txt boo/batch_norm_config.txt boo/skip_gemm_config.txt
        git checkout main
        cd -
-       source ${VENV_DIR}/bin/activate
-       export MIOPEN_FIND_ENFORCE=3
-       export ROCR_VISIBLE_DEVICES=0
 
-       if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.run_prod_conv }}" = "true" ]; then
-         echo "============ 1. Running Prod Conv shape with MIOpen and IREE without tuning ==================="
-         iree-boo-driver \
-              --commands-file amd-shark-ai-reports/boo/prod_conv_config.txt --csv output_artifacts/prod_conv_miopen_iree.csv \
-              --backend=torch --backend=iree_boo_experimental || true
-       fi
+    - name: Setup environment variables
+      run: |
+       echo "MIOPEN_FIND_ENFORCE=3" >> $GITHUB_ENV
+       echo "ROCR_VISIBLE_DEVICES=0" >> $GITHUB_ENV
 
-       if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.run_all_proxy }}" = "true" ]; then
-         echo "============ 2. Running All proxy shape with MIOpen and IREE without tuning ==================="
-         iree-boo-driver \
-              --commands-file amd-shark-ai-reports/boo/all_proxy_config.txt --csv output_artifacts/all_proxy_miopen_iree.csv \
-              --backend=torch --backend=iree_boo_experimental || true
-       fi
+    - name: Run Prod Conv
+      if: always() && (github.event_name == 'schedule' || inputs.run_prod_conv == true)
+      run: |
+       echo "============ Running Prod Conv shape with MIOpen and IREE without tuning ==================="
+       iree-boo-driver \
+            --commands-file amd-shark-ai-reports/boo/prod_conv_config.txt --csv output_artifacts/prod_conv_miopen_iree.csv \
+            --backend=torch --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 10 --verbose --numerics-verbose \
+            2>&1 | tee output_artifacts/prod_conv_miopen_iree.log || true
 
-       if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.run_gemm }}" = "true" ]; then
-         echo "============ 3. Running Gemm shape with MIOpen and IREE without tuning ======================================="
-         iree-boo-driver \
-              --commands-file amd-shark-ai-reports/boo/gemm_config.txt --csv output_artifacts/gemm_miopen_iree.csv \
-              --backend=torch --backend=iree_boo_experimental || true
-       fi
+    - name: Run All Proxy
+      if: always() && (github.event_name == 'schedule' || inputs.run_all_proxy == true)
+      run: |
+       echo "============ Running All proxy shape with MIOpen and IREE without tuning ==================="
+       iree-boo-driver \
+            --commands-file amd-shark-ai-reports/boo/all_proxy_config.txt --csv output_artifacts/all_proxy_miopen_iree.csv \
+            --backend=torch --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 10 --verbose --numerics-verbose \
+            2>&1 | tee output_artifacts/all_proxy_miopen_iree.log || true
 
-       if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.run_batch_norm }}" = "true" ]; then
-         echo "============ 4. Running Batch norm shape with MIOpen and IREE without tuning ======================================="
-         iree-boo-driver \
-              --commands-file amd-shark-ai-reports/boo/batch_norm_config.txt --csv output_artifacts/batch_norm_miopen_iree.csv \
-              --backend=torch --backend=iree_boo_experimental --backend=inductor || true
-       fi
+    - name: Run Gemm
+      if: always() && (github.event_name == 'schedule' || inputs.run_gemm == true)
+      run: |
+       echo "============ Running Gemm shape with MIOpen and IREE without tuning ======================================="
+       iree-boo-driver \
+            --commands-file amd-shark-ai-reports/boo/gemm_config.txt --csv output_artifacts/gemm_miopen_iree.csv \
+            --backend=torch --backend=iree_boo_experimental --verbose \
+            2>&1 | tee output_artifacts/gemm_miopen_iree.log || true
 
-       ## Disabling below two run till the time we have failure debugged, which is happening only on runner machine
-       #if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.run_prod_conv_nchw }}" = "true" ]; then
-       #echo "============ 4. Running Prod Conv shape with NCHW layout with MIOpen and IREE without tuning ==================="
-       #iree-boo-driver \
-       #     --commands-file amd-shark-ai-reports/boo/prod_conv_config_nchw.txt --csv output_artifacts/prod_conv_miopen_iree_nchw.csv \
-       #     --backend=torch --backend=iree_boo_experimental || true
-       #fi
+    - name: Run Batch Norm
+      if: always() && (github.event_name == 'schedule' || inputs.run_batch_norm == true)
+      run: |
+       echo "============ Running Batch norm shape with MIOpen and IREE without tuning ======================================="
+       iree-boo-driver \
+            --commands-file amd-shark-ai-reports/boo/batch_norm_config.txt --csv output_artifacts/batch_norm_miopen_iree.csv \
+            --backend=torch --backend=iree_boo_experimental --backend=inductor --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 10 --verbose --numerics-verbose \
+            2>&1 | tee output_artifacts/batch_norm_miopen_iree.log || true
 
-       #if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.run_all_proxy_nchw }}" = "true" ]; then
-       #echo "============ 5. Running All proxy shape with NCHW layout with MIOpen and IREE without tuning ==================="
-       #iree-boo-driver \
-       #     --commands-file amd-shark-ai-reports/boo/all_proxy_config_nchw.txt --csv output_artifacts/all_proxy_miopen_iree_nchw.csv \
-       #     --backend=torch --backend=iree_boo_experimental || true
-       #fi
+    - name: Run Prod Conv NCHW
+      if: false
+      run: |
+       echo "============ Running Prod Conv shape with NCHW layout with MIOpen and IREE without tuning ==================="
+       iree-boo-driver \
+            --commands-file amd-shark-ai-reports/boo/prod_conv_config_nchw.txt --csv output_artifacts/prod_conv_miopen_iree_nchw.csv \
+            --backend=torch --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 10 --verbose --numerics-verbose \
+            2>&1 | tee output_artifacts/prod_conv_miopen_iree_nchw.log || true
+
+    - name: Run All Proxy NCHW
+      if: false
+      run: |
+       echo "============ Running All proxy shape with NCHW layout with MIOpen and IREE without tuning ==================="
+       iree-boo-driver \
+            --commands-file amd-shark-ai-reports/boo/all_proxy_config_nchw.txt --csv output_artifacts/all_proxy_miopen_iree_nchw.csv \
+            --backend=torch --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 10 --verbose --numerics-verbose \
+            2>&1 | tee output_artifacts/all_proxy_miopen_iree_nchw.log || true
 
     - name: Run hipblaslt-bench
+      if: always() && (github.event_name == 'schedule' || inputs.run_hipblaslt == true)
       run: |
-        if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.run_hipblaslt }}" = "true" ]; then
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
-          sudo apt install unzip -y
-          unzip awscliv2.zip
-          sudo ./aws/install
-          tarFileName=`aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx950 | sort -r | head -1 |  awk '{print $NF}'`
-          echo "Installing $tarFileName"
-          wget https://therock-nightly-tarball.s3.us-east-2.amazonaws.com/${tarFileName}
-          mkdir install
-          tar -xf *.tar.gz -C install
-          export PATH=$PWD/install/bin:$PATH
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+        sudo apt install unzip -y
+        unzip awscliv2.zip
+        sudo ./aws/install
+        tarFileName=`aws s3 ls s3://therock-nightly-tarball/ --recursive --no-sign-request | grep '\.tar\.gz$' | grep linux-gfx950 | sort -r | head -1 |  awk '{print $NF}'`
+        echo "Installing $tarFileName"
+        wget https://therock-nightly-tarball.s3.us-east-2.amazonaws.com/${tarFileName}
+        mkdir install
+        tar -xf *.tar.gz -C install
+        export PATH=$PWD/install/bin:$PATH
 
-          echo "============= 5. Running Gemm Shape with hipblaslt =============================="
-          bash amd-shark-ai-reports/boo/hipblaslt-bench.sh >& output_artifacts/gemm_hipBlaslt-bench.csv
-        fi
+        echo "============= Running Gemm Shape with hipblaslt =============================="
+        bash amd-shark-ai-reports/boo/hipblaslt-bench.sh >& output_artifacts/gemm_hipBlaslt-bench.csv
 
     - name: Upload log files
       if: always()
@@ -238,6 +260,7 @@ jobs:
         name: boo-logs
         path: |
           output_artifacts/*.csv
+          output_artifacts/*.log
           output_artifacts/version.txt
 
   # New job to push logs to amd-shark-ai-reports repository
@@ -326,10 +349,11 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             mkdir -p $OUTPUT_DIR/comparison/
-            cp -v logs/comparison/*.md $OUTPUT_DIR/comparison/
+            cp -v logs/comparison/*.md $OUTPUT_DIR/comparison/ || true
           fi
           cp -v logs/*.csv $OUTPUT_DIR || true
-          cp -v logs/version.txt $OUTPUT_DIR
+          cp -v logs/*.log $OUTPUT_DIR || true
+          cp -v logs/version.txt $OUTPUT_DIR || true
           cd amd-shark-ai-reports/boo
           git pull
           git add .
