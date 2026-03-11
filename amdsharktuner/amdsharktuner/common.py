@@ -297,6 +297,7 @@ def is_result_type_compatible_with_accumulator(
 GPU_PIPELINE_OPTIONS_KEY = "gpu_pipeline_options"
 # The key name for llvm_func_attrs attribute in the translation info config dictionary.
 LLVM_FUNC_ATTRS_KEY = "llvm_func_attrs"
+DENORMAL_FP_MATH_F32_KEY = "iree_codegen.denormal_fp_math_f32"
 
 
 def get_lowering_config(

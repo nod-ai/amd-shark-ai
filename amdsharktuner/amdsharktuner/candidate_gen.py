@@ -94,6 +94,7 @@ def generate_solutions(
     tuner_context: common.TunerContext,
     num_subgroups: int = 4,  # GPU spec, used to determine candidate generation constraints.
     allowed_waves_per_eu: list[int] = [2],
+    allowed_denorm_flushing: list[bool] = [False],
     pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
 ) -> Iterator[list[common.TuningConfiguration]]:
@@ -107,6 +108,7 @@ def generate_solutions(
         target_info,
         num_subgroups=num_subgroups,
         allowed_waves_per_eu=allowed_waves_per_eu,
+        allowed_denorm_flushing=allowed_denorm_flushing,
         pipeline_options_search_space=pipeline_options_search_space,
     )
 

@@ -682,7 +682,7 @@ class PipelineOptionsSearchSpace:
 def generate_allowed_pipeline_options(
     pipeline_options_search_space: PipelineOptionsSearchSpace,
 ) -> list[iree_gpu.PipelineOptionsAttr]:
-    pipeline_options_list = []
+    pipeline_options_list: list[iree_gpu.PipelineOptionsAttr] = []
     for pns in pipeline_options_search_space.prefetch_num_stages:
         for (
             nrbc
@@ -690,9 +690,9 @@ def generate_allowed_pipeline_options(
             for igemm in pipeline_options_search_space.use_igemm_convolution:
                 pipeline_options_list.append(
                     iree_gpu.PipelineOptionsAttr.get(
-                        pns,
-                        nrbc,
-                        igemm,
+                        prefetch_num_stages=pns,
+                        no_reduce_shared_memory_bank_conflicts=nrbc,
+                        use_igemm_convolution=igemm,
                     )
                 )
     return pipeline_options_list
@@ -706,6 +706,7 @@ def _build_compilation_infos(
     codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline,
     pipeline_options_search_space: PipelineOptionsSearchSpace,
     allowed_waves_per_eu: list[int],
+    allowed_denorm_flushing: list[bool] = [False],
 ) -> list[iree_codegen.CompilationInfoAttr]:
     """Private helper to build compilation info variants from lowering config and translation info."""
     lowering_config: iree_gpu.LoweringConfigAttr = common.get_lowering_config(
@@ -721,7 +722,7 @@ def _build_compilation_infos(
     ] = generate_allowed_pipeline_options(pipeline_options_search_space)
     wg_x, wg_y, wg_z = workgroup_sizes
 
-    # Generate all combinations of pipeline options and waves_per_eu.
+    # Generate all combinations of pipeline options, waves_per_eu, and denorm_flushing.
     compilation_infos = [
         iree_codegen.CompilationInfoAttr.get(
             lowering_config,
@@ -730,11 +731,14 @@ def _build_compilation_infos(
                 None,
                 [wg_x, wg_y, wg_z],
                 subgroup_size,
-                rocm_common.get_translation_info_config(pipeline_options, waves_per_eu),
+                rocm_common.get_translation_info_config(
+                    pipeline_options, waves_per_eu, denorm_flushing
+                ),
             ),
         )
         for pipeline_options in pipeline_options_list
         for waves_per_eu in allowed_waves_per_eu
+        for denorm_flushing in allowed_denorm_flushing
     ]
     return compilation_infos
 
@@ -752,6 +756,7 @@ def generate_tile_and_fuse_compilation_infos(
     allowed_waves_per_eu: list[int],
     padding: Optional[list[int]] = None,
     padding_conv: Optional[list[int]] = None,
+    allowed_denorm_flushing: list[bool] = [False],
 ) -> list[iree_codegen.CompilationInfoAttr]:
     """Generate compilation infos for LLVMGPUTileAndFuse pipeline."""
     lowering_config_args = {
@@ -778,6 +783,7 @@ def generate_tile_and_fuse_compilation_infos(
         iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
         pipeline_options_search_space,
         allowed_waves_per_eu,
+        allowed_denorm_flushing,
     )
 
 
@@ -795,6 +801,7 @@ def generate_vector_distribute_compilation_infos(
     allowed_waves_per_eu: list[int],
     padding: Optional[list[int]] = None,
     padding_conv: Optional[list[int]] = None,
+    allowed_denorm_flushing: list[bool] = [False],
 ) -> list[iree_codegen.CompilationInfoAttr]:
     """Generate compilation infos for LLVMGPUVectorDistribute pipeline."""
     subgroup_basis = [subgroup_basis_counts, subgroup_basis_mapping]
@@ -822,4 +829,5 @@ def generate_vector_distribute_compilation_infos(
         iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
         pipeline_options_search_space,
         allowed_waves_per_eu,
+        allowed_denorm_flushing,
     )
