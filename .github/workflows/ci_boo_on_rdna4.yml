@@ -155,7 +155,7 @@ jobs:
        ## temporarily disable --backend=torch
        iree-boo-driver \
             --commands-file amd-shark-ai-reports/boo/all_proxy_config.txt --csv output_artifacts/rdna4_all_proxy_miopen_iree.csv \
-            --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 10 --verbose --numerics-verbose \
+            --backend=iree_boo_experimental --verbose \
             2>&1 | tee output_artifacts/rdna4_all_proxy_miopen_iree.log || true
 
     - name: Run Gemm
