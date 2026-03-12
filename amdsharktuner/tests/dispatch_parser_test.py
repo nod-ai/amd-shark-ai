@@ -17,86 +17,90 @@ from iree.compiler.dialects import func, iree_codegen, iree_gpu, linalg, scf  # 
 from amdsharktuner import common, dispatch_parser
 from amdsharktuner.rocm import rocm_common
 
-from amdsharktuner.test_utils import tuner_ctx
-
-
-GENERIC_TEMPLATE = r"""
-builtin.module{{
-    func.func @test(%arg0: {lhs_type}, %arg1: {rhs_type}) -> {res_type} {{
-        %cst = arith.constant 0.000000e+00 : f32
-        %0 = tensor.empty() : {res_type}
-        %1 = linalg.fill ins(%cst : f32) outs(%0 : {res_type}) -> {res_type}
-        %2 = linalg.generic {{
-            indexing_maps = [
-                {lhs_map},
-                {rhs_map},
-                {res_map}],
-            iterator_types = {iterator_types},
-            root_op = #iree_codegen.root_op<set = 0>}}
-            ins(%arg0, %arg1 : {lhs_type}, {rhs_type})
-            outs(%1 : {res_type}) {{
-        ^bb0(%in: f16, %in_0: f16, %out: f32):
-            %3 = arith.extf %in : f16 to f32
-            %4 = arith.extf %in_0 : f16 to f32
-            %5 = arith.mulf %3, %4 : f32
-            %6 = arith.addf %out, %5 : f32
-            linalg.yield %6 : f32
-        }} -> {res_type}
-        return %2 : {res_type}
-    }}
-}}"""
+from amdsharktuner.test_utils import (
+    build_attention_module,
+    build_func_with_generic_contraction,
+    build_func_with_matmul_in_forall,
+    build_func_with_simple_op,
+    build_module_with_constant,
+    tuner_ctx,
+)
 
 
 def test_get_contraction_operation(tuner_ctx: common.TunerContext) -> None:
-    context = tuner_ctx.mlir_ctx
-
+    # Test 1: transpose_b matmul
     with ir.Location.unknown():
-        transpose_b_str = GENERIC_TEMPLATE.format(
-            lhs_type=ir.RankedTensorType.get([16, 64], ir.F16Type.get()),
-            rhs_type=ir.RankedTensorType.get([32, 64], ir.F16Type.get()),
-            res_type=ir.RankedTensorType.get([16, 32], ir.F32Type.get()),
-            lhs_map="affine_map<(d0, d1, d2) -> (d0, d2)>",
-            rhs_map="affine_map<(d0, d1, d2) -> (d1, d2)>",
-            res_map="affine_map<(d0, d1, d2) -> (d0, d1)>",
-            iterator_types='["parallel", "parallel", "reduction"]',
+        module = ir.Module.create()
+        dim_m = ir.AffineDimExpr.get(0)
+        dim_n = ir.AffineDimExpr.get(1)
+        dim_k = ir.AffineDimExpr.get(2)
+        build_func_with_generic_contraction(
+            module,
+            lhs_shape=[16, 64],
+            rhs_shape=[32, 64],
+            res_shape=[16, 32],
+            lhs_map=ir.AffineMap.get(3, 0, [dim_m, dim_k]),
+            rhs_map=ir.AffineMap.get(3, 0, [dim_n, dim_k]),
+            res_map=ir.AffineMap.get(3, 0, [dim_m, dim_n]),
+            iterator_types=["parallel", "parallel", "reduction"],
         )
-    module = ir.Module.parse(transpose_b_str, context)
     root_op_list = iree_codegen.get_tuner_root_ops(module)
     assert len(root_op_list) == 1
     root_op = root_op_list[0]
     parser = dispatch_parser.ContractionOpInterfaceParser(root_op, tuner_ctx)
 
+    # Test 2: bmm with transposed inputs
     with ir.Location.unknown():
-        bmm_transposed_inputs_str = GENERIC_TEMPLATE.format(
-            lhs_type=ir.RankedTensorType.get([5, 8, 128], ir.F16Type.get()),
-            rhs_type=ir.RankedTensorType.get([128, 40, 5], ir.F16Type.get()),
-            res_type=ir.RankedTensorType.get([5, 40, 8], ir.F32Type.get()),
-            lhs_map="affine_map<(d0, d1, d2, d3) -> (d0, d1, d3)>",
-            rhs_map="affine_map<(d0, d1, d2, d3) -> (d3, d2, d0)>",
-            res_map="affine_map<(d0, d1, d2, d3) -> (d0, d2, d1)>",
-            iterator_types='["parallel", "parallel", "parallel", "reduction"]',
+        module = ir.Module.create()
+        d0 = ir.AffineDimExpr.get(0)
+        d1 = ir.AffineDimExpr.get(1)
+        d2 = ir.AffineDimExpr.get(2)
+        d3 = ir.AffineDimExpr.get(3)
+        build_func_with_generic_contraction(
+            module,
+            lhs_shape=[5, 8, 128],
+            rhs_shape=[128, 40, 5],
+            res_shape=[5, 40, 8],
+            lhs_map=ir.AffineMap.get(4, 0, [d0, d1, d3]),
+            rhs_map=ir.AffineMap.get(4, 0, [d3, d2, d0]),
+            res_map=ir.AffineMap.get(4, 0, [d0, d2, d1]),
+            iterator_types=["parallel", "parallel", "parallel", "reduction"],
         )
-    module = ir.Module.parse(bmm_transposed_inputs_str, context)
     root_op_list = iree_codegen.get_tuner_root_ops(module)
     assert len(root_op_list) == 1
     root_op = root_op_list[0]
     parser = dispatch_parser.ContractionOpInterfaceParser(root_op, tuner_ctx)
 
+    # Test 3: high-rank bmm with transposed inputs
     with ir.Location.unknown():
-        bmm_transposed_inputs_str = GENERIC_TEMPLATE.format(
-            lhs_type=ir.RankedTensorType.get(
-                [16, 8, 15, 16, 64, 256], ir.F16Type.get()
-            ),
-            rhs_type=ir.RankedTensorType.get(
-                [16, 9, 15, 16, 128, 256], ir.F16Type.get()
-            ),
-            res_type=ir.RankedTensorType.get([16, 8, 9, 16, 64, 128], ir.F32Type.get()),
-            lhs_map="affine_map<(b0, m0, n0, k0, b1, m1, n1, k1) -> (b0, m0, k0, b1, m1, k1)>",
-            rhs_map="affine_map<(b0, m0, n0, k0, b1, m1, n1, k1) -> (b0, n0, k0, b1, n1, k1)>",
-            res_map="affine_map<(b0, m0, n0, k0, b1, m1, n1, k1) -> (b0, m0, n0, b1, m1, n1)>",
-            iterator_types='["parallel", "parallel", "parallel", "reduction", "parallel", "parallel", "parallel", "reduction"]',
+        module = ir.Module.create()
+        b0 = ir.AffineDimExpr.get(0)
+        m0 = ir.AffineDimExpr.get(1)
+        n0 = ir.AffineDimExpr.get(2)
+        k0 = ir.AffineDimExpr.get(3)
+        b1 = ir.AffineDimExpr.get(4)
+        m1 = ir.AffineDimExpr.get(5)
+        n1 = ir.AffineDimExpr.get(6)
+        k1 = ir.AffineDimExpr.get(7)
+        build_func_with_generic_contraction(
+            module,
+            lhs_shape=[16, 8, 15, 16, 64, 256],
+            rhs_shape=[16, 9, 15, 16, 128, 256],
+            res_shape=[16, 8, 9, 16, 64, 128],
+            lhs_map=ir.AffineMap.get(8, 0, [b0, m0, k0, b1, m1, k1]),
+            rhs_map=ir.AffineMap.get(8, 0, [b0, n0, k0, b1, n1, k1]),
+            res_map=ir.AffineMap.get(8, 0, [b0, m0, n0, b1, m1, n1]),
+            iterator_types=[
+                "parallel",
+                "parallel",
+                "parallel",
+                "reduction",
+                "parallel",
+                "parallel",
+                "parallel",
+                "reduction",
+            ],
         )
-    module = ir.Module.parse(bmm_transposed_inputs_str, context)
     root_op_list = iree_codegen.get_tuner_root_ops(module)
     assert len(root_op_list) == 1
     root_op = root_op_list[0]
@@ -105,8 +109,7 @@ def test_get_contraction_operation(tuner_ctx: common.TunerContext) -> None:
 
 
 def test_get_matmul_named_op(tuner_ctx: common.TunerContext) -> None:
-    context = tuner_ctx.mlir_ctx
-    with ir.Location.unknown(context):
+    with ir.Location.unknown(tuner_ctx.mlir_ctx):
         module = ir.Module.create()
         f16 = ir.F16Type.get()
         f32 = ir.F32Type.get()
@@ -253,14 +256,11 @@ def test_get_conv_tile_sizes(tuner_ctx: common.TunerContext) -> None:
 
 
 def test_parse_mlir(tuner_ctx: common.TunerContext) -> None:
-    mlir_str = r"""
-    builtin.module  {
-    func.func @simple_mul(%arg0: tensor<4xf32>, %arg1: tensor<4xf32>) -> tensor<4xf32> {
-        %0 = arith.mulf %arg0, %arg1 : tensor<4xf32>
-        return %0 : tensor<4xf32>
-    }
-    }
-"""
+    with ir.Location.unknown():
+        module = ir.Module.create()
+        build_func_with_simple_op(module, func_name="simple_mul")
+    mlir_str = str(module)
+
     mlir_module = dispatch_parser.parse_mlir(mlir_str, tuner_ctx)
     assert mlir_module is not None
     assert isinstance(mlir_module, ir.Module)
@@ -268,34 +268,12 @@ def test_parse_mlir(tuner_ctx: common.TunerContext) -> None:
 
 
 def test_get_attention_operation(tuner_ctx: common.TunerContext) -> None:
-    context = tuner_ctx.mlir_ctx
-    module_str = r"""
-        builtin.module  {
-        func.func @attention_20x4096x64x4096x64(
-        %q : tensor<20x4096x64xf16>,
-        %k : tensor<20x4096x64xf16>,
-        %v : tensor<20x4096x64xf16>,
-        %scale : f16,
-        %output : tensor<20x4096x64xf16>
-    ) -> tensor<20x4096x64xf16> {
-            %result = iree_linalg_ext.attention { root_op = #iree_codegen.root_op<set = 0>,
-                indexing_maps = [
-                affine_map<(d0, d1, d2, d3, d4) -> (d0, d1, d2)>,
-                affine_map<(d0, d1, d2, d3, d4) -> (d0, d3, d2)>,
-                affine_map<(d0, d1, d2, d3, d4) -> (d0, d3, d4)>,
-                affine_map<(d0, d1, d2, d3, d4) -> ()>,
-                affine_map<(d0, d1, d2, d3, d4) -> (d0, d1, d4)>
-                ]
-            } ins(%q, %k, %v, %scale : tensor<20x4096x64xf16>, tensor<20x4096x64xf16>, tensor<20x4096x64xf16>, f16)
-                outs(%output : tensor<20x4096x64xf16>) {
-            ^bb0(%score: f32):
-                iree_linalg_ext.yield %score : f32
-            } -> tensor<20x4096x64xf16>
-            return %result : tensor<20x4096x64xf16>
-        }
-    }
-    """
-    module = ir.Module.parse(module_str, context)
+    module = build_attention_module(
+        batch=20,
+        seq_len=4096,
+        head_dim=64,
+        func_name="attention_20x4096x64x4096x64",
+    )
     root_op_list = iree_codegen.get_tuner_root_ops(module)
     assert len(root_op_list) == 1
     root_op = root_op_list[0]
@@ -326,27 +304,21 @@ def test_get_parent_function_name_with_split_reduction(
     tuner_ctx: common.TunerContext,
 ) -> None:
     """Test get_parent_function_name when root op is nested in scf.forall (split reduction)."""
-    context = tuner_ctx.mlir_ctx
-    # Simplified MLIR showing the nesting structure: func.func -> scf.forall -> linalg.matmul.
-    # This matches IREE's split reduction optimization pattern.
-    module_str = r"""
-    builtin.module {
-        func.func @split_reduction_test(%arg0: tensor<16x64xf16>, %arg1: tensor<64x32xf16>) -> tensor<16x32xf32> {
-            %init = tensor.empty() : tensor<16x32xf32>
-            %result = scf.forall (%i) in (4) shared_outs(%out = %init) -> (tensor<16x32xf32>) {
-                %matmul = linalg.matmul {root_op = #iree_codegen.root_op<set = 0>}
-                    ins(%arg0, %arg1 : tensor<16x64xf16>, tensor<64x32xf16>)
-                    outs(%out : tensor<16x32xf32>) -> tensor<16x32xf32>
-                scf.forall.in_parallel {
-                    tensor.parallel_insert_slice %matmul into %out[0, 0] [16, 32] [1, 1]
-                        : tensor<16x32xf32> into tensor<16x32xf32>
-                }
-            }
-            return %result : tensor<16x32xf32>
-        }
-    }
-    """
-    module = ir.Module.parse(module_str, context)
+    f16 = ir.F16Type.get()
+    f32 = ir.F32Type.get()
+    with ir.Location.unknown():
+        module = ir.Module.create()
+        build_func_with_matmul_in_forall(
+            module,
+            m=16,
+            n=32,
+            k=64,
+            num_threads=4,
+            lhs_type=f16,
+            rhs_type=f16,
+            res_type=f32,
+            func_name="split_reduction_test",
+        )
     root_op_list = iree_codegen.get_tuner_root_ops(module)
     assert len(root_op_list) == 1
     root_op = root_op_list[0]
@@ -367,15 +339,9 @@ def test_get_parent_function_name_no_function(
     tuner_ctx: common.TunerContext,
 ) -> None:
     """Test get_parent_function_name returns None when no func.func is found."""
-    context = tuner_ctx.mlir_ctx
-    module_str = r"""
-    builtin.module {
-        %cst = arith.constant 0.0 : f32
-    }
-    """
-    module = ir.Module.parse(module_str, context)
-    module_body = module.body
-    constant_op = module_body.operations[0]
+    with ir.Location.unknown():
+        module = ir.Module.create()
+        constant_op = build_module_with_constant(module)
 
     func_name = dispatch_parser.get_parent_function_name(constant_op)
     assert func_name is None
