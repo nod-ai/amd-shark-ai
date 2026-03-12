@@ -38,6 +38,13 @@ def _patch_fx_proxy_getitem():
         # If torch.fx is not available, there's nothing to patch
         return
 
+    # IMPORTANT: Import wave_lang first if available, so it can install its override
+    # Then our patch will override wave's override with a context-aware version
+    try:
+        import wave_lang  # noqa: F401
+    except ImportError:
+        pass  # wave_lang not installed, that's fine
+
     # Save the current __getitem__ (which might be wave's override or the original)
     current_getitem = getattr(fx.Proxy, "__getitem__", None)
     if current_getitem is None:
