@@ -14,8 +14,6 @@ from iree.compiler.dialects import iree_codegen, iree_gpu, transform  # type: ig
 from amdsharktuner import candidate_gen, common
 from amdsharktuner.rocm import rocm_common, rocm_tuners
 
-from amdsharktuner.test_utils import tuner_ctx
-
 
 def walk_collect_ops(
     op: ir.Operation,

@@ -16,7 +16,6 @@ from iree.compiler.dialects import _builtin_ops_gen, iree_codegen, iree_gpu, tra
 
 from amdsharktuner import common
 from amdsharktuner.rocm import rocm_common
-from amdsharktuner.test_utils import tuner_ctx
 
 
 def test_get_shaped_type_element_bitwidth(tuner_ctx: common.TunerContext) -> None:

@@ -13,8 +13,6 @@ from iree.compiler.dialects import iree_codegen, iree_gpu  # type: ignore
 from amdsharktuner import common
 from amdsharktuner.rocm import rocm_dispatch_constraints
 
-from amdsharktuner.test_utils import tuner_ctx
-
 
 @pytest.fixture
 def gpu_target_info(tuner_ctx: common.TunerContext) -> iree_gpu.TargetInfo:

@@ -13,7 +13,6 @@ from iree.compiler.dialects import func, iree_codegen, iree_gpu, linalg  # type:
 
 from amdsharktuner import common
 from amdsharktuner.rocm import rocm_common, rocm_parsers
-from amdsharktuner.test_utils import tuner_ctx
 
 
 def test_get_compatible_mma_intrinsics(tuner_ctx: common.TunerContext) -> None:

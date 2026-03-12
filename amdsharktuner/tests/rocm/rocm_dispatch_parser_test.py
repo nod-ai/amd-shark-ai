@@ -10,8 +10,6 @@ from iree.compiler.dialects import iree_codegen, iree_gpu  # type: ignore
 from amdsharktuner import common
 from amdsharktuner.rocm import rocm_common
 
-from amdsharktuner.test_utils import tuner_ctx
-
 
 def test_get_mmt_tile_sizes(tuner_ctx: common.TunerContext) -> None:
     mma_intrinsic = iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16

@@ -15,8 +15,6 @@ from iree.compiler.dialects import arith, func, iree_codegen, iree_gpu, linalg  
 
 from amdsharktuner import common, dispatch_parser, spec_builder
 
-from amdsharktuner.test_utils import tuner_ctx
-
 
 def create_generic_module(tuner_ctx: common.TunerContext) -> ir.Module:
     ctx = tuner_ctx.mlir_ctx
