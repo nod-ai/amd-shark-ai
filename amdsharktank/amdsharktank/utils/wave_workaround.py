@@ -193,50 +193,12 @@ _patch_fx_proxy_getitem()
 _patch_aot_export()
 
 
-# Install an import hook to re-patch after wave_lang is imported
-# This ensures our patch is applied even if wave overrides fx.Proxy.__getitem__ later
-def _install_import_hook():
-    """Install an import hook to re-patch fx.Proxy after wave_lang is imported."""
-    import sys
-
-    class WavePatchHook:
-        """Meta path finder that patches fx.Proxy after wave_lang is imported."""
-
-        def find_module(self, fullname, path=None):
-            # Only interested in wave_lang
-            if fullname == "wave_lang" or fullname.startswith("wave_lang."):
-                return self
-            return None
-
-        def load_module(self, fullname):
-            # Let the normal import machinery load the module
-            if fullname in sys.modules:
-                return sys.modules[fullname]
-
-            # Find and execute the module normally
-            import importlib.util
-
-            spec = importlib.util.find_spec(fullname)
-            if spec is None:
-                raise ImportError(f"No module named {fullname}")
-
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[fullname] = module
-            spec.loader.exec_module(module)
-
-            # After wave_lang is loaded, re-patch fx.Proxy
-            if fullname == "wave_lang":
-                _patch_fx_proxy_getitem()
-
-            return module
-
-    # Install the hook
-    sys.meta_path.insert(0, WavePatchHook())
-
-
-try:
-    _install_import_hook()
-except Exception:
-    # If the import hook fails, it's not critical
-    # The initial patch should still work in most cases
-    pass
+# Note: We don't use an import hook to re-patch after wave_lang is imported because:
+# 1. The context-aware patch we install checks at runtime whether OpDispatcher is active
+# 2. Even if wave_lang overrides __getitem__ later, our context-aware version will handle it
+# 3. The patch marks itself with _wave_workaround_patched to avoid conflicts
+#
+# If wave_lang does override our patch, the worst case is that FX tracing will fail
+# with the same OpDispatcher error, which can be caught and handled. The solution
+# would be to ensure this module is imported before any wave_lang imports, which is
+# already the case since it's imported in amdsharktank/__init__.py
