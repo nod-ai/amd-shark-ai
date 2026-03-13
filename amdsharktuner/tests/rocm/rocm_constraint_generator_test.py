@@ -23,15 +23,15 @@ from amdsharktuner.rocm import (
     rocm_solutions,
 )
 
-from amdsharktuner.test_utils import tuner_ctx
-from tests.constraint_generator_test import (
-    build_func_with_matmul,
-    build_func_with_conv2d_nhwc_hwcf,
+from amdsharktuner.test_utils import (
+    build_func_with_conv2d_chwn_chwf,
     build_func_with_conv2d_nchw_fchw,
     build_func_with_conv2d_nhwc_fhwc,
-    build_func_with_conv2d_chwn_chwf,
-    build_func_with_group_conv2d_nhwgc_gfhwc,
+    build_func_with_conv2d_nhwc_hwcf,
     build_func_with_conv2d_nhwc_hwcf_dynamic,
+    build_func_with_group_conv2d_nhwgc_gfhwc,
+    build_func_with_matmul,
+    tuner_ctx,
 )
 
 
@@ -252,7 +252,7 @@ def test_generate_solutions_tile_and_fuse_conv_padding(
     f32 = tuner_ctx.type.f32
 
     input_shape = (2, 64, 64, 128)
-    kernel_shape = (3, 3, 128, 256)
+    filter_shape = (3, 3, 128, 256)
     output_shape = (2, 62, 62, 256)
 
     with ir.Location.unknown(context):
@@ -260,10 +260,10 @@ def test_generate_solutions_tile_and_fuse_conv_padding(
         build_func_with_conv2d_nhwc_hwcf(
             module=module,
             input_shape=input_shape,
-            kernel_shape=kernel_shape,
+            filter_shape=filter_shape,
             output_shape=output_shape,
             input_type=f16,
-            kernel_type=f16,
+            filter_type=f16,
             output_type=f32,
         )
 
@@ -327,7 +327,7 @@ def test_generate_solutions_tile_and_fuse_conv_small_unaligned(
     f32 = tuner_ctx.type.f32
 
     input_shape = (2, 7, 7, 32)
-    kernel_shape = (3, 3, 32, 64)
+    filter_shape = (3, 3, 32, 64)
     output_shape = (2, 5, 5, 64)
 
     with ir.Location.unknown(context):
@@ -335,10 +335,10 @@ def test_generate_solutions_tile_and_fuse_conv_small_unaligned(
         build_func_with_conv2d_nhwc_hwcf(
             module=module,
             input_shape=input_shape,
-            kernel_shape=kernel_shape,
+            filter_shape=filter_shape,
             output_shape=output_shape,
             input_type=f16,
-            kernel_type=f16,
+            filter_type=f16,
             output_type=f32,
         )
 
@@ -462,7 +462,7 @@ def test_generate_solutions_tile_and_fuse_conv_nchw_fchw(
     f32 = tuner_ctx.type.f32
 
     input_shape = (2, 128, 34, 34)
-    kernel_shape = (256, 128, 3, 3)
+    filter_shape = (256, 128, 3, 3)
     output_shape = (2, 256, 32, 32)
 
     with ir.Location.unknown(context):
@@ -470,10 +470,10 @@ def test_generate_solutions_tile_and_fuse_conv_nchw_fchw(
         build_func_with_conv2d_nchw_fchw(
             module=module,
             input_shape=input_shape,
-            kernel_shape=kernel_shape,
+            filter_shape=filter_shape,
             output_shape=output_shape,
             input_type=f16,
-            kernel_type=f16,
+            filter_type=f16,
             output_type=f32,
         )
 
@@ -516,7 +516,7 @@ def test_generate_solutions_tile_and_fuse_conv_nhwc_fhwc(
     f32 = tuner_ctx.type.f32
 
     input_shape = (2, 10, 10, 32)
-    kernel_shape = (64, 3, 3, 32)
+    filter_shape = (64, 3, 3, 32)
     output_shape = (2, 8, 8, 64)
 
     with ir.Location.unknown(context):
@@ -524,10 +524,10 @@ def test_generate_solutions_tile_and_fuse_conv_nhwc_fhwc(
         build_func_with_conv2d_nhwc_fhwc(
             module=module,
             input_shape=input_shape,
-            kernel_shape=kernel_shape,
+            filter_shape=filter_shape,
             output_shape=output_shape,
             input_type=f16,
-            kernel_type=f16,
+            filter_type=f16,
             output_type=f32,
         )
 
@@ -570,7 +570,7 @@ def test_generate_solutions_tile_and_fuse_conv_chwn_chwf(
     f32 = tuner_ctx.type.f32
 
     input_shape = (32, 10, 10, 2)
-    kernel_shape = (32, 3, 3, 64)
+    filter_shape = (32, 3, 3, 64)
     output_shape = (64, 8, 8, 2)
 
     with ir.Location.unknown(context):
@@ -578,10 +578,10 @@ def test_generate_solutions_tile_and_fuse_conv_chwn_chwf(
         build_func_with_conv2d_chwn_chwf(
             module=module,
             input_shape=input_shape,
-            kernel_shape=kernel_shape,
+            filter_shape=filter_shape,
             output_shape=output_shape,
             input_type=f16,
-            kernel_type=f16,
+            filter_type=f16,
             output_type=f32,
         )
 
@@ -630,7 +630,7 @@ def test_generate_solutions_tile_and_fuse_group_conv(
 
     # Group convolution: 32 groups, 512 total channels (32 * 16 per group).
     input_shape = (32, 52, 52, 32, 16)
-    kernel_shape = (32, 16, 3, 3, 16)
+    filter_shape = (32, 16, 3, 3, 16)
     output_shape = (32, 50, 50, 32, 16)
 
     with ir.Location.unknown(context):
@@ -638,10 +638,10 @@ def test_generate_solutions_tile_and_fuse_group_conv(
         build_func_with_group_conv2d_nhwgc_gfhwc(
             module=module,
             input_shape=input_shape,
-            kernel_shape=kernel_shape,
+            filter_shape=filter_shape,
             output_shape=output_shape,
             input_type=f16,
-            kernel_type=f16,
+            filter_type=f16,
             output_type=f32,
         )
 
@@ -699,7 +699,7 @@ def test_direct_conv_compute_dimensions(
     # Filter: (out_channels=32, in_channels=64, kH=3, kW=3)
     # Output: (batch=2, channels=32, height=30, width=30)
     input_shape = (2, 64, 32, 32)
-    kernel_shape = (32, 64, 3, 3)
+    filter_shape = (32, 64, 3, 3)
     output_shape = (2, 32, 30, 30)
 
     with ir.Location.unknown(context):
@@ -707,10 +707,10 @@ def test_direct_conv_compute_dimensions(
         build_func_with_conv2d_nchw_fchw(
             module=module,
             input_shape=input_shape,
-            kernel_shape=kernel_shape,
+            filter_shape=filter_shape,
             output_shape=output_shape,
             input_type=f32,
-            kernel_type=f32,
+            filter_type=f32,
             output_type=f32,
         )
 
@@ -774,7 +774,7 @@ def test_direct_conv_generates_both_strategies(
 
     # NHWC layout: (batch, height, width, channels)
     input_shape = (2, 32, 32, 64)
-    kernel_shape = (3, 3, 64, 32)
+    filter_shape = (3, 3, 64, 32)
     output_shape = (2, 30, 30, 32)
 
     with ir.Location.unknown(context):
@@ -782,10 +782,10 @@ def test_direct_conv_generates_both_strategies(
         build_func_with_conv2d_nhwc_hwcf(
             module=module,
             input_shape=input_shape,
-            kernel_shape=kernel_shape,
+            filter_shape=filter_shape,
             output_shape=output_shape,
             input_type=f16,
-            kernel_type=f16,
+            filter_type=f16,
             output_type=f32,
         )
 
@@ -861,7 +861,7 @@ def test_direct_conv_skipped_for_strided_conv(
     f32 = tuner_ctx.type.f32
 
     input_shape = (2, 32, 32, 64)
-    kernel_shape = (3, 3, 64, 32)
+    filter_shape = (3, 3, 64, 32)
     output_shape = (2, 30, 30, 32)
 
     with ir.Location.unknown(context):
@@ -869,10 +869,10 @@ def test_direct_conv_skipped_for_strided_conv(
         build_func_with_conv2d_nhwc_hwcf(
             module=module,
             input_shape=input_shape,
-            kernel_shape=kernel_shape,
+            filter_shape=filter_shape,
             output_shape=output_shape,
             input_type=f16,
-            kernel_type=f16,
+            filter_type=f16,
             output_type=f32,
         )
 
@@ -902,7 +902,7 @@ def test_direct_conv_skipped_for_dynamic_dims(
     f32 = tuner_ctx.type.f32
 
     input_shape = (2, 32, 32, 64)
-    kernel_shape = (3, 3, 64, 32)
+    filter_shape = (3, 3, 64, 32)
     output_shape = (2, 30, 30, 32)
 
     with ir.Location.unknown(context):
@@ -910,10 +910,10 @@ def test_direct_conv_skipped_for_dynamic_dims(
         build_func_with_conv2d_nhwc_hwcf_dynamic(
             module=module,
             input_shape=input_shape,
-            kernel_shape=kernel_shape,
+            filter_shape=filter_shape,
             output_shape=output_shape,
             input_type=f16,
-            kernel_type=f16,
+            filter_type=f16,
             output_type=f32,
             dynamic_dims=[3],
         )
@@ -956,7 +956,7 @@ def test_direct_conv_filter_loop_tile_sizes(
     # Output: (batch=2, channels=32, height=30, width=30)
     # Use f16 inputs with f32 output to match available MMA intrinsics.
     input_shape = (2, 64, 32, 32)
-    kernel_shape = (32, 64, 3, 3)
+    filter_shape = (32, 64, 3, 3)
     output_shape = (2, 32, 30, 30)
 
     with ir.Location.unknown(context):
@@ -964,10 +964,10 @@ def test_direct_conv_filter_loop_tile_sizes(
         build_func_with_conv2d_nchw_fchw(
             module=module,
             input_shape=input_shape,
-            kernel_shape=kernel_shape,
+            filter_shape=filter_shape,
             output_shape=output_shape,
             input_type=f16,
-            kernel_type=f16,
+            filter_type=f16,
             output_type=f32,
         )
 
