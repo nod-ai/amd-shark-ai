@@ -9,7 +9,7 @@ pytest-xdist==3.8.0
 # General server libraries
 requests
 fastapi
-aiohttp==3.11.3
+aiohttp==3.13.3
 onnx
 uvicorn
 scikit-image
