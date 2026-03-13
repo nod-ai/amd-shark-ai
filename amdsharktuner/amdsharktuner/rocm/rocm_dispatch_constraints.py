@@ -757,34 +757,56 @@ def generate_tile_and_fuse_compilation_infos(
     padding: Optional[list[int]] = None,
     padding_conv: Optional[list[int]] = None,
     allowed_denorm_flushing: list[bool] = [False],
+    allowed_use_direct_load: list[bool] = [False],
 ) -> list[iree_codegen.CompilationInfoAttr]:
     """Generate compilation infos for LLVMGPUTileAndFuse pipeline."""
-    lowering_config_args = {
-        "workgroup": workgroup_tile_sizes,
-        "reduction": reduction_tile_sizes,
-        "subgroup": subgroup_tile_sizes,
-        "promote_operands": promote_operands,
-    }
+    all_compilation_infos: list[iree_codegen.CompilationInfoAttr] = []
 
-    if mma_attr is not None:
-        lowering_config_args["mma_kind"] = mma_attr
+    for use_direct_load in allowed_use_direct_load:
+        lowering_config_args = {
+            "workgroup": workgroup_tile_sizes,
+            "reduction": reduction_tile_sizes,
+            "subgroup": subgroup_tile_sizes,
+            "promote_operands": promote_operands,
+        }
 
-    if padding is not None:
-        lowering_config_args["padding"] = padding
+        # Add promotion_types when use_direct_load is enabled.
+        if use_direct_load:
+            lowering_config_args[
+                "promotion_types"
+            ] = rocm_common.get_promotion_types_for_direct_load(len(promote_operands))
 
-    if padding_conv is not None:
-        lowering_config_args["padding_conv"] = padding_conv
+        if mma_attr is not None:
+            lowering_config_args["mma_kind"] = mma_attr
 
-    return _build_compilation_infos(
-        tuner_ctx,
-        lowering_config_args,
-        workgroup_sizes,
-        subgroup_size,
-        iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
-        pipeline_options_search_space,
-        allowed_waves_per_eu,
-        allowed_denorm_flushing,
-    )
+        if padding is not None:
+            lowering_config_args["padding"] = padding
+
+        if padding_conv is not None:
+            lowering_config_args["padding_conv"] = padding_conv
+
+        # When use_direct_load=True, force no_reduce_shared_memory_bank_conflicts=True.
+        effective_pipeline_options_search_space = pipeline_options_search_space
+        if use_direct_load:
+            effective_pipeline_options_search_space = PipelineOptionsSearchSpace(
+                prefetch_num_stages=pipeline_options_search_space.prefetch_num_stages,
+                no_reduce_shared_memory_bank_conflicts=[True],
+                use_igemm_convolution=pipeline_options_search_space.use_igemm_convolution,
+            )
+
+        compilation_infos = _build_compilation_infos(
+            tuner_ctx,
+            lowering_config_args,
+            workgroup_sizes,
+            subgroup_size,
+            iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
+            effective_pipeline_options_search_space,
+            allowed_waves_per_eu,
+            allowed_denorm_flushing,
+        )
+        all_compilation_infos.extend(compilation_infos)
+
+    return all_compilation_infos
 
 
 def generate_vector_distribute_compilation_infos(
@@ -802,32 +824,54 @@ def generate_vector_distribute_compilation_infos(
     padding: Optional[list[int]] = None,
     padding_conv: Optional[list[int]] = None,
     allowed_denorm_flushing: list[bool] = [False],
+    allowed_use_direct_load: list[bool] = [False],
 ) -> list[iree_codegen.CompilationInfoAttr]:
     """Generate compilation infos for LLVMGPUVectorDistribute pipeline."""
-    subgroup_basis = [subgroup_basis_counts, subgroup_basis_mapping]
-    lowering_config_args = {
-        "workgroup": workgroup_tile_sizes,
-        "reduction": reduction_tile_sizes,
-        "subgroup_basis": subgroup_basis,
-        "promote_operands": promote_operands,
-    }
+    all_compilation_infos: list[iree_codegen.CompilationInfoAttr] = []
 
-    if mma_attr is not None:
-        lowering_config_args["mma_kind"] = mma_attr
+    for use_direct_load in allowed_use_direct_load:
+        subgroup_basis = [subgroup_basis_counts, subgroup_basis_mapping]
+        lowering_config_args = {
+            "workgroup": workgroup_tile_sizes,
+            "reduction": reduction_tile_sizes,
+            "subgroup_basis": subgroup_basis,
+            "promote_operands": promote_operands,
+        }
 
-    if padding is not None:
-        lowering_config_args["padding"] = padding
+        # Add promotion_types when use_direct_load is enabled.
+        if use_direct_load:
+            lowering_config_args[
+                "promotion_types"
+            ] = rocm_common.get_promotion_types_for_direct_load(len(promote_operands))
 
-    if padding_conv is not None:
-        lowering_config_args["padding_conv"] = padding_conv
+        if mma_attr is not None:
+            lowering_config_args["mma_kind"] = mma_attr
 
-    return _build_compilation_infos(
-        tuner_ctx,
-        lowering_config_args,
-        workgroup_sizes,
-        subgroup_size,
-        iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
-        pipeline_options_search_space,
-        allowed_waves_per_eu,
-        allowed_denorm_flushing,
-    )
+        if padding is not None:
+            lowering_config_args["padding"] = padding
+
+        if padding_conv is not None:
+            lowering_config_args["padding_conv"] = padding_conv
+
+        # When use_direct_load=True, force no_reduce_shared_memory_bank_conflicts=True.
+        effective_pipeline_options_search_space = pipeline_options_search_space
+        if use_direct_load:
+            effective_pipeline_options_search_space = PipelineOptionsSearchSpace(
+                prefetch_num_stages=pipeline_options_search_space.prefetch_num_stages,
+                no_reduce_shared_memory_bank_conflicts=[True],
+                use_igemm_convolution=pipeline_options_search_space.use_igemm_convolution,
+            )
+
+        compilation_infos = _build_compilation_infos(
+            tuner_ctx,
+            lowering_config_args,
+            workgroup_sizes,
+            subgroup_size,
+            iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
+            effective_pipeline_options_search_space,
+            allowed_waves_per_eu,
+            allowed_denorm_flushing,
+        )
+        all_compilation_infos.extend(compilation_infos)
+
+    return all_compilation_infos

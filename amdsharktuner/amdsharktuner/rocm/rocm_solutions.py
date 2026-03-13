@@ -125,6 +125,7 @@ def generate_generic_contraction_solutions(
     num_subgroups: int = 4,
     allowed_waves_per_eu: list[int] = [2],
     allowed_denorm_flushing: list[bool] = [False],
+    allowed_use_direct_load: list[bool] = [False],
     pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
     igemm_details: Optional[iree_codegen.IGEMMGenericConvDetails] = None,
     conv_to_igemm_info: Optional[rocm_common.ConvToIgemmInfo] = None,
@@ -378,6 +379,7 @@ def generate_generic_contraction_solutions(
                         padding=padding,
                         padding_conv=padding_conv,
                         allowed_denorm_flushing=allowed_denorm_flushing,
+                        allowed_use_direct_load=allowed_use_direct_load,
                     )
                 )
             case iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute:
@@ -396,6 +398,7 @@ def generate_generic_contraction_solutions(
                     padding=padding,
                     padding_conv=padding_conv,
                     allowed_denorm_flushing=allowed_denorm_flushing,
+                    allowed_use_direct_load=allowed_use_direct_load,
                 )
             case _:
                 assert False, f"Unsupported codegen pipeline: {codegen_pipeline}"

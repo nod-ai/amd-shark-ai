@@ -133,6 +133,28 @@ def test_get_lowering_config(tuner_ctx: common.TunerContext) -> None:
     assert lowering_config.subgroup_basis == ([1, 1, 1], [0, 1, 2])
 
 
+def test_get_lowering_config_with_promotion_types(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    """Test that promotion_types is correctly included in lowering config for use_direct_load."""
+    promotion_types = rocm_common.get_promotion_types_for_direct_load(2)
+
+    lowering_config = common.get_lowering_config(
+        tuner_ctx=tuner_ctx,
+        workgroup=[128, 128, 0],
+        reduction=[0, 0, 32],
+        subgroup=[32, 32, 0],
+        promote_operands=[0, 1],
+        promotion_types=promotion_types,
+    )
+
+    config_str = str(lowering_config)
+    # Verify the lowering config contains the expected attributes.
+    assert "promote_operands = [0, 1]" in config_str
+    assert "promotion_types = [#iree_gpu.use_global_load_dma" in config_str
+    assert config_str.count("#iree_gpu.use_global_load_dma") == 2
+
+
 def test_combine_tuning_specs(tuner_ctx: common.TunerContext) -> None:
     context = tuner_ctx.mlir_ctx
     first_module_str = """

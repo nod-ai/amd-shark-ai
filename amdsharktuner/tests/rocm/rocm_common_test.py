@@ -305,6 +305,51 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     assert result == [4, 64, 64, 64, 0, 0, 0]
 
 
+def test_supports_global_load_dma():
+    # gfx950+ should be supported (CDNA4+).
+    assert rocm_common.supports_global_load_dma("gfx950") is True
+    assert rocm_common.supports_global_load_dma("gfx951") is True
+    assert rocm_common.supports_global_load_dma("gfx959") is True
+
+    # gfx942 should not be supported (CDNA3).
+    assert rocm_common.supports_global_load_dma("gfx942") is False
+    assert rocm_common.supports_global_load_dma("gfx940") is False
+
+    # RDNA architectures should not be supported.
+    assert rocm_common.supports_global_load_dma("gfx1100") is False
+    assert rocm_common.supports_global_load_dma("gfx1201") is False
+
+    # Invalid inputs.
+    assert rocm_common.supports_global_load_dma("invalid") is False
+    assert rocm_common.supports_global_load_dma("") is False
+    assert rocm_common.supports_global_load_dma("gfx") is False
+    assert rocm_common.supports_global_load_dma("gfxabc") is False
+
+
+def test_get_use_global_load_dma_attr(tuner_ctx: common.TunerContext) -> None:
+    attr = rocm_common.get_use_global_load_dma_attr()
+    assert str(attr) == "#iree_gpu.use_global_load_dma"
+
+
+def test_get_promotion_types_for_direct_load(tuner_ctx: common.TunerContext) -> None:
+    # Test with 2 operands (typical matmul case).
+    attrs = rocm_common.get_promotion_types_for_direct_load(2)
+    assert len(attrs) == 2
+    assert str(attrs[0]) == "#iree_gpu.use_global_load_dma"
+    assert str(attrs[1]) == "#iree_gpu.use_global_load_dma"
+
+    # Test with 1 operand.
+    attrs = rocm_common.get_promotion_types_for_direct_load(1)
+    assert len(attrs) == 1
+    assert str(attrs[0]) == "#iree_gpu.use_global_load_dma"
+
+    # Test with 3 operands.
+    attrs = rocm_common.get_promotion_types_for_direct_load(3)
+    assert len(attrs) == 3
+    for attr in attrs:
+        assert str(attr) == "#iree_gpu.use_global_load_dma"
+
+
 def test_compute_rocprof_avg_kernel_time(caplog):
     with pytest.raises(ValueError):
         rocm_common.compute_rocprof_avg_kernel_time([])

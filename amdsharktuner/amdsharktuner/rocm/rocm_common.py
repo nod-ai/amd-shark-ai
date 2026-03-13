@@ -26,6 +26,33 @@ WAVES_PER_EU_KEY = "amdgpu-waves-per-eu"
 ROCM_ARCHITECTURES = ["gfx942", "gfx950", "gfx1100", "gfx1201"]
 
 
+def supports_global_load_dma(arch: str) -> bool:
+    """Check if architecture supports Global Load DMA (gfx950+).
+
+    CDNA4 is gfx950+ (majorVersion == 9 && minorVersion >= 5).
+    """
+    if not arch.startswith("gfx"):
+        return False
+    try:
+        version = int(arch[3:])
+        major = version // 100
+        minor = (version % 100) // 10
+        return major == 9 and minor >= 5
+    except ValueError:
+        return False
+
+
+def get_use_global_load_dma_attr() -> ir.Attribute:
+    """Get the UseGlobalLoadDMAAttr for direct load promotion."""
+    return ir.Attribute.parse("#iree_gpu.use_global_load_dma")
+
+
+def get_promotion_types_for_direct_load(num_operands: int) -> list[ir.Attribute]:
+    """Get promotion_types array for direct load (all operands use DMA)."""
+    dma_attr = get_use_global_load_dma_attr()
+    return [dma_attr] * num_operands
+
+
 class ConvolutionStrategy(IntFlag):
     """ROCm convolution lowering strategy for TileAndFuse pipeline."""
 

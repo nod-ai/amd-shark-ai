@@ -337,6 +337,14 @@ def get_lowering_config(
                     assert (
                         False
                     ), f"Unsupported type for key '{key}': {type(value).__name__}"
+            case "promotion_types":
+                # Handle list of Attribute objects for use_direct_load.
+                if isinstance(value, Sequence):
+                    promoted_value = ir.ArrayAttr.get(list(value))
+                elif not isinstance(value, ir.ArrayAttr):
+                    assert (
+                        False
+                    ), f"Unsupported type for key '{key}': {type(value).__name__}"
             case _:
                 assert False, f"Unhandled key in lowering configuration: {key}"
 
