@@ -110,7 +110,7 @@ elif [[ $BUILD_TYPE = "source" ]]; then
     git checkout ${amdshark_AI_COMMIT_HASH}
 
     pip install -r requirements.txt
-    # Install amdsharktank and shortfin
+    # Install sharktank and shortfin
     pip install -v amdsharktank/ shortfin/
 
     ## Install wave
