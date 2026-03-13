@@ -13,3 +13,12 @@ For example, on Linux to install with CPU support run:
 
 if spec := importlib.util.find_spec("torch") is None:
     raise ModuleNotFoundError(msg)
+
+# Apply wave workaround patches early
+# This patches iree.turbine.aot.export to work around wave's fx.Proxy.__getitem__ override
+# See: amdsharktank/utils/wave_workaround.py for details
+try:
+    from .utils import wave_workaround  # noqa: F401
+except ImportError:
+    # If imports fail, the workaround will be applied when the module is eventually imported
+    pass
