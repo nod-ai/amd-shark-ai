@@ -423,6 +423,16 @@ def parse_arguments(
         "Possible values: [True, False]",
     )
     candidate_gen_args.add_argument(
+        "--use-direct-load-options",
+        type=lambda t: [s.strip().lower() == "true" for s in t.split(",")],
+        default=[False],
+        help="Comma-separated list of allowed values for use_direct_load. "
+        "When True, enables Global Load DMA mode for matmul operand loading. "
+        "Only supported on gfx950+ GPUs. Automatically sets "
+        "no_reduce_shared_memory_bank_conflicts=true. "
+        "Possible values: [True, False]. Default: [False].",
+    )
+    candidate_gen_args.add_argument(
         "--codegen-pipeline",
         choices=[x.value for x in CodegenPipelines],
         default=CodegenPipelines.llvmgpu_tile_and_fuse,
@@ -831,6 +841,17 @@ def generate_candidate_specs(
         }
         conv_strategy = conv_strategy_map[args.conv_strategy]
 
+        # Filter use_direct_load for unsupported architectures.
+        allowed_use_direct_load = args.use_direct_load_options
+        if any(opt is True for opt in allowed_use_direct_load):
+            arch = tuning_client.target_info.arch
+            if not rocm_common.supports_global_load_dma(arch):
+                logging.warning(
+                    f"use_direct_load is only supported on gfx950+ architectures. "
+                    f"Current architecture: {arch}. Disabling use_direct_load exploration."
+                )
+                allowed_use_direct_load = [False]
+
         solution_gen_start_time = time.perf_counter()
         solutions_iter = candidate_gen.generate_solutions(
             dispatch_tuner=dispatch_tuner,
@@ -839,6 +860,7 @@ def generate_candidate_specs(
             num_subgroups=args.num_subgroups,
             allowed_waves_per_eu=args.waves_per_eu_options,
             allowed_denorm_flushing=allowed_denorm_flushing,
+            allowed_use_direct_load=allowed_use_direct_load,
             pipeline_options_search_space=pipeline_options_search_space,
             codegen_pipeline=get_iree_codegen_pipeline(args.codegen_pipeline),
             conv_strategy=conv_strategy,
