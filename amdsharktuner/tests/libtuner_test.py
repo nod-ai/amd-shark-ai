@@ -5,7 +5,6 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 import argparse
-import logging
 import math
 from unittest.mock import call, patch, MagicMock
 
