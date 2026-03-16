@@ -180,18 +180,18 @@ def generate_generic_contraction_solutions(
         f"M={M}, N={N}, K={K}, overpadding_applied={overpadding_applied}"
     )
 
-    mega_constraints_list: list[
-        constraint_generator.ConstraintSet
-    ] = generate_generic_contraction_z3_constraints(
-        tuner_ctx,
-        gpu_target_info,
-        dispatch_kind,
-        matmul_size,
-        lhs_type,
-        rhs_type,
-        res_type,
-        codegen_pipeline,
-        num_subgroups=num_subgroups,
+    mega_constraints_list: list[constraint_generator.ConstraintSet] = (
+        generate_generic_contraction_z3_constraints(
+            tuner_ctx,
+            gpu_target_info,
+            dispatch_kind,
+            matmul_size,
+            lhs_type,
+            rhs_type,
+            res_type,
+            codegen_pipeline,
+            num_subgroups=num_subgroups,
+        )
     )
 
     # For direct convolution, total loops includes filter loops that are tiled to 1.
@@ -377,7 +377,6 @@ def generate_generic_contraction_solutions(
                         allowed_waves_per_eu,
                         padding=padding,
                         padding_conv=padding_conv,
-                        allowed_denorm_flushing=allowed_denorm_flushing,
                     )
                 )
             case iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute:

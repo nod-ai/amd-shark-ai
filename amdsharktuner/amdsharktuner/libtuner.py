@@ -15,7 +15,6 @@ use the `TuningClient` API, customize compilation and benchmarking commands,
 and implement a complete tuning loop for a specific model.
 """
 
-
 import math
 import sys
 import shutil
@@ -47,7 +46,6 @@ from . import (
     process_utils,
 )
 from .rocm import rocm_candidate_ordering, rocm_common, rocm_dispatch_constraints
-
 
 # Default random seed.
 DEFAULT_SHUFFLE_SEED = 42
@@ -725,7 +723,7 @@ def calculate_md5(file_path: Path) -> str:
 
 
 def find_collisions(
-    hash_list: list[tuple[int, str]]
+    hash_list: list[tuple[int, str]],
 ) -> tuple[bool, list[tuple[str, list[int]]]]:
     """
     Detect hash value collisions
@@ -812,16 +810,25 @@ def generate_candidate_specs(
             )
             return []
         allowed_denorm_flushing = args.denorm_flushing_options
-        if (
-            any(allowed_denorm_flushing)
-            and dispatch_tuner.get_dispatch_kind() != common.DispatchKind.attention
-        ):
-            logging.warning(
-                "Denorm flushing is only applicable to attention ops. "
-                "Ignoring --denorm-flushing-options for this dispatch "
-                f"(kind={dispatch_tuner.get_dispatch_kind().name})."
-            )
-            allowed_denorm_flushing = [False]
+        codegen_pipeline = get_iree_codegen_pipeline(args.codegen_pipeline)
+        if any(allowed_denorm_flushing):
+            if dispatch_tuner.get_dispatch_kind() != common.DispatchKind.attention:
+                logging.warning(
+                    "Denorm flushing is only applicable to attention ops. "
+                    "Ignoring --denorm-flushing-options for this dispatch "
+                    f"(kind={dispatch_tuner.get_dispatch_kind().name})."
+                )
+                allowed_denorm_flushing = [False]
+            elif (
+                codegen_pipeline
+                == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
+            ):
+                logging.warning(
+                    "Denorm flushing is only supported for the "
+                    "VectorDistribute pipeline, not TileAndFuse. "
+                    "Ignoring --denorm-flushing-options."
+                )
+                allowed_denorm_flushing = [False]
         # Convert conv_strategy string to IntFlag.
         conv_strategy_map = {
             "igemm": rocm_common.ConvolutionStrategy.igemm,
@@ -840,7 +847,7 @@ def generate_candidate_specs(
             allowed_waves_per_eu=args.waves_per_eu_options,
             allowed_denorm_flushing=allowed_denorm_flushing,
             pipeline_options_search_space=pipeline_options_search_space,
-            codegen_pipeline=get_iree_codegen_pipeline(args.codegen_pipeline),
+            codegen_pipeline=codegen_pipeline,
             conv_strategy=conv_strategy,
         )
         if args.enable_random_seed:
