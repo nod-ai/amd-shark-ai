@@ -758,6 +758,37 @@ def get_iree_codegen_pipeline(pipeline: CodegenPipelines):
             assert False, "unexpected codegen pipeline"
 
 
+def validate_denorm_flushing_options(
+    allowed_denorm_flushing: list[bool],
+    dispatch_kind: common.DispatchKind,
+    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline,
+) -> list[bool]:
+    """Validate denorm flushing options against dispatch kind and pipeline.
+
+    Returns the (possibly reset) allowed_denorm_flushing list.
+    """
+    if not any(allowed_denorm_flushing):
+        return allowed_denorm_flushing
+
+    if dispatch_kind != common.DispatchKind.attention:
+        logging.warning(
+            "Denorm flushing is only applicable to attention ops. "
+            "Ignoring --denorm-flushing-options for this dispatch "
+            f"(kind={dispatch_kind.name})."
+        )
+        return [False]
+
+    if codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
+        logging.warning(
+            "Denorm flushing is only supported for the "
+            "VectorDistribute pipeline, not TileAndFuse. "
+            "Ignoring --denorm-flushing-options."
+        )
+        return [False]
+
+    return allowed_denorm_flushing
+
+
 def generate_candidate_specs(
     args: argparse.Namespace,
     path_config: PathConfig,
@@ -811,24 +842,11 @@ def generate_candidate_specs(
             return []
         allowed_denorm_flushing = args.denorm_flushing_options
         codegen_pipeline = get_iree_codegen_pipeline(args.codegen_pipeline)
-        if any(allowed_denorm_flushing):
-            if dispatch_tuner.get_dispatch_kind() != common.DispatchKind.attention:
-                logging.warning(
-                    "Denorm flushing is only applicable to attention ops. "
-                    "Ignoring --denorm-flushing-options for this dispatch "
-                    f"(kind={dispatch_tuner.get_dispatch_kind().name})."
-                )
-                allowed_denorm_flushing = [False]
-            elif (
-                codegen_pipeline
-                == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
-            ):
-                logging.warning(
-                    "Denorm flushing is only supported for the "
-                    "VectorDistribute pipeline, not TileAndFuse. "
-                    "Ignoring --denorm-flushing-options."
-                )
-                allowed_denorm_flushing = [False]
+        allowed_denorm_flushing = validate_denorm_flushing_options(
+            allowed_denorm_flushing,
+            dispatch_tuner.get_dispatch_kind(),
+            codegen_pipeline,
+        )
         # Convert conv_strategy string to IntFlag.
         conv_strategy_map = {
             "igemm": rocm_common.ConvolutionStrategy.igemm,
