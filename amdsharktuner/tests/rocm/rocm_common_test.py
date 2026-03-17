@@ -320,25 +320,10 @@ def test_supports_global_load_dma():
     assert rocm_common.supports_global_load_dma("gfxabc") is False
 
 
-def test_get_use_global_load_dma_attr(tuner_ctx: common.TunerContext) -> None:
-    attr = rocm_common.get_use_global_load_dma_attr()
-    assert str(attr) == "#iree_gpu.use_global_load_dma"
-
-
 def test_get_promotion_types_for_direct_load(tuner_ctx: common.TunerContext) -> None:
     attrs = rocm_common.get_promotion_types_for_direct_load(2)
     assert len(attrs) == 2
-    assert str(attrs[0]) == "#iree_gpu.use_global_load_dma"
-    assert str(attrs[1]) == "#iree_gpu.use_global_load_dma"
-
-    attrs = rocm_common.get_promotion_types_for_direct_load(1)
-    assert len(attrs) == 1
-    assert str(attrs[0]) == "#iree_gpu.use_global_load_dma"
-
-    attrs = rocm_common.get_promotion_types_for_direct_load(3)
-    assert len(attrs) == 3
-    for attr in attrs:
-        assert str(attr) == "#iree_gpu.use_global_load_dma"
+    assert all(str(attr) == "#iree_gpu.use_global_load_dma" for attr in attrs)
 
 
 def test_filter_use_direct_load(tuner_ctx: common.TunerContext, caplog) -> None:

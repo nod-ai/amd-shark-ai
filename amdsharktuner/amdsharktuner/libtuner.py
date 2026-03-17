@@ -422,6 +422,7 @@ def parse_arguments(
         "denormals to zero. Only applicable to attention ops. "
         "Possible values: [True, False]",
     )
+    # TODO(Bangtian): Auto-enable when IREE makes use_direct_load true by default.
     candidate_gen_args.add_argument(
         "--use-direct-load-options",
         type=lambda t: [s.strip().lower() == "true" for s in t.split(",")],

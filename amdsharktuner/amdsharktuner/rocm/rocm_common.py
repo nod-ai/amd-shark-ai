@@ -28,6 +28,7 @@ ROCM_ARCHITECTURES = ["gfx942", "gfx950", "gfx1100", "gfx1201"]
 tune_logger = logging.getLogger("tune")
 
 
+# TODO(Bangtian): Use dma_sizes from TargetInfo once exposed in Python bindings.
 def supports_global_load_dma(arch: str) -> bool:
     """Check if architecture supports Global Load DMA (gfx950+).
 
@@ -44,16 +45,10 @@ def supports_global_load_dma(arch: str) -> bool:
         return False
 
 
-def get_use_global_load_dma_attr() -> ir.Attribute:
-    """Get the UseGlobalLoadDMAAttr for direct load promotion."""
-    # TODO(Bangtian): Expose Python binding for iree_gpu.UseGlobalLoadDMAAttr instead of parsing string.
-    return ir.Attribute.parse("#iree_gpu.use_global_load_dma")
-
-
 def get_promotion_types_for_direct_load(num_operands: int) -> list[ir.Attribute]:
     """Get promotion_types array for direct load (all operands use DMA)."""
-    dma_attr = get_use_global_load_dma_attr()
-    return [dma_attr] * num_operands
+    # TODO(Bangtian): Use iree_gpu.UseGlobalLoadDMAAttr once exposed in Python bindings.
+    return [ir.Attribute.parse("#iree_gpu.use_global_load_dma")] * num_operands
 
 
 class ConvolutionStrategy(IntFlag):
