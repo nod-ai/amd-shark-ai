@@ -761,9 +761,8 @@ def get_iree_codegen_pipeline(pipeline: CodegenPipelines):
 def validate_denorm_flushing_options(
     allowed_denorm_flushing: list[bool],
     dispatch_kind: common.DispatchKind,
-    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline,
 ) -> list[bool]:
-    """Validate denorm flushing options against dispatch kind and pipeline.
+    """Validate denorm flushing options against dispatch kind.
 
     Returns the (possibly reset) allowed_denorm_flushing list.
     """
@@ -775,14 +774,6 @@ def validate_denorm_flushing_options(
             "Denorm flushing is only applicable to attention ops. "
             "Ignoring --denorm-flushing-options for this dispatch "
             f"(kind={dispatch_kind.name})."
-        )
-        return [False]
-
-    if codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
-        logging.warning(
-            "Denorm flushing is only supported for the "
-            "VectorDistribute pipeline, not TileAndFuse. "
-            "Ignoring --denorm-flushing-options."
         )
         return [False]
 
@@ -840,13 +831,11 @@ def generate_candidate_specs(
                 "Failed to set up dispatch tuner. No candidates will be generated."
             )
             return []
-        allowed_denorm_flushing = args.denorm_flushing_options
-        codegen_pipeline = get_iree_codegen_pipeline(args.codegen_pipeline)
         allowed_denorm_flushing = validate_denorm_flushing_options(
-            allowed_denorm_flushing,
+            args.denorm_flushing_options,
             dispatch_tuner.get_dispatch_kind(),
-            codegen_pipeline,
         )
+        codegen_pipeline = get_iree_codegen_pipeline(args.codegen_pipeline)
         # Convert conv_strategy string to IntFlag.
         conv_strategy_map = {
             "igemm": rocm_common.ConvolutionStrategy.igemm,
