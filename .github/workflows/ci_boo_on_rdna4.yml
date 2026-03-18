@@ -139,7 +139,7 @@ jobs:
         echo "============= Running Gemm Shape with hipblaslt =============================="
         bash amd-shark-ai-reports/boo/hipblaslt-bench.sh >& output_artifacts/rdna4_gemm_hipBlaslt-bench.csv
 
-    - name: Run Prod Conv
+    - name: Run Prod Conv with verify numerics
       if: always() && (github.event_name == 'schedule' || inputs.run_prod_conv == true)
       run: |
        echo "============ Running Prod Conv shape with MIOpen and IREE without tuning ==================="
@@ -158,7 +158,7 @@ jobs:
             --backend=iree_boo_experimental --verbose \
             2>&1 | tee output_artifacts/rdna4_all_proxy_miopen_iree.log || true
 
-    - name: Run Gemm
+    - name: Run Gemm with verify numerics
       if: always() && (github.event_name == 'schedule' || inputs.run_gemm == true)
       run: |
        echo "============ Running Gemm shape with MIOpen and IREE without tuning ======================================="
@@ -167,7 +167,7 @@ jobs:
             --backend=torch --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 100 --verbose --numerics-verbose \
             2>&1 | tee output_artifacts/rdna4_gemm_miopen_iree.log || true
 
-    - name: Run Batch Norm
+    - name: Run Batch Norm with verify numerics
       if: always() && (github.event_name == 'schedule' || inputs.run_batch_norm == true)
       run: |
        echo "============ Running Batch norm shape with MIOpen and IREE without tuning ======================================="
@@ -176,7 +176,7 @@ jobs:
             --backend=torch --backend=iree_boo_experimental --backend=inductor --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 100 --verbose --numerics-verbose \
             2>&1 | tee output_artifacts/rdna4_batch_norm_miopen_iree.log || true
 
-    - name: Run Prod Conv NCHW
+    - name: Run Prod Conv NCHW with verify numerics
       if: false
       run: |
        echo "============ Running Prod Conv shape with NCHW layout with MIOpen and IREE without tuning ==================="
@@ -185,7 +185,7 @@ jobs:
             --backend=torch --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 100 --verbose --numerics-verbose \
             2>&1 | tee output_artifacts/rdna4_prod_conv_miopen_iree_nchw.log || true
 
-    - name: Run All Proxy NCHW
+    - name: Run All Proxy NCHW with verify numerics
       if: false
       run: |
        echo "============ Running All proxy shape with NCHW layout with MIOpen and IREE without tuning ==================="
