@@ -226,7 +226,7 @@ def tune_boo_dispatch(
         )
 
         if not top_candidates:
-            logging.critical("No tuning candidates performed better than the baseline.")
+            logging.warning("No tuning candidates performed better than the baseline.")
             return None
 
         logging.info(f"Top dispatch candidates: {top_candidates}")

@@ -109,7 +109,7 @@ def reorder_assignments(
                 sorted_list = sorted(
                     indexed_list, key=lambda pair: key_fn_to_use(pair[1])
                 )
-            logging.warning(f"Heuristic candidate reordering applied.")
+            logging.info(f"Heuristic candidate reordering applied.")
             indices = [i for i, _ in sorted_list]
             return indices
         case _:
