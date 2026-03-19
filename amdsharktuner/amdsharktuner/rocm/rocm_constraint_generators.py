@@ -44,7 +44,7 @@ class ROCmContractionVectorDistributeConstraintGenerator(
             res_type=self.op_info.res_type,
             dispatch_kind=common.DispatchKind.contraction,
             indexing_maps=self.op_info.indexing_maps,
-            codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
+            codegen_pipeline=iree_gpu.LoweringPipeline.VectorDistribute,
             **pipeline_constraint_options,
         )
 
@@ -88,7 +88,7 @@ class ROCmConvolutionVectorDistributeConstraintGenerator(
             res_type=self.op_info.res_type,
             dispatch_kind=common.DispatchKind.conv,
             indexing_maps=self.op_info.indexing_maps,
-            codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
+            codegen_pipeline=iree_gpu.LoweringPipeline.VectorDistribute,
             igemm_details=self.op_info.igemm_details,
             conv_to_igemm_info=self.op_info.conv_to_igemm_info,
             convolution_dims=self.op_info.convolution_dims,
@@ -128,7 +128,7 @@ class ROCmContractionTileAndFuseConstraintGenerator(
             res_type=self.op_info.res_type,
             dispatch_kind=common.DispatchKind.contraction,
             indexing_maps=self.op_info.indexing_maps,
-            codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
+            codegen_pipeline=iree_gpu.LoweringPipeline.TileAndFuse,
             **pipeline_constraint_options,
         )
 
@@ -179,7 +179,7 @@ class ROCmConvolutionTileAndFuseConstraintGenerator(
                 res_type=self.op_info.res_type,
                 dispatch_kind=common.DispatchKind.conv,
                 indexing_maps=self.op_info.indexing_maps,
-                codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
+                codegen_pipeline=iree_gpu.LoweringPipeline.TileAndFuse,
                 igemm_details=self.op_info.igemm_details,
                 conv_to_igemm_info=self.op_info.conv_to_igemm_info,
                 convolution_dims=self.op_info.convolution_dims,
@@ -210,7 +210,7 @@ class ROCmConvolutionTileAndFuseConstraintGenerator(
                     res_type=self.op_info.res_type,
                     dispatch_kind=common.DispatchKind.conv,
                     indexing_maps=self.op_info.indexing_maps,
-                    codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
+                    codegen_pipeline=iree_gpu.LoweringPipeline.TileAndFuse,
                     igemm_details=None,
                     conv_to_igemm_info=None,
                     direct_conv_info=direct_conv_info,
@@ -323,6 +323,6 @@ class ROCmAttentionVectorDistributeConstraintGenerator(
             gpu_target_info=gpu_target_info,
             op_info=self.op_info,
             dispatch_kind=common.DispatchKind.attention,
-            codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
+            codegen_pipeline=iree_gpu.LoweringPipeline.VectorDistribute,
             **pipeline_constraint_options,
         )
