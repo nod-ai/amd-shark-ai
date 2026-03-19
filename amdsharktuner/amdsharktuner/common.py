@@ -337,6 +337,18 @@ def get_lowering_config(
                     assert (
                         False
                     ), f"Unsupported type for key '{key}': {type(value).__name__}"
+            case "promotion_types":
+                if isinstance(value, list):
+                    promote_ops = lowering_config_dict.get("promote_operands", [])
+                    assert len(value) == len(promote_ops), (
+                        f"promotion_types length ({len(value)}) must match "
+                        f"promote_operands length ({len(promote_ops)})"
+                    )
+                    promoted_value = ir.ArrayAttr.get(value)
+                elif not isinstance(value, ir.ArrayAttr):
+                    assert (
+                        False
+                    ), f"Unsupported type for key '{key}': {type(value).__name__}"
             case _:
                 assert False, f"Unhandled key in lowering configuration: {key}"
 

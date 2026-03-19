@@ -95,8 +95,8 @@ def generate_solutions(
     num_subgroups: int = 4,  # GPU spec, used to determine candidate generation constraints.
     allowed_waves_per_eu: list[int] = [2],
     allowed_denorm_flushing: list[bool] = [False],
+    allowed_use_direct_load: list[bool] = [False],
     pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
-    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
     conv_strategy: rocm_common.ConvolutionStrategy = rocm_common.ConvolutionStrategy.igemm
     | rocm_common.ConvolutionStrategy.direct,
 ) -> Iterator[list[common.TuningConfiguration]]:
@@ -112,6 +112,8 @@ def generate_solutions(
             target_info,
             num_subgroups=num_subgroups,
             allowed_waves_per_eu=allowed_waves_per_eu,
+            allowed_denorm_flushing=allowed_denorm_flushing,
+            allowed_use_direct_load=allowed_use_direct_load,
             pipeline_options_search_space=pipeline_options_search_space,
             conv_strategy=conv_strategy,
         )
@@ -122,6 +124,7 @@ def generate_solutions(
         num_subgroups=num_subgroups,
         allowed_waves_per_eu=allowed_waves_per_eu,
         allowed_denorm_flushing=allowed_denorm_flushing,
+        allowed_use_direct_load=allowed_use_direct_load,
         pipeline_options_search_space=pipeline_options_search_space,
     )
 

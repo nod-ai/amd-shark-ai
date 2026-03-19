@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from iree.compiler import ir  # type: ignore
-from iree.compiler.dialects import iree_gpu, linalg  # type: ignore
+from iree.compiler.dialects import iree_codegen, iree_gpu, linalg  # type: ignore
 
 from amdsharktuner import common, process_utils
 
@@ -25,12 +25,88 @@ WAVES_PER_EU_KEY = "amdgpu-waves-per-eu"
 # List of tested ROCm architectures.
 ROCM_ARCHITECTURES = ["gfx942", "gfx950", "gfx1100", "gfx1201"]
 
+tune_logger = logging.getLogger("tune")
+
+
+# TODO(Bangtian): Use dma_sizes from TargetInfo once exposed in Python bindings.
+def supports_global_load_dma(arch: str) -> bool:
+    """Check if architecture supports Global Load DMA (gfx950+).
+
+    CDNA4 is gfx950+ (majorVersion == 9 && minorVersion >= 5).
+    """
+    if not arch.startswith("gfx"):
+        return False
+    try:
+        version = int(arch[3:])
+        major = version // 100
+        minor = (version % 100) // 10
+        return major == 9 and minor >= 5
+    except ValueError:
+        return False
+
+
+def get_promotion_types_for_direct_load(num_operands: int) -> list[ir.Attribute]:
+    """Get promotion_types array for direct load (all operands use DMA)."""
+    # TODO(Bangtian): Use iree_gpu.UseGlobalLoadDMAAttr once exposed in Python bindings.
+    return [ir.Attribute.parse("#iree_gpu.use_global_load_dma")] * num_operands
+
 
 class ConvolutionStrategy(IntFlag):
     """ROCm convolution lowering strategy for TileAndFuse pipeline."""
 
     igemm = 1
     direct = 2
+
+
+def filter_use_direct_load(
+    allowed_use_direct_load: list[bool],
+    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline,
+    arch: str,
+    conv_strategy: ConvolutionStrategy,
+) -> list[bool]:
+    """Filter use_direct_load options for unsupported configurations.
+
+    Args:
+        allowed_use_direct_load: List of True/False values representing which
+            use_direct_load settings to explore. [True, False] explores both.
+        codegen_pipeline: The IREE codegen pipeline being used.
+        arch: Target GPU architecture string (e.g., "gfx950").
+        conv_strategy: Convolution strategy being used (igemm, direct, or both).
+
+    Returns:
+        Filtered list with use_direct_load=True removed if unsupported.
+        Logs warnings explaining why filtering occurred.
+    """
+    if not any(opt is True for opt in allowed_use_direct_load):
+        return allowed_use_direct_load
+
+    # TODO(Bangtian, https://github.com/iree-org/iree/issues/23782): Once use_direct_load
+    # is supported along VectorDistribute pipeline, enable it from the tuner.
+    if codegen_pipeline != iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
+        tune_logger.warning(
+            f"use_direct_load is only supported with TileAndFuse pipeline. "
+            f"Current pipeline: {codegen_pipeline}. Disabling use_direct_load."
+        )
+        return [False]
+
+    if not supports_global_load_dma(arch):
+        tune_logger.warning(
+            f"use_direct_load is only supported on gfx950+ architectures. "
+            f"Current architecture: {arch}. Disabling use_direct_load."
+        )
+        return [False]
+
+    # Only filter when using exclusively the direct conv strategy. When both
+    # strategies are active (igemm | direct), each strategy filters independently
+    # in the constraint generators.
+    if conv_strategy == ConvolutionStrategy.direct:
+        tune_logger.warning(
+            "use_direct_load is not supported for direct convolution strategy. "
+            "Disabling use_direct_load."
+        )
+        return [False]
+
+    return allowed_use_direct_load
 
 
 @dataclass

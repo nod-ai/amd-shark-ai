@@ -305,6 +305,71 @@ def test_get_padding_conv_sizes(tuner_ctx: common.TunerContext) -> None:
     assert result == [4, 64, 64, 64, 0, 0, 0]
 
 
+def test_supports_global_load_dma():
+    assert rocm_common.supports_global_load_dma("gfx950") is True
+    assert rocm_common.supports_global_load_dma("gfx942") is False
+
+    # RDNA architectures should not be supported.
+    assert rocm_common.supports_global_load_dma("gfx1100") is False
+    assert rocm_common.supports_global_load_dma("gfx1201") is False
+
+    # Invalid inputs.
+    assert rocm_common.supports_global_load_dma("invalid") is False
+    assert rocm_common.supports_global_load_dma("") is False
+    assert rocm_common.supports_global_load_dma("gfx") is False
+    assert rocm_common.supports_global_load_dma("gfxabc") is False
+
+
+def test_get_promotion_types_for_direct_load(tuner_ctx: common.TunerContext) -> None:
+    attrs = rocm_common.get_promotion_types_for_direct_load(2)
+    assert len(attrs) == 2
+    assert all(str(attr) == "#iree_gpu.use_global_load_dma" for attr in attrs)
+
+
+def test_filter_use_direct_load(tuner_ctx: common.TunerContext, caplog) -> None:
+    from iree.compiler.dialects import iree_codegen  # type: ignore
+
+    Pipeline = iree_codegen.DispatchLoweringPassPipeline
+    ConvStrategy = rocm_common.ConvolutionStrategy
+
+    # When no True values are present, the list should be returned unchanged.
+    assert rocm_common.filter_use_direct_load(
+        [False], Pipeline.LLVMGPUTileAndFuse, "gfx950", ConvStrategy.igemm
+    ) == [False]
+
+    assert rocm_common.filter_use_direct_load(
+        [True, False], Pipeline.LLVMGPUVectorDistribute, "gfx950", ConvStrategy.igemm
+    ) == [False]
+    assert "only supported with TileAndFuse pipeline" in caplog.text
+    caplog.clear()
+
+    assert rocm_common.filter_use_direct_load(
+        [True, False], Pipeline.LLVMGPUTileAndFuse, "gfx942", ConvStrategy.igemm
+    ) == [False]
+    assert "only supported on gfx950+ architectures" in caplog.text
+    caplog.clear()
+
+    # Direct convolution strategy should filter to [False] and log a warning.
+    assert rocm_common.filter_use_direct_load(
+        [True, False], Pipeline.LLVMGPUTileAndFuse, "gfx950", ConvStrategy.direct
+    ) == [False]
+    assert "not supported for direct convolution strategy" in caplog.text
+    caplog.clear()
+
+    # Valid configurations should be preserved unchanged.
+    assert rocm_common.filter_use_direct_load(
+        [True, False], Pipeline.LLVMGPUTileAndFuse, "gfx950", ConvStrategy.igemm
+    ) == [True, False]
+
+    # The "both" strategy should preserve use_direct_load since IGEMM supports it.
+    assert rocm_common.filter_use_direct_load(
+        [True, False],
+        Pipeline.LLVMGPUTileAndFuse,
+        "gfx950",
+        ConvStrategy.igemm | ConvStrategy.direct,
+    ) == [True, False]
+
+
 def test_compute_rocprof_avg_kernel_time(caplog):
     with pytest.raises(ValueError):
         rocm_common.compute_rocprof_avg_kernel_time([])

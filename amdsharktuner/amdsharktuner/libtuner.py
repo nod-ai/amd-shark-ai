@@ -422,6 +422,17 @@ def parse_arguments(
         "denormals to zero. Only applicable to attention ops. "
         "Possible values: [True, False]",
     )
+    # TODO(Bangtian): Auto-enable when IREE makes use_direct_load true by default.
+    candidate_gen_args.add_argument(
+        "--use-direct-load-options",
+        type=lambda t: [s.strip().lower() == "true" for s in t.split(",")],
+        default=[False],
+        help="Comma-separated list of allowed values for use_direct_load. "
+        "When True, enables Global Load DMA mode for matmul operand loading. "
+        "Only supported on gfx950+ GPUs. Automatically sets "
+        "no_reduce_shared_memory_bank_conflicts=true. "
+        "Possible values: [True, False]. Default: [False].",
+    )
     candidate_gen_args.add_argument(
         "--codegen-pipeline",
         choices=[x.value for x in CodegenPipelines],
@@ -839,8 +850,8 @@ def generate_candidate_specs(
             num_subgroups=args.num_subgroups,
             allowed_waves_per_eu=args.waves_per_eu_options,
             allowed_denorm_flushing=allowed_denorm_flushing,
+            allowed_use_direct_load=args.use_direct_load_options,
             pipeline_options_search_space=pipeline_options_search_space,
-            codegen_pipeline=get_iree_codegen_pipeline(args.codegen_pipeline),
             conv_strategy=conv_strategy,
         )
         if args.enable_random_seed:

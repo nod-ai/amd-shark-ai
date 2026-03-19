@@ -118,6 +118,17 @@ class ROCmContractionTileAndFuseConstraintGenerator(
         gpu_target_info: iree_gpu.TargetInfo,
         **pipeline_constraint_options,
     ) -> Iterator[list[common.TuningConfiguration]]:
+        # Filter use_direct_load for unsupported configurations.
+        codegen_pipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
+        pipeline_constraint_options[
+            "allowed_use_direct_load"
+        ] = rocm_common.filter_use_direct_load(
+            pipeline_constraint_options.get("allowed_use_direct_load", [False]),
+            codegen_pipeline,
+            gpu_target_info.arch,
+            rocm_common.ConvolutionStrategy.igemm,
+        )
+
         return rocm_solutions.generate_generic_contraction_solutions(
             tuner_ctx=tuner_context,
             gpu_target_info=gpu_target_info,
@@ -128,7 +139,7 @@ class ROCmContractionTileAndFuseConstraintGenerator(
             res_type=self.op_info.res_type,
             dispatch_kind=common.DispatchKind.contraction,
             indexing_maps=self.op_info.indexing_maps,
-            codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
+            codegen_pipeline=codegen_pipeline,
             **pipeline_constraint_options,
         )
 
@@ -164,11 +175,25 @@ class ROCmConvolutionTileAndFuseConstraintGenerator(
             self.op_info.convolution_dims is not None
         ), "convolution_dims must be set for convolution operations"
 
+        codegen_pipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
+
         # Generate IGEMM candidates.
         if conv_strategy & rocm_common.ConvolutionStrategy.igemm:
             tuner_context.logger.info(
                 "Generating convolution candidates using IGEMM strategy"
             )
+
+            # Filter use_direct_load for IGEMM strategy.
+            igemm_options = pipeline_constraint_options.copy()
+            igemm_options[
+                "allowed_use_direct_load"
+            ] = rocm_common.filter_use_direct_load(
+                igemm_options.get("allowed_use_direct_load", [False]),
+                codegen_pipeline,
+                gpu_target_info.arch,
+                rocm_common.ConvolutionStrategy.igemm,
+            )
+
             yield from rocm_solutions.generate_generic_contraction_solutions(
                 tuner_ctx=tuner_context,
                 gpu_target_info=gpu_target_info,
@@ -179,11 +204,11 @@ class ROCmConvolutionTileAndFuseConstraintGenerator(
                 res_type=self.op_info.res_type,
                 dispatch_kind=common.DispatchKind.conv,
                 indexing_maps=self.op_info.indexing_maps,
-                codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
+                codegen_pipeline=codegen_pipeline,
                 igemm_details=self.op_info.igemm_details,
                 conv_to_igemm_info=self.op_info.conv_to_igemm_info,
                 convolution_dims=self.op_info.convolution_dims,
-                **pipeline_constraint_options,
+                **igemm_options,
             )
 
         # Generate direct convolution candidates if supported.
@@ -192,6 +217,18 @@ class ROCmConvolutionTileAndFuseConstraintGenerator(
                 tuner_context.logger.info(
                     "Generating convolution candidates using direct strategy"
                 )
+
+                # Filter use_direct_load for direct conv strategy.
+                direct_options = pipeline_constraint_options.copy()
+                direct_options[
+                    "allowed_use_direct_load"
+                ] = rocm_common.filter_use_direct_load(
+                    direct_options.get("allowed_use_direct_load", [False]),
+                    codegen_pipeline,
+                    gpu_target_info.arch,
+                    rocm_common.ConvolutionStrategy.direct,
+                )
+
                 direct_dims, direct_sizes = self._compute_direct_conv_dimensions()
                 # Pass filter loop info so solution generator can add them with tile size 1.
                 direct_conv_info: rocm_solutions.DirectConvInfo = {
@@ -210,11 +247,11 @@ class ROCmConvolutionTileAndFuseConstraintGenerator(
                     res_type=self.op_info.res_type,
                     dispatch_kind=common.DispatchKind.conv,
                     indexing_maps=self.op_info.indexing_maps,
-                    codegen_pipeline=iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
+                    codegen_pipeline=codegen_pipeline,
                     igemm_details=None,
                     conv_to_igemm_info=None,
                     direct_conv_info=direct_conv_info,
-                    **pipeline_constraint_options,
+                    **direct_options,
                 )
 
     def _supports_direct_convolution(self, tuner_context: common.TunerContext) -> bool:
