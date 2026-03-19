@@ -7,7 +7,8 @@
 import argparse
 import math
 from unittest.mock import call, patch, MagicMock
-from amdsharktuner import libtuner
+
+from amdsharktuner import common, libtuner
 
 """
 Usage: python -m pytest libtuner_test.py
@@ -373,3 +374,20 @@ def test_baseline_result_handler_speedup():
         slower_candidates, prune_slow_candidates=False
     )
     assert [c.candidate_id for c, _ in candidates_with_speedup] == [1, 2]
+
+
+def test_validate_denorm_flushing_options():
+    # Denorm flushing disabled: no change regardless of dispatch kind.
+    assert libtuner.validate_denorm_flushing_options(
+        [False], common.DispatchKind.contraction
+    ) == [False]
+
+    # Denorm flushing enabled for non-attention op: reset to [False].
+    assert libtuner.validate_denorm_flushing_options(
+        [True], common.DispatchKind.contraction
+    ) == [False]
+
+    # Denorm flushing enabled for attention: allowed.
+    assert libtuner.validate_denorm_flushing_options(
+        [True], common.DispatchKind.attention
+    ) == [True]

@@ -756,7 +756,6 @@ def generate_tile_and_fuse_compilation_infos(
     allowed_waves_per_eu: list[int],
     padding: Optional[list[int]] = None,
     padding_conv: Optional[list[int]] = None,
-    allowed_denorm_flushing: list[bool] = [False],
 ) -> list[iree_codegen.CompilationInfoAttr]:
     """Generate compilation infos for LLVMGPUTileAndFuse pipeline."""
     lowering_config_args = {
@@ -783,7 +782,6 @@ def generate_tile_and_fuse_compilation_infos(
         iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
         pipeline_options_search_space,
         allowed_waves_per_eu,
-        allowed_denorm_flushing,
     )
 
 
