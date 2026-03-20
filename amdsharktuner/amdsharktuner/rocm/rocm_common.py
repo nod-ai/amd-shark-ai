@@ -130,7 +130,7 @@ def get_translation_info_config(
     """
     Example IR
     translation_info = #iree_codegen.translation_info<
-                    pipeline = LLVMGPUVectorDistribute workgroup_size = [512, 1, 1] subgroup_size = 64,
+                    pipeline = #iree_gpu.pipeline<VectorDistribute> workgroup_size = [512, 1, 1] subgroup_size = 64,
                     {gpu_pipeline_options = #iree_gpu.pipeline_options<...>,
                      llvm_func_attrs = {"amdgpu-waves-per-eu" = "3"},
                      iree_codegen.denormal_fp_math_f32 = #iree_codegen.denormal_fp_math<"preserve-sign">

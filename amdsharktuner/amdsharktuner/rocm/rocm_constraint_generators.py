@@ -19,7 +19,7 @@ class ROCmContractionVectorDistributeConstraintGenerator(
     ROCm Constraint generator for contraction operations using VectorDistribute pipeline.
 
     Generates tuning configurations for matrix multiplication and related contraction
-    operations using the LLVMGPUVectorDistribute lowering pipeline.
+    operations using the VectorDistribute lowering pipeline.
 
     Attributes:
         op_info: ContractionOpInfo containing all contraction operation metadata.
@@ -56,7 +56,7 @@ class ROCmConvolutionVectorDistributeConstraintGenerator(
     ROCm Constraint generator for convolution operations using VectorDistribute pipeline.
 
     Generates tuning configurations for convolution operations using the
-    LLVMGPUVectorDistribute lowering pipeline. Supports IGEMM-based convolutions.
+    VectorDistribute lowering pipeline. Supports IGEMM-based convolutions.
 
     Attributes:
         op_info: ROCmConvolutionOpInfo containing all convolution operation metadata.
@@ -103,7 +103,7 @@ class ROCmContractionTileAndFuseConstraintGenerator(
     ROCm Constraint generator for contraction operations using TileAndFuse pipeline.
 
     Generates tuning configurations for matrix multiplication and related contraction
-    operations using the LLVMGPUTileAndFuse lowering pipeline.
+    operations using the TileAndFuse lowering pipeline.
 
     Attributes:
         op_info: ContractionOpInfo containing all contraction operation metadata.
@@ -140,7 +140,7 @@ class ROCmConvolutionTileAndFuseConstraintGenerator(
     ROCm Constraint generator for convolution operations using TileAndFuse pipeline.
 
     Generates tuning configurations for convolution operations using the
-    LLVMGPUTileAndFuse lowering pipeline. By default, enumerates candidates from
+    TileAndFuse lowering pipeline. By default, enumerates candidates from
     BOTH IGEMM and direct convolution strategies when the operation supports both.
 
     Attributes:

@@ -754,7 +754,7 @@ def generate_tile_and_fuse_compilation_infos(
     padding_conv: Optional[list[int]] = None,
     allowed_denorm_flushing: list[bool] = [False],
 ) -> list[iree_codegen.CompilationInfoAttr]:
-    """Generate compilation infos for LLVMGPUTileAndFuse pipeline."""
+    """Generate compilation infos for TileAndFuse pipeline."""
     lowering_config_args = {
         "workgroup": workgroup_tile_sizes,
         "reduction": reduction_tile_sizes,
@@ -799,7 +799,7 @@ def generate_vector_distribute_compilation_infos(
     padding_conv: Optional[list[int]] = None,
     allowed_denorm_flushing: list[bool] = [False],
 ) -> list[iree_codegen.CompilationInfoAttr]:
-    """Generate compilation infos for LLVMGPUVectorDistribute pipeline."""
+    """Generate compilation infos for VectorDistribute pipeline."""
     subgroup_basis = [subgroup_basis_counts, subgroup_basis_mapping]
     lowering_config_args = {
         "workgroup": workgroup_tile_sizes,
