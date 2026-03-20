@@ -227,9 +227,12 @@ SystemPtr AMDGPUSystemBuilder::CreateSystem() {
          logical_index < logical_devices_per_physical_device_;
          ++logical_index) {
       iree::hal_device_ptr device;
+      iree_hal_device_create_params_t create_params =
+          iree_hal_device_create_params_default();
+      create_params.proactor_pool = lsys->proactor_pool();
       SHORTFIN_THROW_IF_ERROR(iree_hal_driver_create_device_by_id(
-          hip_hal_driver_, device_id, 0, nullptr, host_allocator(),
-          device.for_output()));
+          hip_hal_driver_, device_id, 0, nullptr, &create_params,
+          host_allocator(), device.for_output()));
       DeviceAddress address(
           /*system_device_class=*/SYSTEM_DEVICE_CLASS,
           /*logical_device_class=*/LOGICAL_DEVICE_CLASS,

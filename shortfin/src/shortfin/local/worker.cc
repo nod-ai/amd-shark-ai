@@ -39,24 +39,13 @@ Worker::Worker(const Options options)
     : options_(std::move(options)),
       signal_transact_(false),
       signal_ended_(false) {
-  // Set up loop.
-  auto OnError = +[](void* self, iree_status_t status) {
-    // TODO: FIX ME.
-    iree_status_fprint(stderr, status);
-    iree_status_ignore(status);
-  };
-  // TODO: We need a way to dynamically resize this vs having a hard limit.
-  iree_loop_sync_options_t loop_options = {.max_queue_depth = 2048,
-                                           .max_wait_count = 2048};
-  SHORTFIN_THROW_IF_ERROR(
-      iree_loop_sync_allocate(loop_options, options_.allocator, &loop_sync_));
-  iree_loop_sync_scope_initialize(loop_sync_, OnError, this, &loop_scope_);
-  loop_ = iree_loop_sync_scope(&loop_scope_);
+  // Initialize the inline loop storage for this worker.
+  // The inline loop executes all work synchronously on the worker thread.
+  loop_ = iree_vm_loop_inline_initialize(&loop_storage_);
 }
 
 Worker::~Worker() {
-  iree_loop_sync_scope_deinitialize(&loop_scope_);
-  iree_loop_sync_free(loop_sync_);
+  iree_vm_loop_inline_deinitialize(&loop_storage_);
   thread_.reset();
 }
 
@@ -117,9 +106,9 @@ iree_status_t Worker::TransactLoop(iree_status_t signal_status) {
 }
 
 iree_status_t Worker::ScheduleExternalTransactEvent() {
-  return iree_loop_wait_one(
+  return iree_vm_loop_wait_one(
       loop_, signal_transact_.await(), iree_infinite_timeout(),
-      +[](void* self, iree_loop_t loop, iree_status_t status) {
+      +[](void* self, iree_vm_loop_t loop, iree_status_t status) {
         return static_cast<Worker*>(self)->TransactLoop(status);
       },
       this);
@@ -133,7 +122,7 @@ int Worker::RunOnThread() {
         iree::slim_mutex_lock_guard guard(mu_);
         if (kill_) break;
       }
-      IREE_RETURN_IF_ERROR(iree_loop_drain(loop_, options_.quantum));
+      IREE_RETURN_IF_ERROR(iree_vm_loop_drain(loop_, options_.quantum));
     }
     return iree_ok_status();
   };
@@ -245,26 +234,26 @@ void Worker::CallThreadsafe(std::function<void()> callback) {
 }
 
 iree_status_t Worker::CallLowLevel(
-    iree_status_t (*callback)(void* user_data, iree_loop_t loop,
+    iree_status_t (*callback)(void* user_data, iree_vm_loop_t loop,
                               iree_status_t status) noexcept,
-    void* user_data, iree_loop_priority_e priority) noexcept {
-  return iree_loop_call(loop_, priority, callback, user_data);
+    void* user_data, iree_vm_loop_priority_t priority) noexcept {
+  return iree_vm_loop_call(loop_, priority, callback, user_data);
 }
 
 iree_status_t Worker::WaitUntilLowLevel(
     iree_timeout_t timeout,
-    iree_status_t (*callback)(void* user_data, iree_loop_t loop,
+    iree_status_t (*callback)(void* user_data, iree_vm_loop_t loop,
                               iree_status_t status) noexcept,
     void* user_data) {
-  return iree_loop_wait_until(loop_, timeout, callback, user_data);
+  return iree_vm_loop_wait_until(loop_, timeout, callback, user_data);
 }
 
 iree_status_t Worker::WaitOneLowLevel(
     iree_wait_source_t wait_source, iree_timeout_t timeout,
-    iree_status_t (*callback)(void* user_data, iree_loop_t loop,
+    iree_status_t (*callback)(void* user_data, iree_vm_loop_t loop,
                               iree_status_t status) noexcept,
     void* user_data) {
-  return iree_loop_wait_one(loop_, wait_source, timeout, callback, user_data);
+  return iree_vm_loop_wait_one(loop_, wait_source, timeout, callback, user_data);
 }
 
 // Time management.

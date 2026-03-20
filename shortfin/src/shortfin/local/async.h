@@ -127,7 +127,7 @@ class SHORTFIN_API Future {
   }
   // Posts a message to the worker to issue callbacks. Lock must be held.
   void IssueCallbacksWithLockHeld() SHORTFIN_REQUIRES_LOCK(state_->lock_);
-  static iree_status_t RawHandleWorkerCallback(void *state_vp, iree_loop_t loop,
+  static iree_status_t RawHandleWorkerCallback(void *state_vp, iree_vm_loop_t loop,
                                                iree_status_t status) noexcept;
   void HandleWorkerCallback();
   void ThrowFailureWithLockHeld() SHORTFIN_REQUIRES_LOCK(state_->lock_);

@@ -101,6 +101,7 @@ class SHORTFIN_API System : public std::enable_shared_from_this<System> {
   // Access to underlying IREE API objects.
   iree_allocator_t host_allocator() { return host_allocator_; }
   iree_vm_instance_t *vm_instance() { return vm_instance_.get(); }
+  iree_async_proactor_pool_t *proactor_pool() { return proactor_pool_; }
 
   // Topology access.
   std::span<const Node> nodes() { return {nodes_}; }
@@ -198,6 +199,9 @@ class SHORTFIN_API System : public std::enable_shared_from_this<System> {
 
   // VM management.
   iree::vm_instance_ptr vm_instance_;
+
+  // Proactor pool for async I/O operations.
+  iree_async_proactor_pool_t *proactor_pool_ = nullptr;
 
   // Global blocking executor.
   BlockingExecutor blocking_executor_;

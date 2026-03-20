@@ -14,7 +14,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "iree/base/loop_sync.h"
+#include "iree/vm/loop.h"
+#include "iree/vm/loop_inline.h"
 #include "shortfin/local/async.h"
 #include "shortfin/support/api.h"
 #include "shortfin/support/iree_concurrency.h"
@@ -79,7 +80,7 @@ class SHORTFIN_API Worker {
 
   const Options &options() const { return options_; }
   const std::string_view name() const { return options_.name; }
-  iree_loop_t loop() { return loop_; }
+  iree_vm_loop_t loop() { return loop_; }
   std::string to_s();
 
   // Gets the Worker that is active for the current thread or nullptr if none.
@@ -116,22 +117,22 @@ class SHORTFIN_API Worker {
   // be used by "regular users" but can be useful for bindings that wish to
   // reduce the tolls/hops.
   iree_status_t CallLowLevel(
-      iree_status_t (*callback)(void *user_data, iree_loop_t loop,
+      iree_status_t (*callback)(void *user_data, iree_vm_loop_t loop,
                                 iree_status_t status) noexcept,
       void *user_data,
-      iree_loop_priority_e priority = IREE_LOOP_PRIORITY_DEFAULT) noexcept;
+      iree_vm_loop_priority_t priority = IREE_VM_LOOP_PRIORITY_DEFAULT) noexcept;
 
   // Calls back after a timeout.
   iree_status_t WaitUntilLowLevel(
       iree_timeout_t timeout,
-      iree_status_t (*callback)(void *user_data, iree_loop_t loop,
+      iree_status_t (*callback)(void *user_data, iree_vm_loop_t loop,
                                 iree_status_t status) noexcept,
       void *user_data);
 
   // Calls back once a wait_source is satisfied.
   iree_status_t WaitOneLowLevel(
       iree_wait_source_t wait_source, iree_timeout_t timeout,
-      iree_status_t (*callback)(void *user_data, iree_loop_t loop,
+      iree_status_t (*callback)(void *user_data, iree_vm_loop_t loop,
                                 iree_status_t status) noexcept,
       void *user_data);
 
@@ -162,9 +163,8 @@ class SHORTFIN_API Worker {
   bool has_run_ = false;
 
   // Loop management. This is all purely operated on the worker thread.
-  iree_loop_sync_scope_t loop_scope_;
-  iree_loop_sync_t *loop_sync_;
-  iree_loop_t loop_;
+  iree_vm_loop_inline_storage_t loop_storage_;
+  iree_vm_loop_t loop_;
   std::vector<std::function<void()>> next_thunks_;
   std::unordered_map<std::type_index, std::unique_ptr<Extension>> extensions_;
 };

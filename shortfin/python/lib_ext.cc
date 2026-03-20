@@ -999,7 +999,7 @@ void BindLocal(py::module_ &m) {
       .def("call",
            [](local::Worker &self, py::handle callable) {
              callable.inc_ref();  // Stolen within the callback.
-             auto thunk = +[](void *user_data, iree_loop_t loop,
+             auto thunk = +[](void *user_data, iree_vm_loop_t loop,
                               iree_status_t status) noexcept -> iree_status_t {
                SHORTFIN_TRACE_SCOPE_NAMED("PyWorker::Callback");
                py::gil_scoped_acquire g;
@@ -1019,7 +1019,7 @@ void BindLocal(py::module_ &m) {
            [](local::Worker &self, iree_time_t deadline_ns,
               py::handle callable) {
              callable.inc_ref();  // Stolen within the callback.
-             auto thunk = +[](void *user_data, iree_loop_t loop,
+             auto thunk = +[](void *user_data, iree_vm_loop_t loop,
                               iree_status_t status) noexcept -> iree_status_t {
                SHORTFIN_TRACE_SCOPE_NAMED("PyWorker::DelayCallback");
                py::gil_scoped_acquire g;
@@ -1117,7 +1117,7 @@ void BindLocal(py::module_ &m) {
         SHORTFIN_THROW_IF_ERROR(worker_ext.worker().WaitOneLowLevel(
             /*wait_source=*/
             self, iree_infinite_timeout(),
-            +[](void *future_vp, iree_loop_t loop,
+            +[](void *future_vp, iree_vm_loop_t loop,
                 iree_status_t status) noexcept -> iree_status_t {
               SHORTFIN_TRACE_SCOPE_NAMED("PyCompletionEvent::OnComplete");
               py::gil_scoped_acquire g;
