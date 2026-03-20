@@ -228,6 +228,7 @@ void HostCPUSystemBuilder::InitializeHostCPUDevices(System &lsys,
   iree_hal_device_info_t *it = &device_infos.get()[0];
   iree_hal_device_create_params_t create_params =
       iree_hal_device_create_params_default();
+  create_params.proactor_pool = lsys.proactor_pool();
   SHORTFIN_THROW_IF_ERROR(iree_hal_driver_create_device_by_id(
       driver, it->device_id, 0, nullptr, &create_params, host_allocator(),
       device.for_output()));

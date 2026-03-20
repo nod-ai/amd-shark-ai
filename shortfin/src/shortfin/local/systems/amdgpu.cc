@@ -229,6 +229,7 @@ SystemPtr AMDGPUSystemBuilder::CreateSystem() {
       iree::hal_device_ptr device;
       iree_hal_device_create_params_t create_params =
           iree_hal_device_create_params_default();
+      create_params.proactor_pool = lsys->proactor_pool();
       SHORTFIN_THROW_IF_ERROR(iree_hal_driver_create_device_by_id(
           hip_hal_driver_, device_id, 0, nullptr, &create_params,
           host_allocator(), device.for_output()));
