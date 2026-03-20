@@ -28,7 +28,7 @@ tune_logger = logging.getLogger("tune")
 
 def get_supported_dispatch_tuners(
     target_arch: str,
-    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline,
+    codegen_pipeline: iree_gpu.LoweringPipeline,
 ) -> list[type[DispatchTuner]]:
     """Get supported dispatch tuners for the given target architecture and pipeline."""
     # TODO(Bangtian): Use `target.getBackend() == "rocm"` once backend name is exposed
@@ -96,7 +96,7 @@ def generate_solutions(
     allowed_waves_per_eu: list[int] = [2],
     allowed_denorm_flushing: list[bool] = [False],
     pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
-    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
+    codegen_pipeline: iree_gpu.LoweringPipeline = iree_gpu.LoweringPipeline.VectorDistribute,
     conv_strategy: rocm_common.ConvolutionStrategy = rocm_common.ConvolutionStrategy.igemm
     | rocm_common.ConvolutionStrategy.direct,
 ) -> Iterator[list[common.TuningConfiguration]]:

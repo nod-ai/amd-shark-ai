@@ -77,13 +77,16 @@ def test_get_translation_info_config(tuner_ctx: common.TunerContext) -> None:
         reduction=[0, 0, 16],
         subgroup_basis=[[1, 1, 1], [0, 1, 2]],
     )
-    pipeline_attr = iree_codegen.DispatchLoweringPassPipelineAttr.get(
-        iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
-    )
     pipeline_options = iree_gpu.PipelineOptionsAttr.get()
     config_dict = rocm_common.get_translation_info_config(pipeline_options, 2)
+    pipeline_attr = iree_gpu.PipelineAttr.get(
+        iree_gpu.LoweringPipeline.VectorDistribute
+    )
     translation_info = iree_codegen.TranslationInfoAttr.get(
-        pipeline_attr, None, [16, 16, 1], 32, config_dict
+        pass_pipeline=pipeline_attr,
+        workgroup_size=[16, 16, 1],
+        subgroup_size=32,
+        configuration=config_dict,
     )
     compilation_info = iree_codegen.CompilationInfoAttr.get(
         lowering_config, translation_info
@@ -95,8 +98,14 @@ def test_get_translation_info_config(tuner_ctx: common.TunerContext) -> None:
 
     pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_num_stages=2)
     config_dict = rocm_common.get_translation_info_config(pipeline_options, 4)
+    pipeline_attr = iree_gpu.PipelineAttr.get(
+        iree_gpu.LoweringPipeline.VectorDistribute
+    )
     translation_info = iree_codegen.TranslationInfoAttr.get(
-        pipeline_attr, None, [16, 16, 1], 32, config_dict
+        pass_pipeline=pipeline_attr,
+        workgroup_size=[16, 16, 1],
+        subgroup_size=32,
+        configuration=config_dict,
     )
     compilation_info = iree_codegen.CompilationInfoAttr.get(
         lowering_config, translation_info

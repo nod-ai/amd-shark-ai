@@ -753,9 +753,9 @@ def find_collisions(
 def get_iree_codegen_pipeline(pipeline: CodegenPipelines):
     match pipeline:
         case CodegenPipelines.llvmgpu_vector_distribute:
-            return iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
+            return iree_gpu.LoweringPipeline.VectorDistribute
         case CodegenPipelines.llvmgpu_tile_and_fuse:
-            return iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
+            return iree_gpu.LoweringPipeline.TileAndFuse
         case _:
             assert False, "unexpected codegen pipeline"
 
