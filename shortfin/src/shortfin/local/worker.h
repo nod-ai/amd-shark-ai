@@ -120,7 +120,7 @@ class SHORTFIN_API Worker {
       iree_status_t (*callback)(void *user_data, iree_vm_loop_t loop,
                                 iree_status_t status) noexcept,
       void *user_data,
-      iree_loop_priority_e priority = IREE_LOOP_PRIORITY_DEFAULT) noexcept;
+      iree_vm_loop_priority_t priority = IREE_VM_LOOP_PRIORITY_DEFAULT) noexcept;
 
   // Calls back after a timeout.
   iree_status_t WaitUntilLowLevel(
@@ -163,8 +163,7 @@ class SHORTFIN_API Worker {
   bool has_run_ = false;
 
   // Loop management. This is all purely operated on the worker thread.
-  iree_loop_sync_scope_t loop_scope_;
-  iree_loop_sync_t *loop_sync_;
+  iree_vm_loop_inline_storage_t loop_storage_;
   iree_vm_loop_t loop_;
   std::vector<std::function<void()>> next_thunks_;
   std::unordered_map<std::type_index, std::unique_ptr<Extension>> extensions_;
