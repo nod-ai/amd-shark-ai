@@ -104,7 +104,7 @@ jobs:
     - name: Install pip deps
       run: |
         mkdir -p output_artifacts
-        pip install --index-url https://rocm.nightlies.amd.com/v2/gfx120X-all/ torch==2.9.1+rocm7.12.0a20260208
+        pip install --force-reinstall --index-url https://rocm.nightlies.amd.com/v2/gfx120X-all/ -r .github/workflows/ci_boo_torch_pin.txt
         pip install "git+https://github.com/iree-org/iree-turbine.git"
         pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
         pip freeze  > $(pwd)/output_artifacts/version.txt
