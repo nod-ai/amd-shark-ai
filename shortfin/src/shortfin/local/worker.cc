@@ -119,7 +119,7 @@ iree_status_t Worker::TransactLoop(iree_status_t signal_status) {
 iree_status_t Worker::ScheduleExternalTransactEvent() {
   return iree_loop_wait_one(
       loop_, signal_transact_.await(), iree_infinite_timeout(),
-      +[](void* self, iree_loop_t loop, iree_status_t status) {
+      +[](void* self, iree_vm_loop_t loop, iree_status_t status) {
         return static_cast<Worker*>(self)->TransactLoop(status);
       },
       this);
@@ -245,7 +245,7 @@ void Worker::CallThreadsafe(std::function<void()> callback) {
 }
 
 iree_status_t Worker::CallLowLevel(
-    iree_status_t (*callback)(void* user_data, iree_loop_t loop,
+    iree_status_t (*callback)(void* user_data, iree_vm_loop_t loop,
                               iree_status_t status) noexcept,
     void* user_data, iree_loop_priority_e priority) noexcept {
   return iree_loop_call(loop_, priority, callback, user_data);
@@ -253,7 +253,7 @@ iree_status_t Worker::CallLowLevel(
 
 iree_status_t Worker::WaitUntilLowLevel(
     iree_timeout_t timeout,
-    iree_status_t (*callback)(void* user_data, iree_loop_t loop,
+    iree_status_t (*callback)(void* user_data, iree_vm_loop_t loop,
                               iree_status_t status) noexcept,
     void* user_data) {
   return iree_loop_wait_until(loop_, timeout, callback, user_data);
@@ -261,7 +261,7 @@ iree_status_t Worker::WaitUntilLowLevel(
 
 iree_status_t Worker::WaitOneLowLevel(
     iree_wait_source_t wait_source, iree_timeout_t timeout,
-    iree_status_t (*callback)(void* user_data, iree_loop_t loop,
+    iree_status_t (*callback)(void* user_data, iree_vm_loop_t loop,
                               iree_status_t status) noexcept,
     void* user_data) {
   return iree_loop_wait_one(loop_, wait_source, timeout, callback, user_data);

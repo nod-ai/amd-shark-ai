@@ -537,7 +537,7 @@ ProgramInvocation::Future ProgramInvocation::Invoke(
                      std::optional<ProgramInvocation::Future> failure_future) {
     SHORTFIN_TRACE_SCOPE_NAMED("ProgramInvocation::InvokeAsync");
     auto complete_callback =
-        [](void *user_data, iree_loop_t loop, iree_status_t status,
+        [](void *user_data, iree_vm_loop_t loop, iree_status_t status,
            iree_vm_list_t *outputs) noexcept -> iree_status_t {
       SHORTFIN_TRACE_SCOPE_NAMED("ProgramInvocation::Complete");
       // Async invocation helpfully gives us a retained reference to the

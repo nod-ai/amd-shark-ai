@@ -136,9 +136,11 @@ class event {
       if (self->epoch_.load(std::memory_order_acquire) > target_epoch) {
         break;
       }
+      iree_time_t wait_deadline = iree_min(
+          deadline_ns, iree_time_now() + iree_make_duration_ms(10));
       iree_notification_commit_wait(&self->notification_, token,
-                                    iree_make_timeout_ms(10),
-                                    IREE_DURATION_ZERO);
+                                    IREE_DURATION_ZERO,
+                                    wait_deadline);
     }
     return iree_ok_status();
   }

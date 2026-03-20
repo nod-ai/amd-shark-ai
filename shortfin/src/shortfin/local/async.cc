@@ -124,7 +124,7 @@ void Future::AddCallback(FutureCallback callback) {
   }
 }
 
-iree_status_t Future::RawHandleWorkerCallback(void *state_vp, iree_loop_t loop,
+iree_status_t Future::RawHandleWorkerCallback(void *state_vp, iree_vm_loop_t loop,
                                               iree_status_t status) noexcept {
   IREE_RETURN_IF_ERROR(status);
   Future::BaseState *state = static_cast<Future::BaseState *>(state_vp);
