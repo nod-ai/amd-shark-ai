@@ -9,9 +9,10 @@
 #ifndef SHORTFIN_SUPPORT_IREE_THREADING_H
 #define SHORTFIN_SUPPORT_IREE_THREADING_H
 
-#include "iree/base/internal/wait_handle.h"
-#include "iree/base/threading/mutex.h"
-#include "iree/base/threading/thread.h"
+#include <atomic>
+
+#include "iree/base/threading/api.h"
+#include "iree/base/wait_source.h"
 #include "shortfin/support/iree_helpers.h"
 
 // Set up threading annotations.
@@ -70,23 +71,80 @@ class SHORTFIN_THREAD_ANNOTATION_ATTRIBUTE(scoped_lockable)
   slim_mutex &mu_;
 };
 
-// Wrapper around an iree::event_t.
+// Wrapper around iree_notification_t that provides event-like semantics.
+// Note: The old iree_event_t API was removed in IREE commit d7f5aba
+// ("Unify HAL semaphores on async infrastructure"). This class provides
+// a compatibility layer using notification + a custom wait source.
 class event {
  public:
-  event(bool initial_state) {
-    SHORTFIN_THROW_IF_ERROR(iree_event_initialize(initial_state, &event_));
+  event(bool initial_state) : epoch_(initial_state ? 1u : 0u) {
+    iree_notification_initialize(&notification_);
+    if (initial_state) {
+      iree_notification_post(&notification_, IREE_ALL_WAITERS);
+    }
   }
   event(const event &) = delete;
   event &operator=(const event &) = delete;
-  ~event() { iree_event_deinitialize(&event_); }
+  ~event() { iree_notification_deinitialize(&notification_); }
 
-  void set() { iree_event_set(&event_); }
-  void reset() { iree_event_reset(&event_); }
+  void set() {
+    epoch_.fetch_add(1, std::memory_order_release);
+    iree_notification_post(&notification_, IREE_ALL_WAITERS);
+  }
 
-  iree_wait_source_t await() { return iree_event_await(&event_); }
+  void reset() {
+    // Reset by advancing to next even epoch (unsignaled state)
+    uint32_t current = epoch_.load(std::memory_order_acquire);
+    if (current % 2 == 1) {
+      epoch_.fetch_add(1, std::memory_order_release);
+    }
+  }
+
+  iree_wait_source_t await() {
+    return (iree_wait_source_t){
+        .self = this,
+        .data = epoch_.load(std::memory_order_acquire),
+        .resolve = &event::resolve_wait,
+    };
+  }
 
  private:
-  iree_event_t event_;
+  static iree_status_t resolve_wait(iree_wait_source_t wait_source,
+                                     iree_timeout_t timeout,
+                                     iree_wait_source_resolve_callback_t callback,
+                                     void* user_data) {
+    auto* self = static_cast<event*>(wait_source.self);
+    uint32_t target_epoch = static_cast<uint32_t>(wait_source.data);
+
+    // If callback is provided, async wait is not supported in this simple impl
+    if (callback) {
+      return iree_make_status(IREE_STATUS_UNIMPLEMENTED,
+                             "async wait not supported on event wrapper");
+    }
+
+    // Synchronous wait: wait for epoch to advance past target (signaled state)
+    iree_time_t deadline_ns = iree_timeout_as_deadline_ns(timeout);
+    while (self->epoch_.load(std::memory_order_acquire) <= target_epoch) {
+      if (iree_time_now() >= deadline_ns &&
+          !iree_timeout_is_infinite(timeout)) {
+        return iree_status_from_code(IREE_STATUS_DEADLINE_EXCEEDED);
+      }
+      // Prepare and commit wait on notification
+      iree_wait_token_t token =
+          iree_notification_prepare_wait(&self->notification_);
+      // Check again before committing (avoid race)
+      if (self->epoch_.load(std::memory_order_acquire) > target_epoch) {
+        break;
+      }
+      iree_notification_commit_wait(&self->notification_, token,
+                                    iree_make_timeout_ms(10),
+                                    IREE_DURATION_ZERO);
+    }
+    return iree_ok_status();
+  }
+
+  iree_notification_t notification_;
+  std::atomic<uint32_t> epoch_;
 };
 
 // An event that is ref-counted.
