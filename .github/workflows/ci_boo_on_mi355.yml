@@ -183,7 +183,7 @@ jobs:
        echo "PYTHONUNBUFFERED=1" >> $GITHUB_ENV
        echo "ROCR_VISIBLE_DEVICES=0" >> $GITHUB_ENV
 
-    - name: Run Prod Conv
+    - name: Run Prod Conv with verify numerics
       if: always() && (github.event_name == 'schedule' || inputs.run_prod_conv == true)
       run: |
        echo "============ Running Prod Conv shape with MIOpen and IREE without tuning ==================="
@@ -192,7 +192,7 @@ jobs:
             --backend=torch --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 100 --verbose --numerics-verbose \
             2>&1 | tee output_artifacts/prod_conv_miopen_iree.log || true
 
-    - name: Run All Proxy
+    - name: Run All Proxy with verify numerics
       if: always() && (github.event_name == 'schedule' || inputs.run_all_proxy == true)
       run: |
        echo "============ Running All proxy shape with MIOpen and IREE without tuning ==================="
@@ -210,7 +210,7 @@ jobs:
             --backend=torch --backend=iree_boo_experimental --verbose \
             2>&1 | tee output_artifacts/gemm_miopen_iree.log || true
 
-    - name: Run Batch Norm
+    - name: Run Batch Norm with verify numerics
       if: always() && (github.event_name == 'schedule' || inputs.run_batch_norm == true)
       run: |
        echo "============ Running Batch norm shape with MIOpen and IREE without tuning ======================================="
@@ -219,7 +219,7 @@ jobs:
             --backend=torch --backend=iree_boo_experimental --backend=inductor --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 100 --verbose --numerics-verbose \
             2>&1 | tee output_artifacts/batch_norm_miopen_iree.log || true
 
-    - name: Run Prod Conv NCHW
+    - name: Run Prod Conv NCHW with verify numerics
       if: false
       run: |
        echo "============ Running Prod Conv shape with NCHW layout with MIOpen and IREE without tuning ==================="
@@ -228,7 +228,7 @@ jobs:
             --backend=torch --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 100 --verbose --numerics-verbose \
             2>&1 | tee output_artifacts/prod_conv_miopen_iree_nchw.log || true
 
-    - name: Run All Proxy NCHW
+    - name: Run All Proxy NCHW with verify numerics
       if: false
       run: |
        echo "============ Running All proxy shape with NCHW layout with MIOpen and IREE without tuning ==================="

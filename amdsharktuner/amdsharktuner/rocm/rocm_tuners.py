@@ -28,11 +28,11 @@ class ROCmContractionVectorDistributeTuner(
         # Check if contraction has valid dimensions.
         contraction_dims = linalg.infer_contraction_dimensions(root_op)
         if not contraction_dims:
-            logging.warning("No contraction dimensions found for operation")
+            logging.debug("No contraction dimensions found for operation")
             return False
 
         if not contraction_dims.m or not contraction_dims.n or not contraction_dims.k:
-            logging.warning(
+            logging.debug(
                 f"Contraction operation with dimensions M={list(contraction_dims.m)}, "
                 f"N={list(contraction_dims.n)}, K={list(contraction_dims.k)} "
                 f"is not supported by the tuner yet"
@@ -78,11 +78,11 @@ class ROCmContractionTileAndFuseTuner(
         # Check if contraction has valid dimensions.
         contraction_dims = linalg.infer_contraction_dimensions(root_op)
         if not contraction_dims:
-            logging.warning("No contraction dimensions found for operation")
+            logging.debug("No contraction dimensions found for operation")
             return False
 
         if not contraction_dims.m or not contraction_dims.n or not contraction_dims.k:
-            logging.warning(
+            logging.debug(
                 f"Contraction operation with dimensions M={list(contraction_dims.m)}, "
                 f"N={list(contraction_dims.n)}, K={list(contraction_dims.k)} "
                 f"is not supported by the tuner yet"

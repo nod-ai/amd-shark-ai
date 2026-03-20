@@ -147,7 +147,7 @@ def main() -> None:
             args.dispatch_benchmark_timeout_mins,
         )
         if not top_candidates:
-            logging.critical("No tuning candidates performed better than the baseline.")
+            logging.warning("No tuning candidates performed better than the baseline.")
         else:
             logging.info(f"Top dispatch candidates: {top_candidates}")
             for id in top_candidates:

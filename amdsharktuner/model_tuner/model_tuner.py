@@ -230,7 +230,7 @@ def main() -> None:
         print(f"Top model candidates: {top_model_candidates}")
 
         if not top_model_candidates:
-            logging.critical("No tuning candidates performed better than the baseline.")
+            logging.warning("No tuning candidates performed better than the baseline.")
         else:
             top_spec_path = (
                 path_config.specs_dir
