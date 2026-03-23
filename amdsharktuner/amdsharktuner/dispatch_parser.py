@@ -20,18 +20,9 @@ from . import common
 def get_parent_function_name(root_op: ir.Operation) -> Optional[str]:
     """
     Returns the parent function's symbol name from a root operation.
-    Walks up the operation hierarchy to find the enclosing func.func.
-    Returns None if no enclosing func.func is found.
-
-    TODO(bangtian): This could be simplified once MLIR Python bindings support getParentOfType<T>().
-    See https://github.com/llvm/llvm-project/pull/185512.
     """
-    op: ir.Operation = root_op
-    while op := op.parent:
-        if isinstance(op.opview, func.FuncOp):
-            return ir.StringAttr(op.opview.name).value
-
-    return None
+    func_op: ir.OpView = ir.get_parent_of_type(root_op, func.FuncOp)
+    return func_op.name.value if func_op else None
 
 
 def parse_mlir(mlir_text: str, ctx: common.TunerContext) -> ir.Module:
