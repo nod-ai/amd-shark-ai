@@ -377,7 +377,6 @@ def generate_generic_contraction_solutions(
                         allowed_waves_per_eu,
                         padding=padding,
                         padding_conv=padding_conv,
-                        allowed_denorm_flushing=allowed_denorm_flushing,
                     )
                 )
             case iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute:
