@@ -75,7 +75,13 @@ if [[ $BUILD_TYPE = "nightly" ]]; then
     pip install dataclasses-json
     pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime iree-turbine
     pip uninstall --y wave-lang
-    pip install -f https://github.com/iree-org/wave/releases/expanded_assets/dev-wheels wave-lang --no-index
+    # Install Rust (required to build wave from source)
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    . "$HOME/.cargo/env"
+    # Pinned to commit 775987d38c7f7e63555fdecf000272edaf862a6a to fix gpt-oss IndexError:
+    # "No current context for <class 'wave_lang.kernel.ops.base.OpDispatcher'>" during torch.export
+    # pip install -f https://github.com/iree-org/wave/releases/expanded_assets/dev-wheels wave-lang --no-index
+    pip install git+https://github.com/iree-org/wave.git@775987d38c7f7e63555fdecf000272edaf862a6a
     pip install scikit-image
 
 elif [[ $BUILD_TYPE = "stable" ]]; then
@@ -89,7 +95,13 @@ elif [[ $BUILD_TYPE = "nightly-cpu" ]]; then
     pip install shortfin[apps] -f https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels --pre
     pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime iree-turbine
     pip uninstall --y wave-lang
-    pip install -f https://github.com/iree-org/wave/releases/expanded_assets/dev-wheels wave-lang --no-index
+    # Install Rust (required to build wave from source)
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    . "$HOME/.cargo/env"
+    # Pinned to commit 775987d38c7f7e63555fdecf000272edaf862a6a to fix gpt-oss IndexError:
+    # "No current context for <class 'wave_lang.kernel.ops.base.OpDispatcher'>" during torch.export
+    # pip install -f https://github.com/iree-org/wave/releases/expanded_assets/dev-wheels wave-lang --no-index
+    pip install git+https://github.com/iree-org/wave.git@775987d38c7f7e63555fdecf000272edaf862a6a
     pip install scikit-image
 
 elif [[ $BUILD_TYPE = "source" ]]; then
