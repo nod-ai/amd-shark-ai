@@ -123,9 +123,7 @@ jobs:
       run: |
         mkdir -p output_artifacts
         echo "OUTPUT_ARTIFACTS=$PWD/output_artifacts" >> $GITHUB_ENV
-        python -m pip install --force-reinstall \
-          --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
-          --pre torch
+        python -m pip install --force-reinstall --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ torch==2.10.0+rocm7.13.0a20260319
 
         pip install "git+https://github.com/iree-org/iree-turbine.git"
 
