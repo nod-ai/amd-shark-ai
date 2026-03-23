@@ -8,6 +8,8 @@ import argparse
 import math
 from unittest.mock import call, patch, MagicMock
 
+from iree.compiler.dialects import iree_codegen  # type: ignore
+
 from amdsharktuner import common, libtuner
 
 """
@@ -377,17 +379,27 @@ def test_baseline_result_handler_speedup():
 
 
 def test_validate_denorm_flushing_options():
-    # Denorm flushing disabled: no change regardless of dispatch kind.
+    tile_and_fuse = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
+    vector_distribute = (
+        iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
+    )
+
+    # Denorm flushing disabled: no change regardless of dispatch kind or pipeline.
     assert libtuner.validate_denorm_flushing_options(
-        [False], common.DispatchKind.contraction
+        [False], common.DispatchKind.contraction, tile_and_fuse
     ) == [False]
 
-    # Denorm flushing enabled for non-attention op: reset to [False].
+    # Denorm flushing enabled for non-attention op: filtered out.
     assert libtuner.validate_denorm_flushing_options(
-        [True], common.DispatchKind.contraction
+        [True], common.DispatchKind.contraction, vector_distribute
     ) == [False]
 
-    # Denorm flushing enabled for attention: allowed.
+    # Denorm flushing enabled for attention + TileAndFuse: filtered out.
     assert libtuner.validate_denorm_flushing_options(
-        [True], common.DispatchKind.attention
+        [True], common.DispatchKind.attention, tile_and_fuse
+    ) == [False]
+
+    # Denorm flushing enabled for attention + VectorDistribute: allowed.
+    assert libtuner.validate_denorm_flushing_options(
+        [True], common.DispatchKind.attention, vector_distribute
     ) == [True]
