@@ -130,6 +130,7 @@ jobs:
     - name: Install IREE Nightly Packages
       if: ${{ !inputs.commit_hash && !inputs.iree_version_tag }}
       run: |
+        pip uninstall -y iree-base-compiler iree-base-runtime
         pip install --no-index --find-links https://iree.dev/pip-release-links.html iree-base-compiler iree-base-runtime --pre --no-deps
         pip freeze  > $OUTPUT_ARTIFACTS/version.txt
 
