@@ -52,13 +52,13 @@ jobs:
         with:
           python-version: ${{matrix.python-version}}
           artifact-run-id: ${{ inputs.artifact_run_id }}
-      - name: Run LLM Smoke Test
-        run: |
-          source ${VENV_DIR}/bin/activate
-          pytest -v --test_device=${{ matrix.test_device }} \
-            --junitxml=smoke-test-${{ matrix.name }}.xml \
-            app_tests/integration_tests/llm/shortfin/tinystories_llama2_25m_test.py \
-            --log-cli-level=INFO
+      # - name: Run LLM Smoke Test
+      #   run: |
+      #     source ${VENV_DIR}/bin/activate
+      #     pytest -v --test_device=${{ matrix.test_device }} \
+      #       --junitxml=smoke-test-${{ matrix.name }}.xml \
+      #       app_tests/integration_tests/llm/shortfin/tinystories_llama2_25m_test.py \
+      #       --log-cli-level=INFO
       - name: Upload Test Results
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -66,60 +66,61 @@ jobs:
           name: smoke-test-${{ matrix.name }}
           path: smoke-test-${{ matrix.name }}.xml
 
-  accuracy_test:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: llama3.1_8b_mi325
-            runs-on: linux-mi325-2gpu-ossci-nod-ai
-            test_device: gfx942
-            python-version: 3.11
-            irpa-path: "/amdshark-dev/ossci-models/llama_3_1/8b/fp16/llama_3_1_instruct_8b_fp16.irpa"
-            tokenizer-path: "/amdshark-dev/ossci-models/llama_3_1/8b/tokenizer/tokenizer.json"
-    name: "8b Accuracy Test (${{ matrix.name }})"
-    runs-on: ${{ matrix.runs-on }}
-    defaults:
-      run:
-        shell: bash
-    env:
-      PACKAGE_DOWNLOAD_DIR: ${{ github.workspace }}/.packages
-      VENV_DIR: ${{ github.workspace }}/.venv
-    steps:
-      - name: Run rocminfo
-        if: contains(matrix.test_device, 'gfx')
-        run: rocminfo
-      - name: "Checkout Code"
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - name: "Set up environment and install PkgCI Artifacts"
-        uses: ./.github/actions/pkgci-setup
-        with:
-          python-version: ${{matrix.python-version}}
-          artifact-run-id: ${{ inputs.artifact_run_id }}
-      - name: Install sentence_transformers
-        run: |
-          source ${VENV_DIR}/bin/activate
-          uv pip install sentence_transformers
-      - name: Log Package Versions
-        run: |
-          source ${VENV_DIR}/bin/activate
-          uv pip freeze
-      - name: Run Accuracy Test
-        continue-on-error: true  # xfail: expected to fail
-        run: |
-          source ${VENV_DIR}/bin/activate
-          IRPA_PATH=${{ matrix.irpa-path }}  \
-          TOKENIZER_PATH=${{ matrix.tokenizer-path }}  \
-          pytest -s --test_device=${{ matrix.test_device }} \
-            --junitxml=accuracy-${{ matrix.name }}.xml \
-            app_tests/integration_tests/llm/shortfin/accuracy/accuracy_test.py \
-            --log-cli-level=INFO
-      - name: Upload Test Results
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: accuracy-${{ matrix.name }}
-          path: accuracy-${{ matrix.name }}.xml
+  # shortfin disabled
+  # accuracy_test:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       include:
+  #         - name: llama3.1_8b_mi325
+  #           runs-on: linux-mi325-2gpu-ossci-nod-ai
+  #           test_device: gfx942
+  #           python-version: 3.11
+  #           irpa-path: "/amdshark-dev/ossci-models/llama_3_1/8b/fp16/llama_3_1_instruct_8b_fp16.irpa"
+  #           tokenizer-path: "/amdshark-dev/ossci-models/llama_3_1/8b/tokenizer/tokenizer.json"
+  #   name: "8b Accuracy Test (${{ matrix.name }})"
+  #   runs-on: ${{ matrix.runs-on }}
+  #   defaults:
+  #     run:
+  #       shell: bash
+  #   env:
+  #     PACKAGE_DOWNLOAD_DIR: ${{ github.workspace }}/.packages
+  #     VENV_DIR: ${{ github.workspace }}/.venv
+  #   steps:
+  #     - name: Run rocminfo
+  #       if: contains(matrix.test_device, 'gfx')
+  #       run: rocminfo
+  #     - name: "Checkout Code"
+  #       uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+  #     - name: "Set up environment and install PkgCI Artifacts"
+  #       uses: ./.github/actions/pkgci-setup
+  #       with:
+  #         python-version: ${{matrix.python-version}}
+  #         artifact-run-id: ${{ inputs.artifact_run_id }}
+  #     - name: Install sentence_transformers
+  #       run: |
+  #         source ${VENV_DIR}/bin/activate
+  #         uv pip install sentence_transformers
+  #     - name: Log Package Versions
+  #       run: |
+  #         source ${VENV_DIR}/bin/activate
+  #         uv pip freeze
+  #     - name: Run Accuracy Test
+  #       continue-on-error: true  # xfail: expected to fail
+  #       run: |
+  #         source ${VENV_DIR}/bin/activate
+  #         IRPA_PATH=${{ matrix.irpa-path }}  \
+  #         TOKENIZER_PATH=${{ matrix.tokenizer-path }}  \
+  #         pytest -s --test_device=${{ matrix.test_device }} \
+  #           --junitxml=accuracy-${{ matrix.name }}.xml \
+  #           app_tests/integration_tests/llm/shortfin/accuracy/accuracy_test.py \
+  #           --log-cli-level=INFO
+  #     - name: Upload Test Results
+  #       if: always()
+  #       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+  #       with:
+  #         name: accuracy-${{ matrix.name }}
+  #         path: accuracy-${{ matrix.name }}.xml
 
 
   # TODO: Figure out how to publish one summary over many pytest runs. This current test summary action doesn't work due to perms problems.
