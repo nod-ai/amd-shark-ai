@@ -92,7 +92,7 @@ def parse_arguments(argv=None):
     parser.add_argument(
         "--packages",
         help="Comma-delimited list of packages to install, in order",
-        default="amdshark-ai,shortfin,amdsharktank",
+        default="amdshark-ai,amdsharktank",
     )
     parser.add_argument(
         "--install-using-index",
@@ -243,8 +243,8 @@ def install_without_index(python_exe, packages, wheels):
     if "amdsharktank" in packages:
         requirements_files.append("amdsharktank/requirements.txt")
         requirements_files.append("amdsharktank/requirements-tests.txt")
-    if "shortfin" in packages:
-        requirements_files.append("shortfin/requirements-tests.txt")
+    # if "shortfin" in packages:
+    #     requirements_files.append("shortfin/requirements-tests.txt")
 
     for requirements_file in requirements_files:
         cmd = [
