@@ -38,7 +38,7 @@ REPO_ROOT = THIS_DIR.parent.parent
 VERSION_FILE_LOCAL = REPO_ROOT / "amdshark-ai/version_local.json"
 VERSION_FILE_amdsharkTANK = REPO_ROOT / "amdsharktank/version_local.json"
 VERSION_FILE_amdsharkTUNER = REPO_ROOT / "amdsharktuner/version_local.json"
-VERSION_FILE_SHORTFIN = REPO_ROOT / "shortfin/version_local.json"
+# VERSION_FILE_SHORTFIN = REPO_ROOT / "shortfin/version_local.json"
 REQUIREMENTS_TXT = REPO_ROOT / "amdshark-ai/requirements.txt"
 
 
@@ -61,8 +61,8 @@ amdsharkTANK_PACKAGE_VERSION = amdsharktank_version.get("package-version")
 amdsharktuner_version = load_version_info(VERSION_FILE_amdsharkTUNER)
 amdsharkTUNER_PACKAGE_VERSION = amdsharktuner_version.get("package-version")
 
-shortfin_version = load_version_info(VERSION_FILE_SHORTFIN)
-SHORTFIN_PACKAGE_VERSION = shortfin_version.get("package-version")
+# shortfin_version = load_version_info(VERSION_FILE_SHORTFIN)
+# SHORTFIN_PACKAGE_VERSION = shortfin_version.get("package-version")
 
 stable_packages_list = ["iree-base-compiler", "iree-base-runtime", "iree-turbine"]
 
@@ -82,11 +82,11 @@ if Version(PACKAGE_VERSION).is_prerelease:
         + args.version_suffix
         + "\n"
     )
-    requirements += (
-        "shortfin=="
-        + Version(SHORTFIN_PACKAGE_VERSION).base_version
-        + args.version_suffix
-    )
+    # requirements += (
+    #     "shortfin=="
+    #     + Version(SHORTFIN_PACKAGE_VERSION).base_version
+    #     + args.version_suffix
+    # )
 
     write_requirements(requirements)
 
@@ -105,6 +105,6 @@ else:
     requirements += (
         "amdsharktuner==" + Version(amdsharkTUNER_PACKAGE_VERSION).base_version + "\n"
     )
-    requirements += "shortfin==" + Version(SHORTFIN_PACKAGE_VERSION).base_version
+    # requirements += "shortfin==" + Version(SHORTFIN_PACKAGE_VERSION).base_version
 
     write_requirements(requirements)
