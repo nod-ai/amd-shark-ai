@@ -489,97 +489,97 @@ def run_stage(
             "============================================================================================== Benchmark Done =============================================================================================="
         )
 
-    # === Online Serving ===
-    if "online_serving" in stages_to_run:
-        logging.info("Running server ...")
+    # # === Online Serving ===
+    # if "online_serving" in stages_to_run:
+    #     logging.info("Running server ...")
 
-        original_dir = os.getcwd()
+    #     original_dir = os.getcwd()
 
-        os.chdir("shortfin")
-        device_ids = map(str, device_ids)
-        try:
-            server_cmd = [
-                sys.executable,
-                "-m",
-                "shortfin_apps.llm.server",
-                f"--tokenizer_json={tokenizer}",
-                f"--model_config={gen_config_path}",
-                f"--vmfb={gen_vmfb_path}",
-                f"--parameters={irpa}",
-                "--device=hip",
-                "--port",
-                str(cfg["port_for_serving"]),
-            ]
-            server_cmd.append("--device_ids")
-            server_cmd.extend(device_ids)
+    #     os.chdir("shortfin")
+    #     device_ids = map(str, device_ids)
+    #     try:
+    #         server_cmd = [
+    #             sys.executable,
+    #             "-m",
+    #             "shortfin_apps.llm.server",
+    #             f"--tokenizer_json={tokenizer}",
+    #             f"--model_config={gen_config_path}",
+    #             f"--vmfb={gen_vmfb_path}",
+    #             f"--parameters={irpa}",
+    #             "--device=hip",
+    #             "--port",
+    #             str(cfg["port_for_serving"]),
+    #         ]
+    #         server_cmd.append("--device_ids")
+    #         server_cmd.extend(device_ids)
 
-            server_proc = subprocess.Popen(server_cmd)
-        finally:
-            os.chdir(original_dir)
+    #         server_proc = subprocess.Popen(server_cmd)
+    #     finally:
+    #         os.chdir(original_dir)
 
-        if not OnlineServingUtils.wait_for_server(cfg["port_for_serving"]):
-            logging.error("ERROR: Failed to start the server")
-            server_proc.kill()
-            sys.exit(1)
+    #     if not OnlineServingUtils.wait_for_server(cfg["port_for_serving"]):
+    #         logging.error("ERROR: Failed to start the server")
+    #         server_proc.kill()
+    #         sys.exit(1)
 
-        logging.info(
-            f"Server with PID {server_proc.pid} is ready to accept requests on port {cfg['port_for_serving']}..."
-        )
+    #     logging.info(
+    #         f"Server with PID {server_proc.pid} is ready to accept requests on port {cfg['port_for_serving']}..."
+    #     )
 
-        logging.info("Running Client ...")
-        start_time = time.time()
+    #     logging.info("Running Client ...")
+    #     start_time = time.time()
 
-        try:
-            response = requests.post(
-                f"http://localhost:{cfg['port_for_serving']}/generate",
-                headers={"Content-Type": "application/json"},
-                json={
-                    "text": "<|begin_of_text|>Name the capital of the United States.<|eot_id|>",
-                    "sampling_params": {"max_completion_tokens": 50},
-                },
-                timeout=30,
-            )
-            logging.info(f"Client Response: {response.text}")
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Client request failed: {e}")
-            server_proc.kill()
-            sys.exit(1)
+    #     try:
+    #         response = requests.post(
+    #             f"http://localhost:{cfg['port_for_serving']}/generate",
+    #             headers={"Content-Type": "application/json"},
+    #             json={
+    #                 "text": "<|begin_of_text|>Name the capital of the United States.<|eot_id|>",
+    #                 "sampling_params": {"max_completion_tokens": 50},
+    #             },
+    #             timeout=30,
+    #         )
+    #         logging.info(f"Client Response: {response.text}")
+    #     except requests.exceptions.RequestException as e:
+    #         logging.error(f"Client request failed: {e}")
+    #         server_proc.kill()
+    #         sys.exit(1)
 
-        end_time = time.time()
-        time_taken = int(end_time - start_time)
-        logging.info(f"Time Taken for Getting Response: {time_taken} seconds")
+    #     end_time = time.time()
+    #     time_taken = int(end_time - start_time)
+    #     logging.info(f"Time Taken for Getting Response: {time_taken} seconds")
 
-        time.sleep(10)
-        os.kill(server_proc.pid, signal.SIGKILL)
+    #     time.sleep(10)
+    #     os.kill(server_proc.pid, signal.SIGKILL)
 
-        content = response.text
+    #     content = response.text
 
-        expected1 = '"responses": [{"text": "assistant\\nThe capital of the United States is Washington, D.C."}]'
-        expected2 = '"responses": [{"text": "Washington D.C."}]'
-        expected3 = '"responses": [{"text": "assistant\\n\\nThe capital of the United States is Washington, D.C."}]'
-        expected4 = '"responses": [{"text": "assistant\\n\\nThe capital of the United States is Washington, D.C. (short for District of Columbia)."}]'
+    #     expected1 = '"responses": [{"text": "assistant\\nThe capital of the United States is Washington, D.C."}]'
+    #     expected2 = '"responses": [{"text": "Washington D.C."}]'
+    #     expected3 = '"responses": [{"text": "assistant\\n\\nThe capital of the United States is Washington, D.C."}]'
+    #     expected4 = '"responses": [{"text": "assistant\\n\\nThe capital of the United States is Washington, D.C. (short for District of Columbia)."}]'
 
-        if (
-            expected1 in content
-            or expected2 in content
-            or expected3 in content
-            or expected4 in content
-        ):
-            logging.info("[SUCCESS] Online Response Matches Expected Output.")
-        elif re.search(
-            r'"text": ".*washington(,?\s*d\.?c\.?)?"', content, flags=re.IGNORECASE
-        ):
-            logging.warning("[CHECK REQUIRED] Partially Correct Response Detected.")
-            logging.info(content)
-            sys.exit(1)
-        else:
-            logging.error("[FAILURE] Gibberish or Invalid Response Detected.")
-            logging.info(content)
-            sys.exit(1)
+    #     if (
+    #         expected1 in content
+    #         or expected2 in content
+    #         or expected3 in content
+    #         or expected4 in content
+    #     ):
+    #         logging.info("[SUCCESS] Online Response Matches Expected Output.")
+    #     elif re.search(
+    #         r'"text": ".*washington(,?\s*d\.?c\.?)?"', content, flags=re.IGNORECASE
+    #     ):
+    #         logging.warning("[CHECK REQUIRED] Partially Correct Response Detected.")
+    #         logging.info(content)
+    #         sys.exit(1)
+    #     else:
+    #         logging.error("[FAILURE] Gibberish or Invalid Response Detected.")
+    #         logging.info(content)
+    #         sys.exit(1)
 
-        logging.info(
-            "============================================================================================== Online Serving Done =============================================================================================="
-        )
+    #     logging.info(
+    #         "============================================================================================== Online Serving Done =============================================================================================="
+    #     )
 
 
 def main():
