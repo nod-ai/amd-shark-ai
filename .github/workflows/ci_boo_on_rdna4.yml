@@ -22,6 +22,7 @@ on:
         default: 'shark-mkm-1-for-boo'
         type: choice
         options:
+          - shark-mkm-4-boo
           - shark-mkm-1-for-boo
           - shark41-rdna4
       run_prod_conv:
