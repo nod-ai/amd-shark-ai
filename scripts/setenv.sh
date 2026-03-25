@@ -71,7 +71,7 @@ if [[ $BUILD_TYPE = "nightly" ]]; then
     pip install amdsharktank
     # Force reinstall with latest dev wheel (keeps dependencies, only replaces amdsharktank)
     pip install --force-reinstall --no-index --find-links https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels amdsharktank --pre --no-deps
-    pip install shortfin --no-index -f https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels --pre
+    # pip install shortfin --no-index -f https://github.com/nod-ai/amd-shark-ai/releases/expanded_assets/dev-wheels --pre
     pip install dataclasses-json
     pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime iree-turbine
     pip uninstall --y wave-lang
