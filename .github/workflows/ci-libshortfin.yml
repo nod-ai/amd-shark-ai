@@ -8,10 +8,10 @@ name: CI - shortfin
 
 on:
   workflow_dispatch:
-  pull_request:
-  push:
-    branches:
-      - main
+  # pull_request:
+  # push:
+  #   branches:
+  #     - main
 
 permissions:
   contents: write
