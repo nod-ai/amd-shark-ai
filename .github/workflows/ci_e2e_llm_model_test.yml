@@ -54,7 +54,7 @@ jobs:
       - name: Install pip deps
         run: |
           bash scripts/setenv.sh --nightly
-          pip install -r requirements.txt -r requirements-iree-pinned.txt -e amdsharktank/ -e shortfin/
+          pip install -r requirements.txt -r requirements-iree-pinned.txt -e amdsharktank/
           mkdir -p output_artifacts
           pip freeze | grep -E 'iree|amdshark' > $(pwd)/output_artifacts/version.txt
 
