@@ -203,7 +203,7 @@ jobs:
             --backend=torch --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 100 --verbose --numerics-verbose \
             2>&1 | tee output_artifacts/all_proxy_miopen_iree.log || true
 
-    - name: Run Gemm
+    - name: Run Gemm with verify numerics
       if: always() && (github.event_name == 'schedule' || inputs.run_gemm == true)
       run: |
        echo "============ Running Gemm shape with MIOpen and IREE without tuning ======================================="
