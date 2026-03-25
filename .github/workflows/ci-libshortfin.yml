@@ -189,7 +189,7 @@ jobs:
 
   # Depends on all other jobs to provide an aggregate job status.
   ci_libshortfin_summary:
-    if: always()
+    if: false  # Shortfin disabled
     runs-on: ubuntu-24.04
     needs:
       - build-and-test
