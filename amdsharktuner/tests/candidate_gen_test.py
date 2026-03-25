@@ -74,15 +74,18 @@ def test_get_td_spec_contraction(tuner_ctx: common.TunerContext) -> None:
         reduction=[0, 0, 8],
         subgroup_basis=[[16, 16, 1], [0, 1, 2]],
     )
-    pipeline_attr = iree_codegen.DispatchLoweringPassPipelineAttr.get(
-        iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
-    )
     pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_num_stages=2)
     config_dict = rocm_common.get_translation_info_config(
         pipeline_options, waves_per_eu=8
     )
+    pipeline_attr = iree_gpu.PipelineAttr.get(
+        iree_gpu.LoweringPipeline.VectorDistribute
+    )
     translation_info = iree_codegen.TranslationInfoAttr.get(
-        pipeline_attr, None, [16, 16, 1], 16, config_dict
+        pass_pipeline=pipeline_attr,
+        workgroup_size=[16, 16, 1],
+        subgroup_size=16,
+        configuration=config_dict,
     )
     compilation_info = iree_codegen.CompilationInfoAttr.get(
         lowering_config, translation_info
@@ -123,7 +126,7 @@ def test_get_td_spec_contraction(tuner_ctx: common.TunerContext) -> None:
         "mma_kind = #iree_gpu.mma_layout<MFMA_F32_16x16x16_F16>" in matcher_sequence_str
     )
     assert "subgroup_basis = [[16, 16, 1], [0, 1, 2]]" in matcher_sequence_str
-    assert "pipeline = LLVMGPUVectorDistribute" in matcher_sequence_str
+    assert "pipeline = #iree_gpu.pipeline<VectorDistribute>" in matcher_sequence_str
     assert "workgroup_size = [16, 16, 1]" in matcher_sequence_str
     assert "subgroup_size = 16" in matcher_sequence_str
     assert "workgroup = [8, 8, 0]" in matcher_sequence_str
@@ -159,15 +162,18 @@ def test_get_td_spec_convolution(tuner_ctx: common.TunerContext) -> None:
         reduction=[0, 0, 0, 0, 1, 1, 16],
         subgroup_basis=[[1, 1, 1, 1, 1, 1, 4], [0, 1, 2, 3, 4, 5, 6]],
     )
-    pipeline_attr = iree_codegen.DispatchLoweringPassPipelineAttr.get(
-        iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
-    )
     pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_num_stages=0)
     config_dict = rocm_common.get_translation_info_config(
         pipeline_options, waves_per_eu=2
     )
+    pipeline_attr = iree_gpu.PipelineAttr.get(
+        iree_gpu.LoweringPipeline.VectorDistribute
+    )
     translation_info = iree_codegen.TranslationInfoAttr.get(
-        pipeline_attr, None, [256, 1, 1], 64, config_dict
+        pass_pipeline=pipeline_attr,
+        workgroup_size=[256, 1, 1],
+        subgroup_size=64,
+        configuration=config_dict,
     )
     compilation_info = iree_codegen.CompilationInfoAttr.get(
         lowering_config, translation_info
@@ -211,7 +217,7 @@ def test_get_td_spec_convolution(tuner_ctx: common.TunerContext) -> None:
         "subgroup_basis = [[1, 1, 1, 1, 1, 1, 4], [0, 1, 2, 3, 4, 5, 6]]"
         in matcher_sequence_str
     )
-    assert "pipeline = LLVMGPUVectorDistribute" in matcher_sequence_str
+    assert "pipeline = #iree_gpu.pipeline<VectorDistribute>" in matcher_sequence_str
     assert "workgroup_size = [256, 1, 1]" in matcher_sequence_str
     assert "subgroup_size = 64" in matcher_sequence_str
     assert "workgroup = [1, 1, 464, 320, 0, 0, 0]" in matcher_sequence_str
@@ -240,7 +246,7 @@ def test_instantiate_dispatch_tuner_with_matvec(tuner_ctx: common.TunerContext) 
 
     # Should return None since mat-vec has invalid dimensions (M=[]).
     dispatch_tuners = candidate_gen.get_supported_dispatch_tuners(
-        "gfx942", iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
+        "gfx942", iree_gpu.LoweringPipeline.VectorDistribute
     )
     result = candidate_gen.instantiate_dispatch_tuner(
         ir_module, tuner_ctx, dispatch_tuners
@@ -270,7 +276,7 @@ def test_instantiate_dispatch_tuner_with_unsupported_conv(
 
     # Should return None since conv with nchw_fchw layout is not supported.
     dispatch_tuners = candidate_gen.get_supported_dispatch_tuners(
-        "gfx942", iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
+        "gfx942", iree_gpu.LoweringPipeline.VectorDistribute
     )
     result = candidate_gen.instantiate_dispatch_tuner(
         ir_module, tuner_ctx, dispatch_tuners
@@ -294,7 +300,7 @@ def test_instantiate_dispatch_tuner_no_root_op(tuner_ctx: common.TunerContext) -
 
     # Should return None since no root_op is found.
     dispatch_tuners = candidate_gen.get_supported_dispatch_tuners(
-        "gfx942", iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
+        "gfx942", iree_gpu.LoweringPipeline.VectorDistribute
     )
     result = candidate_gen.instantiate_dispatch_tuner(
         ir_module, tuner_ctx, dispatch_tuners
@@ -323,7 +329,7 @@ def test_instantiate_dispatch_tuner_multiple_root_ops(
 
     # Should return None since multiple root_ops are found.
     dispatch_tuners = candidate_gen.get_supported_dispatch_tuners(
-        "gfx942", iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
+        "gfx942", iree_gpu.LoweringPipeline.VectorDistribute
     )
     result = candidate_gen.instantiate_dispatch_tuner(
         ir_module, tuner_ctx, dispatch_tuners
@@ -332,10 +338,10 @@ def test_instantiate_dispatch_tuner_multiple_root_ops(
 
 
 def test_get_supported_dispatch_tuners() -> None:
-    Pipeline = iree_codegen.DispatchLoweringPassPipeline
+    Pipeline = iree_gpu.LoweringPipeline
 
     assert candidate_gen.get_supported_dispatch_tuners(
-        "gfx942", Pipeline.LLVMGPUVectorDistribute
+        "gfx942", Pipeline.VectorDistribute
     ) == [
         rocm_tuners.ROCmContractionVectorDistributeTuner,
         rocm_tuners.ROCmConvolutionVectorDistributeTuner,
@@ -343,21 +349,16 @@ def test_get_supported_dispatch_tuners() -> None:
     ]
 
     assert candidate_gen.get_supported_dispatch_tuners(
-        "gfx942", Pipeline.LLVMGPUTileAndFuse
+        "gfx942", Pipeline.TileAndFuse
     ) == [
         rocm_tuners.ROCmContractionTileAndFuseTuner,
         rocm_tuners.ROCmConvolutionTileAndFuseTuner,
     ]
 
     assert (
-        candidate_gen.get_supported_dispatch_tuners(
-            "sm_80", Pipeline.LLVMGPUVectorDistribute
-        )
+        candidate_gen.get_supported_dispatch_tuners("sm_80", Pipeline.VectorDistribute)
         == []
     )
     assert (
-        candidate_gen.get_supported_dispatch_tuners(
-            "gfx942", Pipeline.LLVMGPUDistribute
-        )
-        == []
+        candidate_gen.get_supported_dispatch_tuners("gfx942", Pipeline.Distribute) == []
     )

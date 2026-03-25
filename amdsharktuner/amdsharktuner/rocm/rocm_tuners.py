@@ -8,7 +8,7 @@ import logging
 from typing import Optional
 
 from iree.compiler import ir  # type: ignore
-from iree.compiler.dialects import iree_codegen, linalg  # type: ignore
+from iree.compiler.dialects import iree_codegen, iree_gpu, linalg  # type: ignore
 
 from .. import common, constraint_generator, dispatch_parser, spec_builder, tuner_base
 from . import rocm_constraint_generators, rocm_parsers
@@ -234,20 +234,17 @@ class ROCmAttentionVectorDistributeTuner(
 
 
 def get_tuners_for_pipeline(
-    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline,
+    codegen_pipeline: iree_gpu.LoweringPipeline,
 ) -> list[type[tuner_base.DispatchTuner]]:
     """Get ROCm tuners for the given codegen pipeline."""
-    if (
-        codegen_pipeline
-        == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
-    ):
+    if codegen_pipeline == iree_gpu.LoweringPipeline.VectorDistribute:
         return [
             ROCmContractionVectorDistributeTuner,
             ROCmConvolutionVectorDistributeTuner,
             ROCmAttentionVectorDistributeTuner,
         ]
 
-    if codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
+    if codegen_pipeline == iree_gpu.LoweringPipeline.TileAndFuse:
         return [
             ROCmContractionTileAndFuseTuner,
             ROCmConvolutionTileAndFuseTuner,  # Handles both IGEMM and direct conv strategies

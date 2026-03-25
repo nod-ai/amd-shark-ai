@@ -93,7 +93,7 @@ def build_conv_to_igemm_info(
 
 
 class IGEMMConvolutionParser(dispatch_parser.ConvolutionOpInterfaceParser):
-    """Convolution parser for IGEMM (Implicit GEMM) with LLVMGPUTileAndFuse pipeline.
+    """Convolution parser for IGEMM (Implicit GEMM) with TileAndFuse pipeline.
 
     Supports all 2D convolution layouts. Flattens K dimension (filter + input channels).
     """
@@ -169,7 +169,7 @@ class IGEMMConvolutionParser(dispatch_parser.ConvolutionOpInterfaceParser):
 
 
 class InnerMNKConvolutionParser(dispatch_parser.ConvolutionOpInterfaceParser):
-    """Convolution parser for INNER_MNK with LLVMGPUVectorDistribute pipeline.
+    """Convolution parser for INNER_MNK with VectorDistribute pipeline.
 
     Supports NHWC_HWCF layout only. Uses conv dimensions directly without flattening.
     """

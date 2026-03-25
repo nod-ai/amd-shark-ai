@@ -34,7 +34,7 @@ def generate_generic_contraction_z3_constraints(
     lhs_type: common.ShapedType,
     rhs_type: common.ShapedType,
     res_type: common.ShapedType,
-    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
+    codegen_pipeline: iree_gpu.LoweringPipeline = iree_gpu.LoweringPipeline.VectorDistribute,
     num_subgroups: int = 4,
 ) -> list[constraint_generator.ConstraintSet]:
     z3_constants = constraint_generator.ContractionZ3Constants.from_sizes(matmul_size)
@@ -52,7 +52,7 @@ def generate_generic_contraction_z3_constraints(
     )
 
     match codegen_pipeline:
-        case iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute:
+        case iree_gpu.LoweringPipeline.VectorDistribute:
             constraints = (
                 rocm_dispatch_constraints.generate_vector_distribute_constraints(
                     matmul_size,
@@ -74,7 +74,7 @@ def generate_generic_contraction_z3_constraints(
                 v == 0
                 for v in z3_constants.subgroup_m_vals + z3_constants.subgroup_n_vals
             ]
-        case iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
+        case iree_gpu.LoweringPipeline.TileAndFuse:
             constraints = rocm_dispatch_constraints.generate_tile_and_fuse_constraints(
                 matmul_size,
                 lhs_type,
@@ -121,7 +121,7 @@ def generate_generic_contraction_solutions(
     res_type: common.ShapedType,
     dispatch_kind: common.DispatchKind,
     indexing_maps: list[ir.AffineMap],
-    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
+    codegen_pipeline: iree_gpu.LoweringPipeline = iree_gpu.LoweringPipeline.VectorDistribute,
     num_subgroups: int = 4,
     allowed_waves_per_eu: list[int] = [2],
     allowed_denorm_flushing: list[bool] = [False],
@@ -137,7 +137,7 @@ def generate_generic_contraction_solutions(
     # - Direct convolution: direct_conv_info is provided → use_igemm_convolution = False.
     # - Other cases (e.g., VectorDistribute innerMNK): leave as default (None).
     if (
-        codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
+        codegen_pipeline == iree_gpu.LoweringPipeline.TileAndFuse
         and dispatch_kind == common.DispatchKind.conv
     ):
         if igemm_details is not None:
@@ -159,7 +159,7 @@ def generate_generic_contraction_solutions(
     # that cannot be cast to AffineDimExpr. Skip padding for direct conv.
     overpadding_applied = False
     if (
-        codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
+        codegen_pipeline == iree_gpu.LoweringPipeline.TileAndFuse
         and igemm_details is not None
     ):
         # Use IGEMM contraction maps (dimensions are restructured).
@@ -362,7 +362,7 @@ def generate_generic_contraction_solutions(
         subgroup_basis_mapping = list(range(num_loops))
 
         match codegen_pipeline:
-            case iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
+            case iree_gpu.LoweringPipeline.TileAndFuse:
                 compilation_infos = (
                     rocm_dispatch_constraints.generate_tile_and_fuse_compilation_infos(
                         tuner_ctx,
@@ -379,7 +379,7 @@ def generate_generic_contraction_solutions(
                         padding_conv=padding_conv,
                     )
                 )
-            case iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute:
+            case iree_gpu.LoweringPipeline.VectorDistribute:
                 compilation_infos = rocm_dispatch_constraints.generate_vector_distribute_compilation_infos(
                     tuner_ctx,
                     mma_attr,
@@ -402,8 +402,8 @@ def generate_generic_contraction_solutions(
         knob_assignment = None
         for compilation_info in compilation_infos:
             if codegen_pipeline in (
-                iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
-                iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse,
+                iree_gpu.LoweringPipeline.VectorDistribute,
+                iree_gpu.LoweringPipeline.TileAndFuse,
             ):
                 knob_assignment = rocm_common.LLVMGPUContractionKnobs(
                     M=int(math.prod(M)),
@@ -436,7 +436,7 @@ def generate_attention_solutions(
     gpu_target_info: iree_gpu.TargetInfo,
     op_info: dispatch_parser.AttentionOpInfo,
     dispatch_kind: common.DispatchKind,
-    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute,
+    codegen_pipeline: iree_gpu.LoweringPipeline = iree_gpu.LoweringPipeline.VectorDistribute,
     num_subgroups: int = 4,
     allowed_waves_per_eu: list[int] = [2],
     allowed_denorm_flushing: list[bool] = [False],
@@ -444,8 +444,7 @@ def generate_attention_solutions(
 ) -> Iterator[list[common.TuningConfiguration]]:
     if (
         dispatch_kind != common.DispatchKind.attention
-        or codegen_pipeline
-        != iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
+        or codegen_pipeline != iree_gpu.LoweringPipeline.VectorDistribute
     ):
         return
 

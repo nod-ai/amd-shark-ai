@@ -195,13 +195,13 @@ def test_get_mmt_tile_sizes(tuner_ctx: common.TunerContext) -> None:
         reduction=[0, 0, 32],
         subgroup_basis=[[1, 4, 1], [0, 1, 2]],
     )
-    pipeline_attr = iree_codegen.DispatchLoweringPassPipelineAttr.get(
-        iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
-    )
     pipeline_options = iree_gpu.PipelineOptionsAttr.get()
     config_dict = rocm_common.get_translation_info_config(pipeline_options, 0)
+    pipeline_attr = iree_gpu.PipelineAttr.get(
+        iree_gpu.LoweringPipeline.VectorDistribute
+    )
     translation_info = iree_codegen.TranslationInfoAttr.get(
-        pipeline_attr, None, [], 0, config_dict
+        pass_pipeline=pipeline_attr, configuration=config_dict
     )
     compilation_info = iree_codegen.CompilationInfoAttr.get(
         lowering_config, translation_info
@@ -221,13 +221,16 @@ def test_get_conv_tile_sizes(tuner_ctx: common.TunerContext) -> None:
         reduction=[0, 0, 0, 0, 0, 0, 16],
         subgroup_basis=[[1, 1, 1, 1, 1, 1, 4], [0, 1, 2, 3, 4, 5, 6]],
     )
-    pipeline_attr = iree_codegen.DispatchLoweringPassPipelineAttr.get(
-        iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
-    )
     pipeline_options = iree_gpu.PipelineOptionsAttr.get()
     config_dict = rocm_common.get_translation_info_config(pipeline_options, 1)
+    pipeline_attr = iree_gpu.PipelineAttr.get(
+        iree_gpu.LoweringPipeline.VectorDistribute
+    )
     translation_info = iree_codegen.TranslationInfoAttr.get(
-        pipeline_attr, None, [256, 1, 1], 64, config_dict
+        pass_pipeline=pipeline_attr,
+        workgroup_size=[256, 1, 1],
+        subgroup_size=64,
+        configuration=config_dict,
     )
     compilation_info = iree_codegen.CompilationInfoAttr.get(
         lowering_config, translation_info
