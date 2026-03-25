@@ -105,7 +105,8 @@ jobs:
         mkdir -p output_artifacts
         pip install --index-url https://rocm.nightlies.amd.com/v2/gfx120X-all/ torch==2.9.1+rocm7.12.0a20260208
         pip install "git+https://github.com/iree-org/iree-turbine.git"
-        pip install -f https://iree.dev/pip-release-links.html --upgrade --pre iree-base-compiler iree-base-runtime
+        pip uninstall -y iree-base-compiler iree-base-runtime
+        pip install --no-index --find-links https://iree.dev/pip-release-links.html iree-base-compiler iree-base-runtime --pre --no-deps
         pip freeze  > $(pwd)/output_artifacts/version.txt
 
     - name: Download config files

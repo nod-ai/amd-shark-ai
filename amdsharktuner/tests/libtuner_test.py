@@ -8,7 +8,7 @@ import argparse
 import math
 from unittest.mock import call, patch, MagicMock
 
-from iree.compiler.dialects import iree_codegen  # type: ignore
+from iree.compiler.dialects import iree_gpu  # type: ignore
 
 from amdsharktuner import common, libtuner
 
@@ -379,10 +379,8 @@ def test_baseline_result_handler_speedup():
 
 
 def test_validate_denorm_flushing_options():
-    tile_and_fuse = iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
-    vector_distribute = (
-        iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
-    )
+    tile_and_fuse = iree_gpu.LoweringPipeline.TileAndFuse
+    vector_distribute = iree_gpu.LoweringPipeline.VectorDistribute
 
     # Denorm flushing disabled: no change regardless of dispatch kind or pipeline.
     assert libtuner.validate_denorm_flushing_options(

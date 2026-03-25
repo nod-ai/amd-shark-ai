@@ -751,9 +751,9 @@ def find_collisions(
 def get_iree_codegen_pipeline(pipeline: CodegenPipelines):
     match pipeline:
         case CodegenPipelines.llvmgpu_vector_distribute:
-            return iree_codegen.DispatchLoweringPassPipeline.LLVMGPUVectorDistribute
+            return iree_gpu.LoweringPipeline.VectorDistribute
         case CodegenPipelines.llvmgpu_tile_and_fuse:
-            return iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse
+            return iree_gpu.LoweringPipeline.TileAndFuse
         case _:
             assert False, "unexpected codegen pipeline"
 
@@ -761,7 +761,7 @@ def get_iree_codegen_pipeline(pipeline: CodegenPipelines):
 def validate_denorm_flushing_options(
     allowed_denorm_flushing: list[bool],
     dispatch_kind: common.DispatchKind,
-    codegen_pipeline: iree_codegen.DispatchLoweringPassPipeline,
+    codegen_pipeline: iree_gpu.LoweringPipeline,
 ) -> list[bool]:
     """Validate denorm flushing options against dispatch kind and pipeline.
 
@@ -778,7 +778,7 @@ def validate_denorm_flushing_options(
         )
         return [False]
 
-    if codegen_pipeline == iree_codegen.DispatchLoweringPassPipeline.LLVMGPUTileAndFuse:
+    if codegen_pipeline == iree_gpu.LoweringPipeline.TileAndFuse:
         logging.warning(
             "Denorm flushing is only supported for the "
             "VectorDistribute pipeline, not TileAndFuse. "
