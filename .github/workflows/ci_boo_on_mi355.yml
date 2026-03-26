@@ -104,8 +104,6 @@ jobs:
 
     - name: Print System Information
       run: |
-        ls
-        exit 1
         echo "============ CPU Information ============"
         lscpu
         echo ""
