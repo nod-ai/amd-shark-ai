@@ -17,6 +17,7 @@
 name: CI - Boo on Mi355
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       commit_hash:
@@ -196,6 +197,10 @@ jobs:
        python3 --version
        python3 -c "import torch; props = torch.cuda.get_device_properties(0); print(props.name)"
        echo "=================================================="
+
+       echo "============running: modinfo amdgpu | grep ^version=============="
+       modinfo amdgpu | grep ^version
+       echo "================================================================="
 
     - name: Run Prod Conv with verify numerics
       if: always() && (github.event_name == 'schedule' || inputs.run_prod_conv == true)
