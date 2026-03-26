@@ -8,10 +8,10 @@ name: CI - shortfin
 
 on:
   workflow_dispatch:
-  pull_request:
-  push:
-    branches:
-      - main
+  # pull_request:
+  # push:
+  #   branches:
+  #     - main
 
 permissions:
   contents: write
@@ -30,6 +30,7 @@ env:
 
 jobs:
   build-and-test:
+    if: false  # Shortfin disabled
     name: "Unit tests :: ${{ matrix.name }} :: ${{ matrix.python-version }}"
     runs-on: ${{ matrix.runs-on }}
     defaults:
@@ -188,7 +189,7 @@ jobs:
 
   # Depends on all other jobs to provide an aggregate job status.
   ci_libshortfin_summary:
-    if: always()
+    if: false  # Shortfin disabled
     runs-on: ubuntu-24.04
     needs:
       - build-and-test

@@ -69,7 +69,7 @@ jobs:
           echo "version_suffix=${version_suffix}" >> $GITHUB_OUTPUT
           python3 build_tools/python_deploy/compute_local_version.py --version-suffix=${version_suffix} --write-json amdsharktank
           python3 build_tools/python_deploy/compute_local_version.py --version-suffix=${version_suffix} --write-json amdsharktuner
-          python3 build_tools/python_deploy/compute_local_version.py --version-suffix=${version_suffix} --write-json shortfin
+          # python3 build_tools/python_deploy/compute_local_version.py --version-suffix=${version_suffix} --write-json shortfin
           python3 build_tools/python_deploy/compute_common_version.py --version-suffix=${version_suffix} --write-json
 
       - name: Upload version_local.json files
@@ -79,7 +79,7 @@ jobs:
           path: |
             amdsharktank/version_local.json
             amdsharktuner/version_local.json
-            shortfin/version_local.json
+            # shortfin/version_local.json
             amdshark-ai/version_local.json
 
   build_packages:
@@ -107,26 +107,26 @@ jobs:
             platform: linux-x86_64
             package: amdsharktuner
             python-version: cp311-cp311  # Ignored (generic wheel), set for workflow naming
-          - runs-on: ubuntu-24.04
-            platform: linux-x86_64
-            package: shortfin
-            python-version: cp310-cp310
-          - runs-on: ubuntu-24.04
-            platform: linux-x86_64
-            package: shortfin
-            python-version: cp311-cp311
-          - runs-on: ubuntu-24.04
-            platform: linux-x86_64
-            package: shortfin
-            python-version: cp312-cp312
-          - runs-on: ubuntu-24.04
-            platform: linux-x86_64
-            package: shortfin
-            python-version: cp313-cp313
-          - runs-on: ubuntu-24.04
-            platform: linux-x86_64
-            package: shortfin
-            python-version: cp313-cp313t
+          # - runs-on: ubuntu-24.04
+          #   platform: linux-x86_64
+          #   package: shortfin
+          #   python-version: cp310-cp310
+          # - runs-on: ubuntu-24.04
+          #   platform: linux-x86_64
+          #   package: shortfin
+          #   python-version: cp311-cp311
+          # - runs-on: ubuntu-24.04
+          #   platform: linux-x86_64
+          #   package: shortfin
+          #   python-version: cp312-cp312
+          # - runs-on: ubuntu-24.04
+          #   platform: linux-x86_64
+          #   package: shortfin
+          #   python-version: cp313-cp313
+          # - runs-on: ubuntu-24.04
+          #   platform: linux-x86_64
+          #   package: shortfin
+          #   python-version: cp313-cp313t
 
           # TODO(#130): macOS platform
           # TODO(#130): Windows platform
@@ -178,13 +178,13 @@ jobs:
       run: |
         [ -e ./bindist/* ] && rm ./bindist/*
         bash ./c/amdsharktuner/build_tools/build_linux_package.sh
-    - name: Build shortfin (Linux x86_64, ${{ matrix.python-version }})
-      if: "matrix.package == 'shortfin' && matrix.platform == 'linux-x86_64'"
-      env:
-        OVERRIDE_PYTHON_VERSIONS: "${{ matrix.python-version }}"
-      run: |
-        [ -e ./bindist/* ] && rm ./bindist/*
-        ./c/shortfin/build_tools/build_linux_package.sh
+    # - name: Build shortfin (Linux x86_64, ${{ matrix.python-version }})
+    #   if: "matrix.package == 'shortfin' && matrix.platform == 'linux-x86_64'"
+    #   env:
+    #     OVERRIDE_PYTHON_VERSIONS: "${{ matrix.python-version }}"
+    #   run: |
+    #     [ -e ./bindist/* ] && rm ./bindist/*
+    #     ./c/shortfin/build_tools/build_linux_package.sh
 
     # Always upload to GitHub artifacts.
     - name: Upload python wheels
