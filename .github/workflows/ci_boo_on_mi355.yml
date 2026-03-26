@@ -193,6 +193,8 @@ jobs:
        echo "ROCR_VISIBLE_DEVICES=0" >> $GITHUB_ENV
        echo "=================================================="
        which pip
+       which python3
+       python3 --version
        python3 -c "import torch; props = torch.cuda.get_device_properties(0); print(props.name)"
        echo "=================================================="
 
