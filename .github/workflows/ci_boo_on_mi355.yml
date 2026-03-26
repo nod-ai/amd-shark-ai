@@ -127,6 +127,7 @@ jobs:
         #   --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
         #   -r .github/workflows/ci_boo_torch_pin.txt
         which pip
+        which python
         pip install "torch>=2.5,<=2.10.0" --index-url https://download.pytorch.org/whl/rocm7.1
 
     - name: Install IREE Nightly Packages
