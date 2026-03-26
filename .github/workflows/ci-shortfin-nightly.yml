@@ -8,9 +8,9 @@ name: CI - shortfin nightly
 
 on:
     workflow_dispatch:
-    schedule:
-      # All days of the week at 10:00 AM UTC = 02:00 AM PST / 03:00 AM PDT
-      - cron: "0 10 * * *"
+    # schedule:
+    #   # All days of the week at 10:00 AM UTC = 02:00 AM PST / 03:00 AM PDT
+    #   - cron: "0 10 * * *"
 
 concurrency:
   # A PR number if a pull request and otherwise the commit hash. This cancels

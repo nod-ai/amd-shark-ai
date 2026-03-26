@@ -111,20 +111,20 @@ jobs:
             --output-json $(pwd)/output_artifacts/consolidated_benchmark.json \
             --append-isl
 
-      - name: Run online serving
-        if: ${{ steps.export_compile.outcome == 'success' }}
-        run: |
-          export PATH=$PWD/iree-build/tools/:$PATH
-          export PYTHONPATH=$PWD/iree-build/compiler/bindings/python:$PWD/iree-build/runtime/bindings/python
-          cd shortfin
-          export ROCR_VISIBLE_DEVICES=0
-          bash ../scripts/run_serving.sh \
-             --irpa /amdshark-dev/ossci-models/llama_3_1/8b/fp16/llama_3_1_instruct_8b_fp16.irpa \
-             --tokenizer_json /amdshark-dev/ossci-models/llama_3_1/8b/tokenizer/tokenizer.json \
-             --vmfb ../output_artifacts/output.vmfb \
-             --model_config ../output_artifacts/config_attn.json \
-             --port 8900 | tee ../output_artifacts/serving.log
-          cd ..
+      # - name: Run online serving
+      #   if: ${{ steps.export_compile.outcome == 'success' }}
+      #   run: |
+      #     export PATH=$PWD/iree-build/tools/:$PATH
+      #     export PYTHONPATH=$PWD/iree-build/compiler/bindings/python:$PWD/iree-build/runtime/bindings/python
+      #     cd shortfin
+      #     export ROCR_VISIBLE_DEVICES=0
+      #     bash ../scripts/run_serving.sh \
+      #        --irpa /amdshark-dev/ossci-models/llama_3_1/8b/fp16/llama_3_1_instruct_8b_fp16.irpa \
+      #        --tokenizer_json /amdshark-dev/ossci-models/llama_3_1/8b/tokenizer/tokenizer.json \
+      #        --vmfb ../output_artifacts/output.vmfb \
+      #        --model_config ../output_artifacts/config_attn.json \
+      #        --port 8900 | tee ../output_artifacts/serving.log
+      #     cd ..
 
       - name: Run Offline serving :chat
         if: ${{ env.OFFLINE_SERVING == 'ENABLED' }}

@@ -123,16 +123,14 @@ jobs:
       run: |
         mkdir -p output_artifacts
         echo "OUTPUT_ARTIFACTS=$PWD/output_artifacts" >> $GITHUB_ENV
-        python -m pip install --force-reinstall --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ torch==2.10.0+rocm7.13.0a20260319
-
-        pip install "git+https://github.com/iree-org/iree-turbine.git"
+        python -m pip install \
+          --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
+          -r .github/workflows/ci_boo_torch_pin.txt
 
     - name: Install IREE Nightly Packages
       if: ${{ !inputs.commit_hash && !inputs.iree_version_tag }}
       run: |
-        pip uninstall -y iree-base-compiler iree-base-runtime
-        pip install --no-index --find-links https://iree.dev/pip-release-links.html iree-base-compiler iree-base-runtime --pre --no-deps
-        pip freeze  > $OUTPUT_ARTIFACTS/version.txt
+        pip install --no-index --find-links https://iree.dev/pip-release-links.html --pre --no-deps iree-base-compiler iree-base-runtime
 
     - name: Install IREE from version tag
       if: ${{ inputs.iree_version_tag != '' }}
@@ -142,7 +140,6 @@ jobs:
           --upgrade --pre \
           iree-base-compiler==$IREE_VERSION_TAG \
           iree-base-runtime==$IREE_VERSION_TAG
-        pip freeze  > $OUTPUT_ARTIFACTS/version.txt
 
     - name: Install IREE from source
       if: ${{ inputs.commit_hash != '' }}
@@ -156,15 +153,21 @@ jobs:
         export IREE_TARGET_BACKEND_ROCM=ON
         export IREE_ROCM_TEST_TARGET_CHIP=""
         pip install -v runtime/ compiler/
-        pip freeze  > $OUTPUT_ARTIFACTS/version.txt
-        HASH=$(git -C . rev-parse --short HEAD)
-        sed -i \
-          -e "s|iree-base-compiler @ file://[^ ]*|iree-base-compiler $HASH|g" \
-          -e "s|iree-base-runtime @ file://[^ ]*|iree-base-runtime $HASH|g" \
-          $OUTPUT_ARTIFACTS/version.txt || true
+        echo "IREE_SOURCE_HASH=$(git -C . rev-parse --short HEAD)" >> $GITHUB_ENV
+
+    - name: Install iree-turbine
+      run: pip install "git+https://github.com/iree-org/iree-turbine.git"
 
     - name: Print packages
-      run: cat $OUTPUT_ARTIFACTS/version.txt
+      run: |
+        pip freeze > $OUTPUT_ARTIFACTS/version.txt
+        if [ -n "$IREE_SOURCE_HASH" ]; then
+          sed -i \
+            -e "s|iree-base-compiler @ file://[^ ]*|iree-base-compiler $IREE_SOURCE_HASH|g" \
+            -e "s|iree-base-runtime @ file://[^ ]*|iree-base-runtime $IREE_SOURCE_HASH|g" \
+            $OUTPUT_ARTIFACTS/version.txt
+        fi
+        cat $OUTPUT_ARTIFACTS/version.txt
 
     - name: Download config files
       run: |
@@ -200,13 +203,13 @@ jobs:
             --backend=torch --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 100 --verbose --numerics-verbose \
             2>&1 | tee output_artifacts/all_proxy_miopen_iree.log || true
 
-    - name: Run Gemm
+    - name: Run Gemm with verify numerics
       if: always() && (github.event_name == 'schedule' || inputs.run_gemm == true)
       run: |
        echo "============ Running Gemm shape with MIOpen and IREE without tuning ======================================="
        iree-boo-driver \
             --commands-file amd-shark-ai-reports/boo/gemm_config.txt --csv output_artifacts/gemm_miopen_iree.csv \
-            --backend=torch --backend=iree_boo_experimental --verbose \
+            --backend=torch --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 100 --verbose --numerics-verbose \
             2>&1 | tee output_artifacts/gemm_miopen_iree.log || true
 
     - name: Run Batch Norm with verify numerics
