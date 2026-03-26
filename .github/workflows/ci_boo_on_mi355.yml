@@ -199,6 +199,7 @@ jobs:
        echo "=================================================="
 
        echo "============running: modinfo amdgpu | grep ^version=============="
+       sudo apt install kmod -y
        modinfo amdgpu | grep ^version
        echo "================================================================="
 
