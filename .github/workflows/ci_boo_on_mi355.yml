@@ -13,6 +13,7 @@
 # 4. batch norm with untuned boo and native pytorch
 # 5. prod(nchw) with untuned boo and native pytorch
 # 6. proxy(nchw) with untuned boo and native pytorch
+# 7. Attention sharpes with boo
 
 name: CI - Boo on Mi355
 
