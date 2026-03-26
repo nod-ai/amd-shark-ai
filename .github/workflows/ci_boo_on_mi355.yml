@@ -79,7 +79,7 @@ jobs:
     name: "Boo on Mi355"
     strategy:
       matrix:
-        version: ["3.10"]
+        version: ["3.10.12"]
       fail-fast: false
     runs-on: linux-mi355-1gpu-ossci-nod-ai
     defaults:
