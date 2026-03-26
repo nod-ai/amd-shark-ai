@@ -64,7 +64,7 @@ on:
         description: "Run Attention"
         type: boolean
         default: false
-      
+
   schedule:
     - cron: "45 11 * * *"
 
