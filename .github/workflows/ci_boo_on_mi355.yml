@@ -79,7 +79,7 @@ jobs:
     name: "Boo on Mi355"
     strategy:
       matrix:
-        version: [3.12]
+        version: [3.10]
       fail-fast: false
     runs-on: linux-mi355-1gpu-ossci-nod-ai
     defaults:
@@ -128,6 +128,7 @@ jobs:
         #   -r .github/workflows/ci_boo_torch_pin.txt
         which pip
         which python
+        python --version
         pip install "torch>=2.5,<=2.10.0" --index-url https://download.pytorch.org/whl/rocm7.1
 
     - name: Install IREE Nightly Packages
