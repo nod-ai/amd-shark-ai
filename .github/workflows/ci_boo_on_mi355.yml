@@ -247,7 +247,7 @@ jobs:
     #         2>&1 | tee output_artifacts/all_proxy_miopen_iree_nchw.log || true
 
     - name: Run Attention
-      if: always() && (github.event_name == 'schedule' || inputs.run_attention == true)
+      if: always() # && (github.event_name == 'schedule' || inputs.run_attention == true)
       run: |
           ls
           echo "============ Running Attention shapes with IREE without tuning ==================="
