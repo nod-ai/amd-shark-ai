@@ -19,9 +19,10 @@ on:
       runner:
         description: 'Runner to use for the job'
         required: false
-        default: 'shark-mkm-1-for-boo'
+        default: 'shark-mkm-4-boo'
         type: choice
         options:
+          - shark-mkm-4-boo
           - shark-mkm-1-for-boo
           - shark41-rdna4
       run_prod_conv:
@@ -45,7 +46,7 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: "54 11 * * *"
+    - cron: "36 5 * * *"
 
 permissions:
   contents: write
@@ -66,7 +67,7 @@ jobs:
       matrix:
         version: [3.12]
       fail-fast: false
-    runs-on: ${{ github.event.inputs.runner || 'shark-mkm-1-for-boo' }}
+    runs-on: ${{ github.event.inputs.runner || 'shark-mkm-4-boo' }}
     defaults:
       run:
         shell: bash
