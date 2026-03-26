@@ -163,7 +163,11 @@ jobs:
         echo "IREE_SOURCE_HASH=$(git -C . rev-parse --short HEAD)" >> $GITHUB_ENV
 
     - name: Install iree-turbine
-      run: pip install "git+https://github.com/iree-org/iree-turbine.git"
+      run: |
+        # pip install "git+https://github.com/iree-org/iree-turbine.git"
+        git clone -b users/yrathore/fix_for_attention https://github.com/yash-amd/iree-turbine.git
+        cd iree-turbine && pip install -e .
+        cd ..
 
     - name: Print packages
       run: |
@@ -252,7 +256,6 @@ jobs:
           ls
           echo "============ Running Attention shapes with IREE without tuning ==================="
           which pip
-          exit 0
           pip install -r amdsharktuner/requirements-dev.txt
           # pip install -r amdsharktuner/requirements-test.txt
           iree-boo-driver \
