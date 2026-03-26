@@ -80,8 +80,8 @@ jobs:
           echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
           # Install amdshark deps
-          bash scripts/setenv.sh --source
-          hf auth login --token ${{ secrets.HF_FLUX_TOKEN }}
+          # bash scripts/setenv.sh --source
+          # hf auth login --token ${{ secrets.HF_FLUX_TOKEN }}
 
       - name: Check runner health
         run: |
@@ -89,7 +89,9 @@ jobs:
           echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
           rocm-smi
           rocminfo
-          iree-run-module --list_devices
+          # iree-run-module --list_devices
+          rocminfo | grep -i "Marketing Name"
+          exit 1
 
       - name: E2E Test 405b without topk
         id: llama_405b_fp4_without_topk_test
