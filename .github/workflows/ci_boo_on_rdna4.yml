@@ -205,7 +205,7 @@ jobs:
     - name: Run Attention
       if: always() && (github.event_name == 'schedule' || inputs.run_attention == true)
       run: |
-       echo "============ Running attention shapes with MIOpen and IREE without tuning ==================="
+       echo "============ Running attention shapes with Inductor and IREE without tuning ==================="
        pip install -r amdsharktuner/requirements-dev.txt
        # pip install -r amdsharktuner/requirements-test.txt
        iree-boo-driver \
