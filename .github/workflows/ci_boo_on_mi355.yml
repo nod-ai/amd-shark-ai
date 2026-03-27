@@ -254,7 +254,7 @@ jobs:
           iree-boo-driver \
             --commands-file amd-shark-ai-reports/boo/attention_shapes.txt --csv output_artifacts/attention_shapes_miopen_iree.csv \
             --backend inductor --backend=iree_boo_experimental \
-            > output_artifacts/attention_shapes.log || true
+            2>&1 | tee output_artifacts/attention_shapes.log || true
 
     - name: Run hipblaslt-bench
       if: always() && (github.event_name == 'schedule' || inputs.run_hipblaslt == true)
