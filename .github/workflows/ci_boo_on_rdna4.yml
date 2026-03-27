@@ -207,7 +207,6 @@ jobs:
       run: |
        echo "============ Running attention shapes with Inductor and IREE without tuning ==================="
        pip install -r amdsharktuner/requirements-dev.txt
-       # pip install -r amdsharktuner/requirements-test.txt
        iree-boo-driver \
             --commands-file amd-shark-ai-reports/boo/attention_shapes.txt --csv output_artifacts/rdna4_attention_shapes_miopen_iree.csv \
             --backend inductor --backend=iree_boo_experimental \
