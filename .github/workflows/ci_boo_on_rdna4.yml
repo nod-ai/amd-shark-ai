@@ -10,7 +10,7 @@
 # 1. proxy with untuned boo and native pytorch
 # 2. prod with untuned boo and native pytorch
 # 3. gemms with untuned boo and native pytorch
-# 4. attention shapes with untuned boo and native pytorch
+# 4. attention shapes with untuned boo and inductor
 
 name: CI - Boo on RDNA4
 
