@@ -113,8 +113,10 @@ jobs:
         python -m pip install \
           --index-url https://rocm.nightlies.amd.com/v2/gfx120X-all/ \
           -r .github/workflows/ci_boo_torch_pin.txt
-        pip install --no-index --find-links https://iree.dev/pip-release-links.html --pre --no-deps iree-base-compiler iree-base-runtime
-        pip install "git+https://github.com/iree-org/iree-turbine.git"
+        # pip install --no-index --find-links https://iree.dev/pip-release-links.html --pre --no-deps iree-base-compiler iree-base-runtime
+        pip install   --find-links https://iree.dev/pip-release-links.html iree-base-compiler==3.11.0rc20260212 iree-base-runtime==3.11.0rc20260212 iree-turbine==3.10.0rc20260212
+        # pip install "git+https://github.com/iree-org/iree-turbine.git"
+        pip freeze
         pip freeze > $(pwd)/output_artifacts/version.txt
 
     - name: Download config files
