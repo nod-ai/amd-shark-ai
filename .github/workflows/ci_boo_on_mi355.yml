@@ -18,7 +18,6 @@
 name: CI - Boo on Mi355
 
 on:
-  pull_request:
   workflow_dispatch:
     inputs:
       commit_hash:
