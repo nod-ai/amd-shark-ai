@@ -168,6 +168,16 @@ def test_generate_attention_solutions(
         )
         assert isinstance(config_list[1].configuration, ir.DictAttr)
 
+        # Verify marker attributes are not present (removed per IREE PR #23633).
+        decomp_str = str(config_list[1].configuration)
+        assert "attention_qk_matmul" not in decomp_str
+        assert "attention_pv_matmul" not in decomp_str
+
+        # Verify col_major is derived from use_col_major (QK acc matches PV RHS).
+        # This is separate from can_reuse_qk_output_for_pv_input which drives
+        # prefetch (QK acc matches either PV LHS or RHS).
+        has_col_major = "col_major = true" in decomp_str
+
         # Verify that prefetch_num_stages is set based on layout matching.
         compilation_info = config_list[0].configuration
         translation_info = compilation_info.translation_info
@@ -179,6 +189,15 @@ def test_generate_attention_solutions(
             assert isinstance(
                 pipeline_options.prefetch_num_stages, int
             ), "prefetch_num_stages must be explicitly set to an int"
+
+            # col_major implies prefetch is enabled (RHS match is a subset of
+            # LHS-or-RHS match), but prefetch can be enabled without col_major
+            # (when only LHS matches).
+            prefetch = pipeline_options.prefetch_num_stages
+            if has_col_major:
+                assert (
+                    prefetch == 2
+                ), f"col_major=true implies layout reuse, so prefetch=2, got {prefetch}"
 
 
 def test_generate_solutions_tile_and_fuse_contraction_padding(

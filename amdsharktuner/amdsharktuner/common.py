@@ -9,8 +9,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from types import TracebackType
-from typing import Optional, Any, Callable, Protocol
-from abc import ABC
+from typing import Generic, Optional, Any, Callable, Protocol, TypeVar
+from abc import ABC, abstractmethod
 import os
 import time
 import z3  # type: ignore
@@ -558,3 +558,64 @@ def calculate_padded_dimensions(
 
     any_padding_applied = M_padded != M or N_padded != N
     return M_padded, N_padded, any_padding_applied
+
+
+class KnobSymbols(dict[str, z3.ExprRef]):
+    """Maps knob names to z3 symbolic constants (pre-solving)."""
+
+    pass
+
+
+class SMTKnobAssignment(dict[str, int]):
+    """Maps knob names to integer values (post-solving)."""
+
+    # TODO(Amily): temporarily named `SMTKnobAssignment` to avoid confusion
+    # with `KnobAssignment`. Rename after constraints are refactored.
+
+    pass
+
+
+_AttrT = TypeVar("_AttrT", bound=ir.Attribute)
+
+
+@dataclass(frozen=True, slots=True)
+class AttrKey(Generic[_AttrT]):
+    """A compilation info dictionary key with its expected MLIR attribute type."""
+
+    name: str
+    attr_type: type[_AttrT]
+
+
+class CompilationInfoBuilder(ABC):
+    """Abstract base for building iree_codegen.CompilationInfoAttr.
+
+    Each backend subclass converts a ConstraintsOp and its SMT solver knob
+    assignments into a CompilationInfoAttr. The inner LoweringConfig and
+    TranslationInfo classes declare AttrKey constants that map MLIR attribute
+    key names to their expected ir attribute types.
+
+    For example, given a ConstraintsOp for GPU backend with:
+        knobs = {workgroup = #iree_codegen.smt.int_knob<"wg_m">}
+
+    The LoweringConfig subclass should declare:
+        WORKGROUP: AttrKey[ir.ArrayAttr] = AttrKey("workgroup", ir.ArrayAttr)
+    """
+
+    class LoweringConfig(ABC):
+        """Key names for the backend's lowering config attribute dictionary."""
+
+        pass
+
+    class TranslationInfo(ABC):
+        """Key names for the backend's translation info attribute fields."""
+
+        pass
+
+    @classmethod
+    @abstractmethod
+    def build_compilation_info_attr(
+        cls,
+        constraints_op: iree_codegen.ConstraintsOp,
+        knob_assignment: SMTKnobAssignment,
+    ) -> iree_codegen.CompilationInfoAttr:
+        ...

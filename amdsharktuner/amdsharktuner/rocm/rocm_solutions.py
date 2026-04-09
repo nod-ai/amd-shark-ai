@@ -460,9 +460,13 @@ def generate_attention_solutions(
     sg_m_cnt = z3.Int("sg_m_cnt")
     sg_n_cnt = z3.Int("sg_n_cnt")
 
-    # Used to determine if prefetch_num_stages can be enabled.
-    # See: https://github.com/iree-org/iree/blob/411aa64083a2303946b4d2d72d00e6a6814fbafb/compiler/src/iree/compiler/Codegen/LLVMGPU/KernelConfig.cpp#L974-L976.
+    # Used for shared memory estimation: if QK acc matches either PV LHS or
+    # RHS layout, PV LHS doesn't need its own shared memory allocation.
     can_reuse_qk_output_for_pv_input = z3.Bool("can_reuse_qk_output_for_pv_input")
+    # Used for col_major on MMA attrs: true when QK acc matches PV RHS layout,
+    # allowing col_major to redirect P to PV's RHS port for register reuse.
+    # See: KernelConfig.cpp useColMajor = matchLayout(qkOutLayout, pvRhsLayout).
+    use_col_major = z3.Bool("use_col_major")
 
     all_vars = (
         [m_var]
@@ -495,6 +499,7 @@ def generate_attention_solutions(
             sg_m_cnt,
             sg_n_cnt,
             can_reuse_qk_output_for_pv_input,
+            use_col_major,
             gpu_target_info,
         )
     )
@@ -509,6 +514,10 @@ def generate_attention_solutions(
         def lookup(var):
             return model[var].as_long()
 
+        # col_major: QK acc layout matches PV RHS layout, so col_major
+        # redirects P to PV's RHS port for direct register reuse.
+        col_major = bool(model[use_col_major])
+
         qk_intrinsic_mnk_shape = (
             lookup(qk_intrinsic_mn),
             lookup(qk_intrinsic_mn),
@@ -520,6 +529,7 @@ def generate_attention_solutions(
             op_info.qk_matmul.lhs_type,
             op_info.qk_matmul.rhs_type,
             gpu_target_info.mma_intrinsics,
+            col_major=col_major,
         )
 
         pv_intrinsic_mnk_shape = (
@@ -533,6 +543,7 @@ def generate_attention_solutions(
             op_info.pv_matmul.lhs_type,
             op_info.pv_matmul.rhs_type,
             gpu_target_info.mma_intrinsics,
+            col_major=col_major,
         )
 
         # Get workgroup tile sizes.
@@ -591,7 +602,7 @@ def generate_attention_solutions(
 
         workgroup_size = lookup(sg_m_cnt) * lookup(sg_n_cnt) * lookup(subgroup_size)
 
-        # Set prefetch_num_stages based on whether layouts match.
+        # Set prefetch_num_stages based on whether QK output can be reused.
         # 0/1 = disable prefetching, 2 = two-stage pipeline (default),
         # 3 = three-stage pipeline (separate read, write, compute stages).
         layouts_match = bool(model[can_reuse_qk_output_for_pv_input])

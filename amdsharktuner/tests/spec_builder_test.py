@@ -208,8 +208,8 @@ def test_spec_builder(tuner_ctx: common.TunerContext) -> None:
     )
     decomposition_config = ir.DictAttr.get(
         {
-            "qk_attrs": ir.DictAttr.get({"attention_qk_matmul": qk_config}),
-            "pv_attrs": ir.DictAttr.get({"attention_pv_matmul": pv_config}),
+            "qk_attrs": ir.DictAttr.get({"lowering_config": qk_config}),
+            "pv_attrs": ir.DictAttr.get({"lowering_config": pv_config}),
         }
     )
     config_list = [

@@ -484,6 +484,7 @@ def test_generate_attention_vector_distribute_constraints(
     subgroup_m_count = z3.Int("subgroup_m_count")
     subgroup_n_count = z3.Int("subgroup_n_count")
     can_reuse_qk_output_for_pv_input = z3.Bool("can_reuse_qk_output_for_pv_input")
+    use_col_major = z3.Bool("use_col_major")
 
     constraints = (
         rocm_dispatch_constraints.generate_attention_vector_distribute_constraints(
@@ -500,6 +501,7 @@ def test_generate_attention_vector_distribute_constraints(
             subgroup_m_count=subgroup_m_count,
             subgroup_n_count=subgroup_n_count,
             can_reuse_qk_output_for_pv_input=can_reuse_qk_output_for_pv_input,
+            use_col_major=use_col_major,
             gpu_target_info=gpu_target_info,
         )
     )
@@ -507,6 +509,26 @@ def test_generate_attention_vector_distribute_constraints(
     solver = z3.Solver()
     solver.add(constraints)
     assert solver.check() == z3.sat
+
+    # Verify use_col_major implies can_reuse_qk_output_for_pv_input.
+    # col_major (RHS match) is a subset of layout reuse (LHS or RHS match).
+    solver_col_major_implies_reuse = z3.Solver()
+    solver_col_major_implies_reuse.add(constraints)
+    solver_col_major_implies_reuse.add(use_col_major == True)
+    solver_col_major_implies_reuse.add(can_reuse_qk_output_for_pv_input == False)
+    assert (
+        solver_col_major_implies_reuse.check() == z3.unsat
+    ), "use_col_major=true must imply can_reuse_qk_output_for_pv_input=true"
+
+    # Verify use_col_major and can_reuse can differ: reuse=true without col_major
+    # is possible when only the LHS layout matches.
+    solver_reuse_without_col_major = z3.Solver()
+    solver_reuse_without_col_major.add(constraints)
+    solver_reuse_without_col_major.add(can_reuse_qk_output_for_pv_input == True)
+    solver_reuse_without_col_major.add(use_col_major == False)
+    # This may or may not be sat depending on whether any intrinsic has
+    # QK acc matching PV LHS but not PV RHS. Just verify no crash.
+    solver_reuse_without_col_major.check()
 
     # Add a conflicting constraint for invalid test.
     constraints.append(m_tile > 1024)

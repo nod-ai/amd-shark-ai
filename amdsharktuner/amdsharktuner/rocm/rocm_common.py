@@ -175,17 +175,8 @@ def get_attention_decomposition_config(
     """
 
     ctx = tuner_ctx.mlir_ctx
-    qk_attrs_dict = {
-        "attention_qk_matmul": ir.UnitAttr.get(ctx),
-        "lowering_config": qk_lowering_config,
-    }
-    qk_attr_dict = ir.DictAttr.get(qk_attrs_dict, context=ctx)
-
-    pv_attrs_dict = {
-        "attention_pv_matmul": ir.UnitAttr.get(ctx),
-        "lowering_config": pv_lowering_config,
-    }
-    pv_attr_dict = ir.DictAttr.get(pv_attrs_dict, context=ctx)
+    qk_attr_dict = ir.DictAttr.get({"lowering_config": qk_lowering_config}, context=ctx)
+    pv_attr_dict = ir.DictAttr.get({"lowering_config": pv_lowering_config}, context=ctx)
 
     decomposition_config_dict = {
         "qk_attrs": qk_attr_dict,
