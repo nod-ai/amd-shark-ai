@@ -67,7 +67,7 @@ jobs:
         id: version_local
         run: |
           echo "version_suffix=${version_suffix}" >> $GITHUB_OUTPUT
-          python3 build_tools/python_deploy/compute_local_version.py --version-suffix=${version_suffix} --write-json amdsharktank
+          # python3 build_tools/python_deploy/compute_local_version.py --version-suffix=${version_suffix} --write-json amdsharktank
           python3 build_tools/python_deploy/compute_local_version.py --version-suffix=${version_suffix} --write-json amdsharktuner
           # python3 build_tools/python_deploy/compute_local_version.py --version-suffix=${version_suffix} --write-json shortfin
           python3 build_tools/python_deploy/compute_common_version.py --version-suffix=${version_suffix} --write-json
@@ -77,7 +77,7 @@ jobs:
         with:
           name: version_local_files
           path: |
-            amdsharktank/version_local.json
+            # amdsharktank/version_local.json
             amdsharktuner/version_local.json
             # shortfin/version_local.json
             amdshark-ai/version_local.json
@@ -99,10 +99,10 @@ jobs:
             platform: linux-x86_64
             package: amdshark-ai
             python-version: cp311-cp311  # Ignored (generic wheel), set for workflow naming
-          - runs-on: ubuntu-24.04
-            platform: linux-x86_64
-            package: amdsharktank
-            python-version: cp311-cp311  # Ignored (generic wheel), set for workflow naming
+          # - runs-on: ubuntu-24.04
+          #   platform: linux-x86_64
+          #   package: amdsharktank
+          #   python-version: cp311-cp311  # Ignored (generic wheel), set for workflow naming
           - runs-on: ubuntu-24.04
             platform: linux-x86_64
             package: amdsharktuner
@@ -168,11 +168,11 @@ jobs:
         [ -e ./bindist/* ] && rm ./bindist/*
         ./c/build_tools/python_deploy/write_requirements.py --version-suffix=${{ needs.setup_metadata.outputs.version_suffix }}
         ./c/amdshark-ai/build_tools/build_linux_package.sh
-    - name: Build amdsharktank (Linux x86_64)
-      if: "matrix.package == 'amdsharktank' && matrix.platform == 'linux-x86_64'"
-      run: |
-        [ -e ./bindist/* ] && rm ./bindist/*
-        ./c/amdsharktank/build_tools/build_linux_package.sh
+    # - name: Build amdsharktank (Linux x86_64)
+    #   if: "matrix.package == 'amdsharktank' && matrix.platform == 'linux-x86_64'"
+    #   run: |
+    #     [ -e ./bindist/* ] && rm ./bindist/*
+    #     ./c/amdsharktank/build_tools/build_linux_package.sh
     - name: Build amdsharktuner (Linux x86_64)
       if: "matrix.package == 'amdsharktuner' && matrix.platform == 'linux-x86_64'"
       run: |
