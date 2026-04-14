@@ -36,7 +36,7 @@ THIS_DIR = Path(__file__).parent
 REPO_ROOT = THIS_DIR.parent.parent
 
 VERSION_FILE_LOCAL = REPO_ROOT / "amdshark-ai/version_local.json"
-VERSION_FILE_amdsharkTANK = REPO_ROOT / "amdsharktank/version_local.json"
+# VERSION_FILE_amdsharkTANK = REPO_ROOT / "amdsharktank/version_local.json"
 VERSION_FILE_amdsharkTUNER = REPO_ROOT / "amdsharktuner/version_local.json"
 # VERSION_FILE_SHORTFIN = REPO_ROOT / "shortfin/version_local.json"
 REQUIREMENTS_TXT = REPO_ROOT / "amdshark-ai/requirements.txt"
@@ -55,8 +55,8 @@ def write_requirements(requirements):
 metapackage_version = load_version_info(VERSION_FILE_LOCAL)
 PACKAGE_VERSION = metapackage_version.get("package-version")
 
-amdsharktank_version = load_version_info(VERSION_FILE_amdsharkTANK)
-amdsharkTANK_PACKAGE_VERSION = amdsharktank_version.get("package-version")
+# amdsharktank_version = load_version_info(VERSION_FILE_amdsharkTANK)
+# amdsharkTANK_PACKAGE_VERSION = amdsharktank_version.get("package-version")
 
 amdsharktuner_version = load_version_info(VERSION_FILE_amdsharkTUNER)
 amdsharkTUNER_PACKAGE_VERSION = amdsharktuner_version.get("package-version")
@@ -70,12 +70,12 @@ if Version(PACKAGE_VERSION).is_prerelease:
     requirements = ""
     for package in stable_packages_list:
         requirements += package + "\n"
-    requirements = (
-        "amdsharktank=="
-        + Version(amdsharkTANK_PACKAGE_VERSION).base_version
-        + args.version_suffix
-        + "\n"
-    )
+    # requirements = (
+    #     "amdsharktank=="
+    #     + Version(amdsharkTANK_PACKAGE_VERSION).base_version
+    #     + args.version_suffix
+    #     + "\n"
+    # )
     requirements += (
         "amdsharktuner=="
         + Version(amdsharkTUNER_PACKAGE_VERSION).base_version
@@ -99,9 +99,9 @@ else:
     requirements = ""
     for package in stable_packages_list:
         requirements += package + "==" + STABLE_VERSION_TO_PIN + "\n"
-    requirements += (
-        "amdsharktank==" + Version(amdsharkTANK_PACKAGE_VERSION).base_version + "\n"
-    )
+    # requirements += (
+    #     "amdsharktank==" + Version(amdsharkTANK_PACKAGE_VERSION).base_version + "\n"
+    # )
     requirements += (
         "amdsharktuner==" + Version(amdsharkTUNER_PACKAGE_VERSION).base_version + "\n"
     )
