@@ -92,7 +92,7 @@ def parse_arguments(argv=None):
     parser.add_argument(
         "--packages",
         help="Comma-delimited list of packages to install, in order",
-        default="amdshark-ai,amdsharktank",
+        default="amdshark-ai",
     )
     parser.add_argument(
         "--install-using-index",
