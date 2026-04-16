@@ -163,7 +163,7 @@ jobs:
 
     - name: Install iree-turbine
       run: | 
-        pip install "git+https://github.com/iree-org/iree-turbine.git"
+        # pip install "git+https://github.com/iree-org/iree-turbine.git"
         git clone -b verify-numerics-failure https://github.com/keshavvinayak01/iree-turbine.git
         cd iree-turbine
         pip install -e .
