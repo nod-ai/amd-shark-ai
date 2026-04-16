@@ -115,7 +115,7 @@ jobs:
           -r .github/workflows/ci_boo_torch_pin.txt
         pip install --no-index --find-links https://iree.dev/pip-release-links.html --pre --no-deps iree-base-compiler iree-base-runtime
         # pip install "git+https://github.com/iree-org/iree-turbine.git"
-        git clone -b verify-numerics-failure https://github.com/iree-org/iree-turbine.git
+        git clone -b verify-numerics-failure https://github.com/keshavvinayak01/iree-turbine.git
         cd iree-turbine
         pip install -e .
         cd ..
