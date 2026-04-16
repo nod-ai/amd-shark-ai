@@ -114,7 +114,11 @@ jobs:
           --index-url https://rocm.nightlies.amd.com/v2/gfx120X-all/ \
           -r .github/workflows/ci_boo_torch_pin.txt
         pip install --no-index --find-links https://iree.dev/pip-release-links.html --pre --no-deps iree-base-compiler iree-base-runtime
-        pip install "git+https://github.com/iree-org/iree-turbine.git"
+        # pip install "git+https://github.com/iree-org/iree-turbine.git"
+        git clone -b verify-numerics-failure https://github.com/iree-org/iree-turbine.git
+        cd iree-turbine
+        pip install -e .
+        cd ..
         pip freeze > $(pwd)/output_artifacts/version.txt
 
     - name: Download config files
@@ -209,7 +213,7 @@ jobs:
        pip install -r amdsharktuner/requirements-dev.txt
        iree-boo-driver \
             --commands-file amd-shark-ai-reports/boo/attention_shapes.txt --csv output_artifacts/rdna4_attention_shapes_miopen_iree.csv \
-            --backend inductor --backend=iree_boo_experimental \
+            --backend inductor --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 100 \
             2>&1 | tee output_artifacts/rdna4_attention_shapes.log || true
 
     - name: Upload log files
@@ -223,88 +227,88 @@ jobs:
           output_artifacts/version.txt
 
   # New job to push logs to amd-shark-ai-reports repository
-  push_logs:
-    name: "Push log for conv run"
-    needs: [ test_boo_rdna4 ]
-    if: always()
-    runs-on: ubuntu-24.04
-    steps:
-    - name: Download log artifacts
-      uses: actions/download-artifact@v7
-      with:
-        name: rdna-boo-logs
-        path: logs
+  # push_logs:
+  #   name: "Push log for conv run"
+  #   needs: [ test_boo_rdna4 ]
+  #   if: always()
+  #   runs-on: ubuntu-24.04
+  #   steps:
+  #   - name: Download log artifacts
+  #     uses: actions/download-artifact@v7
+  #     with:
+  #       name: rdna-boo-logs
+  #       path: logs
 
-    - name: Checkout Target Repo
-      if: always()
-      uses: actions/checkout@v6
-      with:
-        repository: nod-ai/amd-shark-ai-reports
-        token: ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}
-        path: amd-shark-ai-reports
+  #   - name: Checkout Target Repo
+  #     if: always()
+  #     uses: actions/checkout@v6
+  #     with:
+  #       repository: nod-ai/amd-shark-ai-reports
+  #       token: ${{ secrets.AMD_SHARK_AI_GITHUB_TOKEN }}
+  #       path: amd-shark-ai-reports
 
-    - name: Generate Comparison
-      if: github.event_name == 'workflow_dispatch'
-      run: |
-          cd amd-shark-ai-reports
-          export LATEST_DATE=$(ls -1 boo/boo-nightly-gfx120X | sort | tail -n 1)
+  #   - name: Generate Comparison
+  #     if: github.event_name == 'workflow_dispatch'
+  #     run: |
+  #         cd amd-shark-ai-reports
+  #         export LATEST_DATE=$(ls -1 boo/boo-nightly-gfx120X | sort | tail -n 1)
 
-          if [ "${{ inputs.run_all_proxy }}" = "true" ]; then
-            echo "1"
-            python github-actions/new_boo_comp.py --current-file "../logs/rdna4_all_proxy_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx120X/${LATEST_DATE}/rdna4_all_proxy_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_all_proxy_iree.md" --threshold 0.05 --total-arguments 1071 || echo "failure in all_proxy"
-          fi
+  #         if [ "${{ inputs.run_all_proxy }}" = "true" ]; then
+  #           echo "1"
+  #           python github-actions/new_boo_comp.py --current-file "../logs/rdna4_all_proxy_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx120X/${LATEST_DATE}/rdna4_all_proxy_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_all_proxy_iree.md" --threshold 0.05 --total-arguments 1071 || echo "failure in all_proxy"
+  #         fi
 
-          if [ "${{ inputs.run_gemm }}" = "true" ]; then
-            echo "2"
-            python github-actions/new_boo_comp.py --current-file "../logs/rdna4_gemm_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx120X/${LATEST_DATE}/rdna4_gemm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_gemm_iree.md" --threshold 0.05 --total-arguments 316 || echo "failure in gemm"
-          fi
+  #         if [ "${{ inputs.run_gemm }}" = "true" ]; then
+  #           echo "2"
+  #           python github-actions/new_boo_comp.py --current-file "../logs/rdna4_gemm_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx120X/${LATEST_DATE}/rdna4_gemm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_gemm_iree.md" --threshold 0.05 --total-arguments 316 || echo "failure in gemm"
+  #         fi
 
-          if [ "${{ inputs.run_prod_conv }}" = "true" ]; then
-            echo "3"
-            python github-actions/new_boo_comp.py --current-file "../logs/rdna4_prod_conv_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx120X/${LATEST_DATE}/rdna4_prod_conv_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 589 || echo "failure in prod conv"
-          fi
+  #         if [ "${{ inputs.run_prod_conv }}" = "true" ]; then
+  #           echo "3"
+  #           python github-actions/new_boo_comp.py --current-file "../logs/rdna4_prod_conv_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx120X/${LATEST_DATE}/rdna4_prod_conv_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 589 || echo "failure in prod conv"
+  #         fi
 
-          if [ "${{ inputs.run_batch_norm }}" = "true" ]; then
-            echo "4"
-            python github-actions/new_boo_comp.py --current-file "../logs/rdna4_batch_norm_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx120X/${LATEST_DATE}/rdna4_batch_norm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_batch_norm_miopen_iree.md" --threshold 0.05 --total-arguments 33 || echo "Failure in batchnorm"
-          fi
+  #         if [ "${{ inputs.run_batch_norm }}" = "true" ]; then
+  #           echo "4"
+  #           python github-actions/new_boo_comp.py --current-file "../logs/rdna4_batch_norm_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx120X/${LATEST_DATE}/rdna4_batch_norm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_batch_norm_miopen_iree.md" --threshold 0.05 --total-arguments 33 || echo "Failure in batchnorm"
+  #         fi
 
-          if [ "${{ inputs.run_hipblaslt }}" = "true" ] && [ "${{ inputs.run_gemm }}" = "true" ]; then
-            echo "5"
-            python github-actions/new_boo_comp_hipblaslt_iree.py --hipblaslt-file "../logs/rdna4_gemm_hipBlaslt-bench.csv" --iree-file "../logs/rdna4_gemm_miopen_iree.csv" --output-csv "../logs/comparison/gemm_iree_hipblaslt_comparison.csv" || echo "failure in hipblaslt"
-          fi
+  #         if [ "${{ inputs.run_hipblaslt }}" = "true" ] && [ "${{ inputs.run_gemm }}" = "true" ]; then
+  #           echo "5"
+  #           python github-actions/new_boo_comp_hipblaslt_iree.py --hipblaslt-file "../logs/rdna4_gemm_hipBlaslt-bench.csv" --iree-file "../logs/rdna4_gemm_miopen_iree.csv" --output-csv "../logs/comparison/gemm_iree_hipblaslt_comparison.csv" || echo "failure in hipblaslt"
+  #         fi
 
-          cd ..
-          ls -R logs
+  #         cd ..
+  #         ls -R logs
 
-    - name: Setup reports
-      if: always()
-      run: |
-        git config --global user.name "GitHub Actions Bot"
-        git config --global user.email ""
-        if [ "${{ github.event_name }}" = "schedule" ]; then
-          date=$(date -u +'%Y-%m-%d')
-          OUTPUT_DIR="amd-shark-ai-reports/boo/boo-nightly-gfx120X/$date/"
-        else
-          date="$(date -u +'%Y-%m-%d_%H-%M')"
-          OUTPUT_DIR="amd-shark-ai-reports/boo/boo-custom-runs-gfx120X/${date}/"
-        fi
-        mkdir -p $OUTPUT_DIR
-        echo "OUTPUT_DIR=$OUTPUT_DIR" >> $GITHUB_ENV
+  #   - name: Setup reports
+  #     if: always()
+  #     run: |
+  #       git config --global user.name "GitHub Actions Bot"
+  #       git config --global user.email ""
+  #       if [ "${{ github.event_name }}" = "schedule" ]; then
+  #         date=$(date -u +'%Y-%m-%d')
+  #         OUTPUT_DIR="amd-shark-ai-reports/boo/boo-nightly-gfx120X/$date/"
+  #       else
+  #         date="$(date -u +'%Y-%m-%d_%H-%M')"
+  #         OUTPUT_DIR="amd-shark-ai-reports/boo/boo-custom-runs-gfx120X/${date}/"
+  #       fi
+  #       mkdir -p $OUTPUT_DIR
+  #       echo "OUTPUT_DIR=$OUTPUT_DIR" >> $GITHUB_ENV
 
-    - name: Push artifacts
-      if: always()
-      run: |
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          mkdir -p $OUTPUT_DIR/comparison/
-          cp -v logs/comparison/*.md $OUTPUT_DIR/comparison/ || true
-        fi
-        cp -v logs/*.csv $OUTPUT_DIR || true
-        cp -v logs/*.log $OUTPUT_DIR || true
-        cp -v logs/version.txt $OUTPUT_DIR || true
-        cd amd-shark-ai-reports/boo
-        git pull
-        git add .
-        git commit -m "Add conv report on $(date -u +'%Y-%m-%d')"
-        git push origin main
-        rm -rf ../logs
+  #   - name: Push artifacts
+  #     if: always()
+  #     run: |
+  #       if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+  #         mkdir -p $OUTPUT_DIR/comparison/
+  #         cp -v logs/comparison/*.md $OUTPUT_DIR/comparison/ || true
+  #       fi
+  #       cp -v logs/*.csv $OUTPUT_DIR || true
+  #       cp -v logs/*.log $OUTPUT_DIR || true
+  #       cp -v logs/version.txt $OUTPUT_DIR || true
+  #       cd amd-shark-ai-reports/boo
+  #       git pull
+  #       git add .
+  #       git commit -m "Add conv report on $(date -u +'%Y-%m-%d')"
+  #       git push origin main
+  #       rm -rf ../logs
