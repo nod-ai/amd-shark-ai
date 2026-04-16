@@ -162,7 +162,12 @@ jobs:
         echo "IREE_SOURCE_HASH=$(git -C . rev-parse --short HEAD)" >> $GITHUB_ENV
 
     - name: Install iree-turbine
-      run: pip install "git+https://github.com/iree-org/iree-turbine.git"
+      run: | 
+        pip install "git+https://github.com/iree-org/iree-turbine.git"
+        git clone -b verify-numerics-failure https://github.com/keshavvinayak01/iree-turbine.git
+        cd iree-turbine
+        pip install -e .
+        cd ..
 
     - name: Print packages
       run: |
@@ -252,8 +257,8 @@ jobs:
           pip install -r amdsharktuner/requirements-dev.txt
           iree-boo-driver \
             --commands-file amd-shark-ai-reports/boo/attention_shapes.txt --csv output_artifacts/attention_shapes_miopen_iree.csv \
-            --backend inductor --backend=iree_boo_experimental \
-            2>&1 | tee output_artifacts/attention_shapes.log || true
+            --backend inductor --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 100 --verbose --numerics-verbose \
+            > output_artifacts/attention_shapes.log || true
 
     - name: Run hipblaslt-bench
       if: always() && (github.event_name == 'schedule' || inputs.run_hipblaslt == true)
