@@ -226,7 +226,7 @@ jobs:
           output_artifacts/*.log
           output_artifacts/version.txt
 
-  New job to push logs to amd-shark-ai-reports repository
+  # New job to push logs to amd-shark-ai-reports repository
   push_logs:
     name: "Push log for conv run"
     needs: [ test_boo_rdna4 ]
