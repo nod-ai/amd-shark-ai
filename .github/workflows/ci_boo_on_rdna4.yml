@@ -110,9 +110,10 @@ jobs:
     - name: Install pip deps
       run: |
         mkdir -p output_artifacts
-        python -m pip install \
-          --index-url https://rocm.nightlies.amd.com/v2/gfx120X-all/ \
-          -r .github/workflows/ci_boo_torch_pin.txt
+        # python -m pip install \
+        #   --index-url https://rocm.nightlies.amd.com/v2/gfx120X-all/ \
+        #   -r .github/workflows/ci_boo_torch_pin.txt
+        pip install "torch>=2.5,<=2.10.0" --index-url https://download.pytorch.org/whl/rocm7.1
         pip install --no-index --find-links https://iree.dev/pip-release-links.html --pre --no-deps iree-base-compiler iree-base-runtime
         pip install "git+https://github.com/iree-org/iree-turbine.git"
         pip freeze > $(pwd)/output_artifacts/version.txt
