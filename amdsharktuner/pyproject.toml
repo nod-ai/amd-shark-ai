@@ -31,7 +31,7 @@ Repository = "https://github.com/nod-ai/amd-shark-ai"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["amdsharktuner", "model_tuner", "dispatch_tuner", "boo_tuner", "fusilli_tuner"]
+include = ["amdsharktuner*", "model_tuner", "dispatch_tuner", "boo_tuner", "fusilli_tuner"]
 namespaces = true
 
 [tool.setuptools.package-data]
