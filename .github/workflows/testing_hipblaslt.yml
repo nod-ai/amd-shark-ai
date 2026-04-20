@@ -33,7 +33,7 @@ jobs:
           python -m venv venv
           source venv/bin/activate
 
-          # Install ROCm with the missing headers
+          # Install ROCm for headers only
           python -m pip install \
             --index-url https://d2awnip2yjpvqn.cloudfront.net/v2/gfx950-dcgpu/ \
             rocm[libraries,devel]
@@ -47,11 +47,17 @@ jobs:
             libzstd-dev libgtest-dev wget \
             build-essential binutils libmsgpack-cxx-dev libssl-dev
 
-          # Set environment variables using pip-installed ROCm
-          export ROCM_PATH=$(python -m rocm_sdk path --root)
-          export LD_LIBRARY_PATH="$ROCM_PATH/lib:$ROCM_PATH/lib/llvm/lib:$LD_LIBRARY_PATH"
-          export CMAKE_PREFIX_PATH="$ROCM_PATH:$CMAKE_PREFIX_PATH"
-          export PATH="$ROCM_PATH/bin:$PATH"
+          # Get pip-installed ROCm path for headers
+          export PIP_ROCM_PATH=$(python -m rocm_sdk path --root)
+
+          # Use SYSTEM compiler from /opt/rocm, but add pip ROCm headers
+          export CC=/opt/rocm/bin/amdclang
+          export CXX=/opt/rocm/bin/amdclang++
+          export PATH="/opt/rocm/bin:$PATH"
+          export LD_LIBRARY_PATH="/opt/rocm/lib:$PIP_ROCM_PATH/lib:$LD_LIBRARY_PATH"
+          export CMAKE_PREFIX_PATH="/opt/rocm:$PIP_ROCM_PATH:$CMAKE_PREFIX_PATH"
+          export CPLUS_INCLUDE_PATH="$PIP_ROCM_PATH/include:$CPLUS_INCLUDE_PATH"
+          export C_INCLUDE_PATH="$PIP_ROCM_PATH/include:$C_INCLUDE_PATH"
 
           # Tell CMake to use venv Python
           export Python3_EXECUTABLE=$(which python3)
@@ -69,7 +75,6 @@ jobs:
           cd projects/hipblaslt
           pip install -r tensilelite/requirements.txt
           pip install cmake==3.31.10
-          pip freeze
 
           # build
           ./install.sh -c -a gfx950
