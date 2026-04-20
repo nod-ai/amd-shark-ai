@@ -67,4 +67,6 @@ jobs:
 
           # test
           export PATH="$(pwd)/build/release/hipblaslt-install/bin/:$PATH"
-          ./hipblaslt-test 2>&1 | tee hipblaslt_test.log
+          ls build/release/hipblaslt-install/bin/
+          which hipblaslt-test
+          hipblaslt-test 2>&1 | tee hipblaslt_test.log
