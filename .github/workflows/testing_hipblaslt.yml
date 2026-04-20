@@ -35,8 +35,21 @@ jobs:
           pip install pyyaml
 
           sudo apt-get update
-          sudo apt-get install -y hipblas-common-dev rocblas-dev
-          sudo apt install -y gfortran libopenblas-dev build-essential binutils libmsgpack-cxx-dev libgtest-dev
+          sudo apt-get install -y \
+            make \
+            pkg-config \
+            libnuma1 \
+            git \
+            libmsgpack-dev \
+            gfortran \
+            python3-yaml \
+            libopenblas-dev \
+            rocm-llvm-dev \
+            libzstd-dev \
+            libgtest-dev \
+            wget \
+            hipblas-common-dev rocblas-dev build-essential binutils libmsgpack-cxx-dev \
+            libssl-dev
 
           # Set environment variables
           export ROCM_PATH=$(python -m rocm_sdk path --root)
@@ -44,14 +57,10 @@ jobs:
           export ROCM_PATH="$ROCM_PATH"
           export CMAKE_PREFIX_PATH=/opt/rocm:$CMAKE_PREFIX_PATH
 
-          python -m pip install \
-            --index-url https://d2awnip2yjpvqn.cloudfront.net/v2/gfx950-dcgpu/ \
-            rocm[libraries,devel]
-
           # python -m pip install \
-          # --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
-          # -r .github/workflows/ci_boo_torch_pin.txt
-          
+          #   --index-url https://d2awnip2yjpvqn.cloudfront.net/v2/gfx950-dcgpu/ \
+          #   rocm[libraries,devel]
+
           which pip
           python --version
           
