@@ -43,6 +43,7 @@ jobs:
 
           cd projects/hipblaslt
           pip install -r tensilelite/requirements.txt
+          pip install cmake==3.31.10
           pip freeze
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib/llvm/lib
 
