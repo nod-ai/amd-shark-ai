@@ -39,10 +39,10 @@ jobs:
           python -m venv venv
           source venv/bin/activate
 
-          # Install ROCm for headers only
+          # Install ROCm with compiler, libraries, and headers
           python -m pip install \
             --index-url https://d2awnip2yjpvqn.cloudfront.net/v2/gfx950-dcgpu/ \
-            rocm[libraries,devel]
+            rocm[libraries,devel,compiler]
 
           pip install pyyaml
 
@@ -53,23 +53,23 @@ jobs:
             libzstd-dev libgtest-dev wget \
             build-essential binutils libmsgpack-cxx-dev libssl-dev
 
-          # Get pip-installed ROCm path for headers
-          export PIP_ROCM_PATH=$(python -m rocm_sdk path --root)
+          # Get pip-installed ROCm path
+          export ROCM_PATH=$(python -m rocm_sdk path --root)
 
-          # Use SYSTEM compiler from /opt/rocm, but add pip ROCm headers
-          export CC=/opt/rocm/bin/amdclang
-          export CXX=/opt/rocm/bin/amdclang++
-          export PATH="/opt/rocm/bin:$PATH"
-          export LD_LIBRARY_PATH="/opt/rocm/lib:$PIP_ROCM_PATH/lib:$LD_LIBRARY_PATH"
-          export CMAKE_PREFIX_PATH="/opt/rocm:$PIP_ROCM_PATH:$CMAKE_PREFIX_PATH"
-          export CPLUS_INCLUDE_PATH="$PIP_ROCM_PATH/include:$CPLUS_INCLUDE_PATH"
-          export C_INCLUDE_PATH="$PIP_ROCM_PATH/include:$C_INCLUDE_PATH"
+          # Use pip ROCm compiler and paths
+          export CC="$ROCM_PATH/bin/amdclang"
+          export CXX="$ROCM_PATH/bin/amdclang++"
+          export PATH="$ROCM_PATH/bin:$PATH"
+          export LD_LIBRARY_PATH="$ROCM_PATH/lib:$LD_LIBRARY_PATH"
+          export CMAKE_PREFIX_PATH="$ROCM_PATH:$CMAKE_PREFIX_PATH"
 
           # Tell CMake to use venv Python
           export Python3_EXECUTABLE=$(which python3)
           export Python_EXECUTABLE=$(which python3)
 
-          which pip
+          echo "ROCM_PATH: $ROCM_PATH"
+          echo "CXX: $CXX"
+          which amdclang++
           python --version
 
           git clone --no-checkout --filter=blob:none https://github.com/ROCm/rocm-libraries.git
