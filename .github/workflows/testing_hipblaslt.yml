@@ -32,6 +32,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y hipblas-common-dev rocblas-dev
+
+          export CMAKE_PREFIX_PATH=/opt/rocm:$CMAKE_PREFIX_PATH
           python -m venv venv
           source venv/bin/activate
 
@@ -55,7 +57,7 @@ jobs:
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib/llvm/lib
 
           # build
-          ./install.sh -d -c -a gfx950
+          ./install.sh -d -c -a gfx950 --verbose
           cd tensilelite
           invoke build-client
           pip install -r requirements-dev.txt -e .
