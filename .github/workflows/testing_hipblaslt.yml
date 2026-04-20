@@ -36,7 +36,7 @@ jobs:
 
           sudo apt-get update
           sudo apt-get install -y hipblas-common-dev rocblas-dev
-          sudo apt install -y gfortran libopenblas-dev build-essential binutils
+          sudo apt install -y gfortran libopenblas-dev build-essential binutils libmsgpack-cxx-dev
 
           # Set environment variables
           export ROCM_PATH=$(python -m rocm_sdk path --root)
