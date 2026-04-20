@@ -32,10 +32,11 @@ jobs:
         run: |
           python -m venv venv
           source venv/bin/activate
+          pip install pyyaml
 
           sudo apt-get update
           sudo apt-get install -y hipblas-common-dev rocblas-dev
-          sudo apt install -y gfortran build-essential binutils
+          sudo apt install -y gfortran libopenblas-dev build-essential binutils
 
           # Set environment variables
           export ROCM_PATH=$(python -m rocm_sdk path --root)
@@ -67,7 +68,7 @@ jobs:
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib/llvm/lib
 
           # build
-          ./install.sh -d -c -a gfx950
+          ./install.sh -c -a gfx950
           cd tensilelite
           invoke build-client
           pip install -r requirements-dev.txt -e .
