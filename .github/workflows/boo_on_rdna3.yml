@@ -246,26 +246,26 @@ jobs:
     #   if: github.event_name == 'workflow_dispatch'
     #   run: |
     #       cd amd-shark-ai-reports
-    #       export LATEST_DATE=$(ls -1 boo/boo-nightly-gfx110XX | sort | tail -n 1)
+    #       export LATEST_DATE=$(ls -1 boo/boo-nightly-gfx110x | sort | tail -n 1)
 
     #       if [ "${{ inputs.run_all_proxy }}" = "true" ]; then
     #         echo "1"
-    #         python github-actions/new_boo_comp.py --current-file "../logs/rdna3_all_proxy_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx110XX/${LATEST_DATE}/rdna3_all_proxy_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_all_proxy_iree.md" --threshold 0.05 --total-arguments 1071 || echo "failure in all_proxy"
+    #         python github-actions/new_boo_comp.py --current-file "../logs/rdna3_all_proxy_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx110x/${LATEST_DATE}/rdna3_all_proxy_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_all_proxy_iree.md" --threshold 0.05 --total-arguments 1071 || echo "failure in all_proxy"
     #       fi
 
     #       if [ "${{ inputs.run_gemm }}" = "true" ]; then
     #         echo "2"
-    #         python github-actions/new_boo_comp.py --current-file "../logs/rdna3_gemm_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx110XX/${LATEST_DATE}/rdna3_gemm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_gemm_iree.md" --threshold 0.05 --total-arguments 316 || echo "failure in gemm"
+    #         python github-actions/new_boo_comp.py --current-file "../logs/rdna3_gemm_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx110x/${LATEST_DATE}/rdna3_gemm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_gemm_iree.md" --threshold 0.05 --total-arguments 316 || echo "failure in gemm"
     #       fi
 
     #       if [ "${{ inputs.run_prod_conv }}" = "true" ]; then
     #         echo "3"
-    #         python github-actions/new_boo_comp.py --current-file "../logs/rdna3_prod_conv_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx110XX/${LATEST_DATE}/rdna3_prod_conv_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 589 || echo "failure in prod conv"
+    #         python github-actions/new_boo_comp.py --current-file "../logs/rdna3_prod_conv_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx110x/${LATEST_DATE}/rdna3_prod_conv_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_prod_conv_iree.md" --threshold 0.05 --total-arguments 589 || echo "failure in prod conv"
     #       fi
 
     #       if [ "${{ inputs.run_batch_norm }}" = "true" ]; then
     #         echo "4"
-    #         python github-actions/new_boo_comp.py --current-file "../logs/rdna3_batch_norm_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx110XX/${LATEST_DATE}/rdna3_batch_norm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_batch_norm_miopen_iree.md" --threshold 0.05 --total-arguments 33 || echo "Failure in batchnorm"
+    #         python github-actions/new_boo_comp.py --current-file "../logs/rdna3_batch_norm_miopen_iree.csv" --baseline-file "boo/boo-nightly-gfx110x/${LATEST_DATE}/rdna3_batch_norm_miopen_iree.csv" --output-file "../logs/comparison/current_vs_${LATEST_DATE}_batch_norm_miopen_iree.md" --threshold 0.05 --total-arguments 33 || echo "Failure in batchnorm"
     #       fi
 
     #       if [ "${{ inputs.run_hipblaslt }}" = "true" ] && [ "${{ inputs.run_gemm }}" = "true" ]; then
@@ -283,10 +283,10 @@ jobs:
         git config --global user.email ""
         if [ "${{ github.event_name }}" = "schedule" ]; then
           date=$(date -u +'%Y-%m-%d')
-          OUTPUT_DIR="amd-shark-ai-reports/boo/boo-nightly-gfx110XX/$date/"
+          OUTPUT_DIR="amd-shark-ai-reports/boo/boo-nightly-gfx110X/$date/"
         else
           date="$(date -u +'%Y-%m-%d_%H-%M')"
-          OUTPUT_DIR="amd-shark-ai-reports/boo/boo-custom-runs-gfx110XX/${date}/"
+          OUTPUT_DIR="amd-shark-ai-reports/boo/boo-custom-runs-gfx110X/${date}/"
         fi
         mkdir -p $OUTPUT_DIR
         echo "OUTPUT_DIR=$OUTPUT_DIR" >> $GITHUB_ENV
