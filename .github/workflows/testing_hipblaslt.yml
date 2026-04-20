@@ -55,7 +55,7 @@ jobs:
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib/llvm/lib
 
           # build
-          ./install.sh -c -a gfx950
+          ./install.sh -d -c -a gfx950
           cd tensilelite
           invoke build-client
           pip install -r requirements-dev.txt -e .
