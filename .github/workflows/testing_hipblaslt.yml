@@ -42,40 +42,11 @@ jobs:
 
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib/llvm/lib
 
-          # # Install ROCm 7.13.0 nightly with compiler
-          # python -m pip install \
-          #   --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
-          #   rocm[libraries,devel,compiler]
-
-          # pip install pyyaml
-
-          # sudo apt-get update
-          # sudo apt-get install -y \
-          #   make pkg-config libnuma1 git libmsgpack-dev \
-          #   gfortran python3-yaml libopenblas-dev \
-          #   libzstd-dev libgtest-dev wget \
-          #   build-essential binutils libmsgpack-cxx-dev libssl-dev
-
-          # # Get pip-installed ROCm path
-          # export ROCM_PATH=$(python -m rocm_sdk path --root)
-
-          # # Use pip ROCm compiler and paths
-          # export CC="$ROCM_PATH/bin/amdclang"
-          # export CXX="$ROCM_PATH/bin/amdclang++"
-          # export PATH="$ROCM_PATH/bin:$PATH"
-          # export LD_LIBRARY_PATH="$ROCM_PATH/lib:$LD_LIBRARY_PATH"
-          # export CMAKE_PREFIX_PATH="$ROCM_PATH:$CMAKE_PREFIX_PATH"
-
-          # # Tell CMake to use venv Python
-          # export Python3_EXECUTABLE=$(which python3)
-          # export Python_EXECUTABLE=$(which python3)
-
-          # echo "ROCM_PATH: $ROCM_PATH"
-          # echo "CXX: $CXX"
-          # which amdclang++ || echo "amdclang++ not in PATH"
-          # ls -la "$ROCM_PATH/bin/" | head -10
-          # python --version
-          # pip freeze | grep rocm
+          # Set Python paths for CMake to use the venv Python
+          export Python3_ROOT_DIR="$VIRTUAL_ENV"
+          export Python_ROOT_DIR="$VIRTUAL_ENV"
+          export Python3_EXECUTABLE="$(which python3)"
+          export Python_EXECUTABLE="$(which python3)"
 
           git clone --no-checkout --filter=blob:none https://github.com/ROCm/rocm-libraries.git
           cd rocm-libraries
