@@ -1,0 +1,60 @@
+# Test hipBLASLt with latest develop branch changes on gfx1250 hardware.
+# Uses sparse checkout to clone only required components, builds with install.sh, and runs tests.
+
+name: Test hipBLASLt Develop
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_hipblaslt:
+    name: Build hipBLASLt # (${{ inputs.amdgpu_family || 'gfx1250' }})
+    runs-on: linux-mi355-1gpu-ossci-nod-ai
+    timeout-minutes: 240
+    steps:
+      - name: Checkout shark-ai
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Setup Python
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        with:
+          python-version: '3.10'
+
+      - name: Checkout TheRock workspace
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          which pip
+          python --version
+          
+          git clone --no-checkout --filter=blob:none https://github.com/ROCm/rocm-libraries.git
+          cd rocm-libraries
+          git sparse-checkout init --cone
+          git sparse-checkout set projects/hipblaslt shared/origami shared/rocroller shared/mxdatagenerator
+          git checkout develop
+
+          cd projects/hipblaslt
+          pip install -r tensilelite/requirements.txt
+          pip freeze
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib/llvm/lib
+
+          # build
+          ./install.sh -c -a gfx950
+          cd tensilelite
+          invoke build-client
+          pip install -r requirements-dev.txt -e .
+          cd ..
+
+          # test ci
+          export PATH="/opt/rocm/bin:$PATH"
+          export PATH="$(pwd)/build/release/hipblaslt-install/bin/:$PATH"
+          ./hipblaslt-test 2>&1 | tee hipblaslt_test.log
+        
