@@ -12,7 +12,7 @@
 # 3. gemms with untuned boo and native pytorch
 # 4. attention shapes with untuned boo and inductor
 
-name: CI - Boo on rdna3
+name: CI - Boo on RDNA3
 
 on:
   workflow_dispatch:
