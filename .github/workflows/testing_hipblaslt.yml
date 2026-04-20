@@ -39,9 +39,9 @@ jobs:
           python -m venv venv
           source venv/bin/activate
 
-          # Install ROCm with compiler, libraries, and headers
+          # Install ROCm 7.13.0 nightly with compiler
           python -m pip install \
-            --index-url https://d2awnip2yjpvqn.cloudfront.net/v2/gfx950-dcgpu/ \
+            --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
             rocm[libraries,devel,compiler]
 
           pip install pyyaml
@@ -69,8 +69,10 @@ jobs:
 
           echo "ROCM_PATH: $ROCM_PATH"
           echo "CXX: $CXX"
-          which amdclang++
+          which amdclang++ || echo "amdclang++ not in PATH"
+          ls -la "$ROCM_PATH/bin/" | head -10
           python --version
+          pip freeze | grep rocm
 
           git clone --no-checkout --filter=blob:none https://github.com/ROCm/rocm-libraries.git
           cd rocm-libraries
