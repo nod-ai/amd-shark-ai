@@ -30,12 +30,14 @@ jobs:
 
       - name: Checkout TheRock workspace
         run: |
+          sudo apt-get update
+          sudo apt-get install -y hipblas-common-dev rocblas-dev
           python -m venv venv
           source venv/bin/activate
 
-          python -m pip install \
-          --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
-          -r .github/workflows/ci_boo_torch_pin.txt
+          # python -m pip install \
+          # --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
+          # -r .github/workflows/ci_boo_torch_pin.txt
           
           which pip
           python --version
