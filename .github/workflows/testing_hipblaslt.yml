@@ -28,6 +28,12 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Check ROCm
+        run: |
+          ls -la /opt/rocm/include/hip/hip_ext_ocp.h 2>/dev/null || echo "hip_ext_ocp.h NOT FOUND in /opt/rocm"
+          /opt/rocm/bin/amdclang++ --version
+          cat /opt/rocm/.info/version 2>/dev/null || echo "version file not found"
+
       - name: Checkout TheRock workspace
         run: |
           python -m venv venv
