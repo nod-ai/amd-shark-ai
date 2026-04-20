@@ -20,12 +20,10 @@ on:
       runner:
         description: 'Runner to use for the job'
         required: false
-        default: 'shark-mkm-4-boo'
+        default: 'rdna3-ci'
         type: choice
         options:
-          - shark-mkm-4-boo
-          - shark-mkm-1-for-boo
-          - shark41-rdna3
+          - rdna3-ci
       run_prod_conv:
         description: "Run Prod Conv"
         type: boolean
@@ -68,12 +66,12 @@ jobs:
   test_boo_rdna3:
     if: ${{ github.repository_owner == 'nod-ai' || github.event_name != 'schedule' }}
     timeout-minutes: 600
-    name: "Boo on RDNA 4"
+    name: "Boo on RDNA 3"
     strategy:
       matrix:
         version: [3.12]
       fail-fast: false
-    runs-on: ${{ github.event.inputs.runner || 'shark-mkm-4-boo' }}
+    runs-on: ${{ github.event.inputs.runner || 'rdna3-ci' }}
     defaults:
       run:
         shell: bash
