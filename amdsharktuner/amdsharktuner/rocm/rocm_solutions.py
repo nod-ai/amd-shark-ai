@@ -639,3 +639,124 @@ def generate_attention_solutions(
                 ),
             ]
             yield config_list
+
+
+def generate_matvec_solutions(
+    tuner_ctx: common.TunerContext,
+    op_info: dispatch_parser.MatvecOpInfo,
+    gpu_target_info: iree_gpu.TargetInfo,
+    max_candidates: int = 32,
+) -> Iterator[list[common.TuningConfiguration]]:
+    """Yield VectorDistribute tuning candidates for a matvec root op.
+
+    Solves the Z3 constraint system in-process (no worker pool), mirroring
+    generate_attention_solutions. Each yielded entry is a one-element list
+    containing a TuningConfiguration whose configuration is a
+    CompilationInfoAttr and whose knob_assignment is an LLVMGPUMatvecKnobs.
+    """
+    if any(b < 0 for b in op_info.parallel_bounds) or op_info.reduction_bound < 0:
+        tuner_ctx.logger.debug(
+            "Skipping matvec candidates: dynamic shapes not supported"
+        )
+        return
+
+    subgroup_size = z3.Int("subgroup_size")
+    thread_loads = z3.Int("thread_loads")
+    workgroup_size = z3.Int("workgroup_size")
+    num_parallel_reductions = z3.Int("num_parallel_reductions")
+
+    constraints = list(
+        rocm_dispatch_constraints.generate_matvec_vector_distribute_constraints(
+            parallel_bounds=op_info.parallel_bounds,
+            reduction_bound=op_info.reduction_bound,
+            largest_operand_bitwidth=op_info.largest_operand_bitwidth,
+            subgroup_size=subgroup_size,
+            thread_loads=thread_loads,
+            workgroup_size=workgroup_size,
+            num_parallel_reductions=num_parallel_reductions,
+            gpu_target_info=gpu_target_info,
+        )
+    )
+
+    if not constraints:
+        tuner_ctx.logger.debug("Skipping matvec candidates: no feasible constraints")
+        return
+
+    solver = z3.Solver()
+    solver.add(z3.simplify(z3.And(constraints)))
+
+    all_vars = [subgroup_size, thread_loads, workgroup_size, num_parallel_reductions]
+    yielded = 0
+    while yielded < max_candidates and solver.check() == z3.sat:
+        model = solver.model()
+
+        def lookup(v: z3.ArithRef) -> int:
+            return model[v].as_long()
+
+        sg = lookup(subgroup_size)
+        tl = lookup(thread_loads)
+        wg = lookup(workgroup_size)
+        npr = lookup(num_parallel_reductions)
+
+        # Derive the per-loop tile vectors.
+        workgroup_tile_sizes = [0] * op_info.num_loops
+        partial_reduction_tile_sizes = [0] * op_info.num_loops
+        thread_tile_sizes = [0] * op_info.num_loops
+
+        first_nonunit_parallel = next(
+            (
+                d
+                for d, b in zip(op_info.parallel_dim_indices, op_info.parallel_bounds)
+                if b != 1
+            ),
+            None,
+        )
+        if first_nonunit_parallel is not None:
+            workgroup_tile_sizes[first_nonunit_parallel] = npr
+
+        partial_reduction_tile_sizes[op_info.reduction_dim_index] = wg * tl
+        thread_tile_sizes[op_info.reduction_dim_index] = tl
+
+        basis_mapping = list(range(op_info.num_loops))
+        lane_counts = [1] * op_info.num_loops
+        lane_counts[op_info.reduction_dim_index] = sg
+        subgroup_counts = [1] * op_info.num_loops
+        subgroup_counts[op_info.reduction_dim_index] = wg // sg
+
+        compilation_info = rocm_dispatch_constraints.generate_matvec_vector_distribute_compilation_infos(
+            tuner_ctx=tuner_ctx,
+            workgroup_tile_sizes=workgroup_tile_sizes,
+            partial_reduction_tile_sizes=partial_reduction_tile_sizes,
+            thread_tile_sizes=thread_tile_sizes,
+            lane_basis=[lane_counts, basis_mapping],
+            subgroup_basis=[subgroup_counts, basis_mapping],
+            workgroup_size=wg,
+            subgroup_size=sg,
+        )
+
+        knob_assignment = rocm_common.LLVMGPUMatvecKnobs(
+            subgroup_size=sg,
+            thread_loads=tl,
+            workgroup_size=wg,
+            num_parallel_reductions=npr,
+        )
+
+        yield [
+            common.TuningConfiguration(
+                name="compilation_info",
+                configuration=compilation_info,
+                knob_assignment=knob_assignment,
+            )
+        ]
+        yielded += 1
+
+        # Block this model and find another.
+        solver.add(
+            z3.simplify(
+                z3.Not(
+                    z3.And(
+                        [v == model.eval(v, model_completion=True) for v in all_vars]
+                    )
+                )
+            )
+        )

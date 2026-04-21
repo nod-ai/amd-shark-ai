@@ -10,7 +10,7 @@
 from abc import ABC, abstractmethod
 
 from iree.compiler import ir  # type: ignore
-from iree.compiler.dialects import iree_codegen, preprocessing_transform, transform  # type: ignore
+from iree.compiler.dialects import iree_codegen, linalg, preprocessing_transform, transform  # type: ignore
 
 from .common import *
 from .rocm.rocm_dispatch_constraints import *
@@ -340,6 +340,55 @@ class AttentionSpecBuilder(SpecBuilder):
             preprocessing_transform.MatchDimsEqualOp(n, n_sizes)
             preprocessing_transform.MatchDimsEqualOp(k1, k1_sizes)
             preprocessing_transform.MatchDimsEqualOp(k2, k2_sizes)
+
+            config_params = self.create_config_params(config_list)
+            return body_target, config_params
+
+
+class MatvecSpecBuilder(SpecBuilder):
+    def __init__(self, op_info: MatvecOpInfo):
+        super().__init__(op_info)
+        self.op_info: MatvecOpInfo = op_info
+
+    def build_matcher(
+        self,
+        entry_block: ir.Block,
+        body_target: ir.Value,
+        config_list: list[TuningConfiguration],
+    ) -> tuple[ir.Value, list[ir.Value]]:
+        """Match a matvec contraction op using MatchContractionOp."""
+        lhs_elem_type = self.op_info.lhs_type.element_type
+        rhs_elem_type = self.op_info.rhs_type.element_type
+        res_elem_type = self.op_info.res_type.element_type
+
+        with ir.InsertionPoint(entry_block):
+            batch, m, n, k = preprocessing_transform.MatchContractionOp(
+                operand_handle=body_target,
+                lhs_type=lhs_elem_type,
+                rhs_type=rhs_elem_type,
+                output_type=res_elem_type,
+                indexing_maps=self.op_info.indexing_maps,
+            )
+
+            contraction_dims = linalg.infer_contraction_dimensions(self.op_info.root_op)
+            batch_sizes = [
+                self.op_info.parallel_bounds[self.op_info.parallel_dim_indices.index(d)]
+                for d in contraction_dims.batch
+            ]
+            m_sizes = [
+                self.op_info.parallel_bounds[self.op_info.parallel_dim_indices.index(d)]
+                for d in contraction_dims.m
+            ]
+            n_sizes = [
+                self.op_info.parallel_bounds[self.op_info.parallel_dim_indices.index(d)]
+                for d in contraction_dims.n
+            ]
+            k_sizes = [self.op_info.reduction_bound]
+
+            preprocessing_transform.MatchDimsEqualOp(batch, batch_sizes)
+            preprocessing_transform.MatchDimsEqualOp(m, m_sizes)
+            preprocessing_transform.MatchDimsEqualOp(n, n_sizes)
+            preprocessing_transform.MatchDimsEqualOp(k, k_sizes)
 
             config_params = self.create_config_params(config_list)
             return body_target, config_params

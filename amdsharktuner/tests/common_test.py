@@ -610,3 +610,31 @@ def test_denorm_flushing_translation_info_config(
     )
     config_str = str(config_without_denorm)
     assert common.DENORMAL_FP_MATH_F32_KEY not in config_str
+
+
+def test_get_lowering_config_partial_reduction(tuner_ctx: common.TunerContext) -> None:
+    lc = common.get_lowering_config(
+        tuner_ctx,
+        workgroup=[0, 1],
+        partial_reduction=[0, 64],
+        thread=[0, 4],
+    )
+    assert isinstance(lc, iree_gpu.LoweringConfigAttr)
+    lc_str = str(lc)
+    assert "partial_reduction" in lc_str
+    assert "thread" in lc_str
+    assert "workgroup" in lc_str
+
+
+def test_get_lowering_config_lane_basis(tuner_ctx: common.TunerContext) -> None:
+    lc = common.get_lowering_config(
+        tuner_ctx,
+        workgroup=[0, 1],
+        partial_reduction=[0, 64],
+        thread=[0, 4],
+        lane_basis=[[1, 16], [0, 1]],
+        subgroup_basis=[[1, 4], [0, 1]],
+    )
+    lc_str = str(lc)
+    assert "lane_basis" in lc_str
+    assert "subgroup_basis" in lc_str

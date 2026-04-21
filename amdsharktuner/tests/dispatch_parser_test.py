@@ -382,3 +382,61 @@ def test_get_parent_function_name_no_function(
 
     func_name = dispatch_parser.get_parent_function_name(constant_op)
     assert func_name is None
+
+
+def test_matvec_op_interface_parser_basic(tuner_ctx: common.TunerContext) -> None:
+    context = tuner_ctx.mlir_ctx
+    module_str = """
+        builtin.module {
+            func.func @test(%A: tensor<4096x4096xf16>, %x: tensor<4096xf16>) -> tensor<4096xf32> {
+                %cst = arith.constant 0.0 : f32
+                %init = tensor.empty() : tensor<4096xf32>
+                %fill = linalg.fill ins(%cst : f32) outs(%init : tensor<4096xf32>) -> tensor<4096xf32>
+                %y = linalg.matvec {root_op = #iree_codegen.root_op<set = 0>}
+                    ins(%A, %x : tensor<4096x4096xf16>, tensor<4096xf16>)
+                    outs(%fill : tensor<4096xf32>) -> tensor<4096xf32>
+                return %y : tensor<4096xf32>
+            }
+        }
+    """
+    ir_module = ir.Module.parse(module_str, context)
+    root_ops = iree_codegen.get_tuner_root_ops(ir_module)
+    assert len(root_ops) == 1
+    root_op = root_ops[0]
+
+    parser = dispatch_parser.MatvecOpInterfaceParser(root_op, tuner_ctx)
+    op_info = parser.get_op_info()
+
+    assert isinstance(op_info, dispatch_parser.MatvecOpInfo)
+    assert op_info.parallel_bounds == [4096]
+    assert op_info.reduction_bound == 4096
+    assert op_info.largest_operand_bitwidth == 16
+    assert op_info.num_loops == 2
+    # The reduction dim and parallel dims should partition [0, num_loops).
+    assert set(op_info.parallel_dim_indices) | {op_info.reduction_dim_index} == {0, 1}
+
+
+def test_matvec_op_interface_parser_vecmat(tuner_ctx: common.TunerContext) -> None:
+    context = tuner_ctx.mlir_ctx
+    module_str = """
+        builtin.module {
+            func.func @test(%x: tensor<4096xf16>, %A: tensor<4096x8192xf16>) -> tensor<8192xf32> {
+                %cst = arith.constant 0.0 : f32
+                %init = tensor.empty() : tensor<8192xf32>
+                %fill = linalg.fill ins(%cst : f32) outs(%init : tensor<8192xf32>) -> tensor<8192xf32>
+                %y = linalg.vecmat {root_op = #iree_codegen.root_op<set = 0>}
+                    ins(%x, %A : tensor<4096xf16>, tensor<4096x8192xf16>)
+                    outs(%fill : tensor<8192xf32>) -> tensor<8192xf32>
+                return %y : tensor<8192xf32>
+            }
+        }
+    """
+    ir_module = ir.Module.parse(module_str, context)
+    root_op = iree_codegen.get_tuner_root_ops(ir_module)[0]
+
+    parser = dispatch_parser.MatvecOpInterfaceParser(root_op, tuner_ctx)
+    op_info = parser.get_op_info()
+
+    assert op_info.parallel_bounds == [8192]
+    assert op_info.reduction_bound == 4096
+    assert op_info.num_loops == 2

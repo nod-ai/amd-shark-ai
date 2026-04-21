@@ -233,12 +233,54 @@ class ROCmAttentionVectorDistributeTuner(
         return None
 
 
+class ROCmMatvecVectorDistributeTuner(
+    tuner_base.DispatchTuner, dispatch_parser.MatvecOpInterfaceParser
+):
+    def __init__(self, root_op: ir.Operation, tuner_ctx: common.TunerContext):
+        super().__init__(root_op, tuner_ctx)
+
+    @classmethod
+    def supports_root_op(cls, root_op: ir.Operation) -> bool:
+        if not linalg.isa_contraction_op(root_op):
+            return False
+        contraction_dims = linalg.infer_contraction_dimensions(root_op)
+        if not contraction_dims:
+            return False
+        m_empty = len(list(contraction_dims.m)) == 0
+        n_empty = len(list(contraction_dims.n)) == 0
+        k_present = len(list(contraction_dims.k)) > 0
+        return (m_empty ^ n_empty) and k_present
+
+    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
+        return rocm_constraint_generators.ROCmMatvecVectorDistributeConstraintGenerator(
+            self.get_op_info()
+        )
+
+    def get_td_spec(
+        self,
+        config_list: list[common.TuningConfiguration],
+    ) -> ir.Module:
+        builder = spec_builder.MatvecSpecBuilder(self.get_op_info())
+        return builder.build_td_spec(self._tuner_ctx, config_list)
+
+    @classmethod
+    def get_dispatch_kind(cls) -> common.DispatchKind:
+        return common.DispatchKind.matvec
+
+    def get_knob_assignment(
+        self,
+        config_list: list[common.TuningConfiguration],
+    ) -> Optional[common.KnobAssignment]:
+        return config_list[0].knob_assignment
+
+
 def get_tuners_for_pipeline(
     codegen_pipeline: iree_gpu.LoweringPipeline,
 ) -> list[type[tuner_base.DispatchTuner]]:
     """Get ROCm tuners for the given codegen pipeline."""
     if codegen_pipeline == iree_gpu.LoweringPipeline.VectorDistribute:
         return [
+            ROCmMatvecVectorDistributeTuner,
             ROCmContractionVectorDistributeTuner,
             ROCmConvolutionVectorDistributeTuner,
             ROCmAttentionVectorDistributeTuner,

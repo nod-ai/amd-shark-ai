@@ -5,6 +5,19 @@ for the tuning loop. It imports `candidate_gen.py` for candidate generation.
 To implement the full tuning loop, `libtuner.py` requires a separate Python script
 that uses the provided `TuningClient` API from `libtuner.py`.
 
+## Supported operations
+
+| Operation | Pipeline | Example |
+|---|---|---|
+| Matrix multiplication (contraction) | VectorDistribute, TileAndFuse | `dispatch_tuner/dispatch_sample.mlir` |
+| Convolution (IGEMM / direct) | VectorDistribute, TileAndFuse | — |
+| Attention | VectorDistribute | — |
+| Matvec / batched matvec | VectorDistribute | `dispatch_tuner/matvec_sample.mlir` |
+
+> **Note:** Matvec operations use the `VectorDistribute` reduction pipeline
+> (non-MMA). When tuning matvec dispatches, pass
+> `--codegen-pipeline=llvmgpu_vector_distribute` to the tuner CLI.
+
 ---
 
 ## Prerequisites

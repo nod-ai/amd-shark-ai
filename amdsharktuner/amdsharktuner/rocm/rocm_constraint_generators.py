@@ -326,3 +326,26 @@ class ROCmAttentionVectorDistributeConstraintGenerator(
             codegen_pipeline=iree_gpu.LoweringPipeline.VectorDistribute,
             **pipeline_constraint_options,
         )
+
+
+class ROCmMatvecVectorDistributeConstraintGenerator(
+    constraint_generator.ConstraintGenerator
+):
+    """ROCm constraint generator for matvec ops on the VectorDistribute pipeline."""
+
+    def __init__(self, op_info: dispatch_parser.MatvecOpInfo):
+        self.op_info = op_info
+
+    def generate_solutions(
+        self,
+        tuner_context: common.TunerContext,
+        gpu_target_info: iree_gpu.TargetInfo,
+        **pipeline_constraint_options,
+    ) -> Iterator[list[common.TuningConfiguration]]:
+        max_candidates = pipeline_constraint_options.get("max_candidates", 32)
+        return rocm_solutions.generate_matvec_solutions(
+            tuner_ctx=tuner_context,
+            op_info=self.op_info,
+            gpu_target_info=gpu_target_info,
+            max_candidates=max_candidates,
+        )

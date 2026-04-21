@@ -638,6 +638,64 @@ def generate_attention_vector_distribute_constraints(
     return constraints
 
 
+_SUPPORTED_MATVEC_BITWIDTHS: frozenset[int] = frozenset({4, 8, 16, 32})
+
+
+def generate_matvec_vector_distribute_constraints(
+    parallel_bounds: list[int],
+    reduction_bound: int,
+    largest_operand_bitwidth: int,
+    subgroup_size: z3.ArithRef,
+    thread_loads: z3.ArithRef,
+    workgroup_size: z3.ArithRef,
+    num_parallel_reductions: z3.ArithRef,
+    gpu_target_info: iree_gpu.TargetInfo,
+) -> list[z3.BoolRef]:
+    # Matches IREE's bitwidth gate at ReductionConfigUtils.cpp:727.
+    if largest_operand_bitwidth not in _SUPPORTED_MATVEC_BITWIDTHS:
+        return []
+
+    subgroup_choices = list(gpu_target_info.subgroup_size_choices)
+    assert subgroup_choices, "gpu_target_info.subgroup_size_choices is empty"
+
+    max_load_bits = getattr(gpu_target_info, "max_load_instruction_bits", None) or 128
+    max_thread_loads = max(1, max_load_bits // largest_operand_bitwidth)
+    thread_loads_choices: list[int] = []
+    tl = 1
+    while tl <= max_thread_loads:
+        thread_loads_choices.append(tl)
+        tl *= 2
+
+    max_npr = 1
+    while max_npr * 2 <= gpu_target_info.max_thread_count_per_workgroup // 4:
+        max_npr *= 2
+    npr_choices: list[int] = []
+    n = 1
+    while n <= max_npr:
+        npr_choices.append(n)
+        n *= 2
+
+    parallel_dim_bound = next((b for b in parallel_bounds if b != 1), 1)
+
+    constraints: list[z3.BoolRef] = []
+
+    constraints.append(z3.Or([subgroup_size == s for s in subgroup_choices]))
+    constraints.append(z3.Or([thread_loads == t for t in thread_loads_choices]))
+    constraints.append(z3.Or([num_parallel_reductions == p for p in npr_choices]))
+
+    constraints.append(reduction_bound % thread_loads == 0)
+    constraints.append(reduction_bound % (workgroup_size * thread_loads) == 0)
+
+    constraints.append(workgroup_size % subgroup_size == 0)
+    constraints.append(workgroup_size >= subgroup_size)
+    constraints.append(workgroup_size <= gpu_target_info.max_thread_count_per_workgroup)
+
+    constraints.append(num_parallel_reductions * 4 <= workgroup_size)
+    constraints.append(parallel_dim_bound % num_parallel_reductions == 0)
+
+    return constraints
+
+
 def getMMAAttr(
     output_type: ir.IntegerType | ir.FloatType,
     m: int,
@@ -833,3 +891,36 @@ def generate_vector_distribute_compilation_infos(
         allowed_waves_per_eu,
         allowed_denorm_flushing,
     )
+
+
+def generate_matvec_vector_distribute_compilation_infos(
+    tuner_ctx: common.TunerContext,
+    workgroup_tile_sizes: list[int],
+    partial_reduction_tile_sizes: list[int],
+    thread_tile_sizes: list[int],
+    lane_basis: list[list[int]],
+    subgroup_basis: list[list[int]],
+    workgroup_size: int,
+    subgroup_size: int,
+) -> iree_codegen.CompilationInfoAttr:
+    """Build a CompilationInfoAttr for a single matvec VectorDistribute candidate."""
+    lowering_config = common.get_lowering_config(
+        tuner_ctx,
+        workgroup=workgroup_tile_sizes,
+        partial_reduction=partial_reduction_tile_sizes,
+        thread=thread_tile_sizes,
+        lane_basis=lane_basis,
+        subgroup_basis=subgroup_basis,
+    )
+
+    pipeline_attr = iree_gpu.PipelineAttr.get(
+        iree_gpu.LoweringPipeline.VectorDistribute
+    )
+    pipeline_options = iree_gpu.PipelineOptionsAttr.get()
+    translation_info = iree_codegen.TranslationInfoAttr.get(
+        pass_pipeline=pipeline_attr,
+        workgroup_size=[workgroup_size, 1, 1],
+        subgroup_size=subgroup_size,
+        configuration=ir.DictAttr.get({"gpu_pipeline_options": pipeline_options}),
+    )
+    return iree_codegen.CompilationInfoAttr.get(lowering_config, translation_info)

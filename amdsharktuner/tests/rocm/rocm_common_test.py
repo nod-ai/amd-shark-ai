@@ -362,3 +362,18 @@ def test_compute_rocprof_avg_kernel_time(caplog):
     trace_rows = [drop_row] * 10 + [cal_row] * 5 + [cal_row_2] * 5
     avg_us = rocm_common.compute_rocprof_avg_kernel_time(trace_rows)
     assert avg_us == pytest.approx(1.75)
+
+
+def test_llvm_gpu_matvec_knobs_fields() -> None:
+    knobs = rocm_common.LLVMGPUMatvecKnobs(
+        subgroup_size=64,
+        thread_loads=8,
+        workgroup_size=256,
+        num_parallel_reductions=4,
+    )
+    assert knobs.subgroup_size == 64
+    assert knobs.thread_loads == 8
+    assert knobs.workgroup_size == 256
+    assert knobs.num_parallel_reductions == 4
+    # Must be a KnobAssignment (base class used in TuningConfiguration.knob_assignment).
+    assert isinstance(knobs, common.KnobAssignment)

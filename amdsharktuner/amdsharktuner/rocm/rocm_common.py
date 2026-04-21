@@ -76,6 +76,21 @@ class LLVMGPUContractionKnobs(common.KnobAssignment):
 
 
 @dataclass
+class LLVMGPUMatvecKnobs(common.KnobAssignment):
+    """Tunable knobs for a single matvec VectorDistribute candidate.
+
+    Mirrors the four degrees of freedom exposed by IREE's setReductionConfig
+    on ROCm: subgroup size, vector width per thread, workgroup size, and the
+    parallel-reduction factor (ReductionConfigUtils.cpp:280-295).
+    """
+
+    subgroup_size: int
+    thread_loads: int
+    workgroup_size: int
+    num_parallel_reductions: int
+
+
+@dataclass
 class ConvolutionKnobs(common.KnobAssignment):
     pass
 

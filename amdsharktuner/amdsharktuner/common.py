@@ -158,6 +158,7 @@ class DispatchKind(Enum):
     conv = 0
     contraction = 1
     attention = 2
+    matvec = 3
 
 
 @dataclass
@@ -309,7 +310,7 @@ def get_lowering_config(
         # A local variable to hold the transformed value.
         promoted_value = value
         match key:
-            case "workgroup" | "reduction" | "subgroup" | "promote_operands" | "padding" | "padding_conv":
+            case "workgroup" | "reduction" | "subgroup" | "promote_operands" | "padding" | "padding_conv" | "partial_reduction" | "thread":
                 if isinstance(value, Sequence):
                     promoted_value = ir.ArrayAttr.get(
                         [tuner_ctx.type.getI64(x) for x in value]
@@ -318,12 +319,12 @@ def get_lowering_config(
                     assert (
                         False
                     ), f"Unsupported type for key '{key}': {type(value).__name__}"
-            case "subgroup_basis":
+            case "subgroup_basis" | "lane_basis":
                 if isinstance(value, list) and len(value) == 2:
                     counts, mapping = value
                     assert isinstance(counts, list) and isinstance(
                         mapping, list
-                    ), f"subgroup_basis must contain two lists [counts, mapping]"
+                    ), f"{key} must contain two lists [counts, mapping]"
                     counts_attr = tuner_ctx.type.getI64ArrayAttr(counts)
                     mapping_attr = tuner_ctx.type.getI64ArrayAttr(mapping)
                     promoted_value = ir.ArrayAttr.get([counts_attr, mapping_attr])

@@ -437,3 +437,101 @@ class AttentionOpInterfaceParser(DispatchParser):
 
     def get_op_info(self) -> AttentionOpInfo:
         return self._op_info
+
+
+@dataclass
+class MatvecOpInfo(OpInfo):
+    parallel_bounds: list[int]
+    parallel_dim_indices: list[int]
+    reduction_bound: int
+    reduction_dim_index: int
+    num_loops: int
+    largest_operand_bitwidth: int
+    lhs_type: common.ShapedType
+    rhs_type: common.ShapedType
+    res_type: common.ShapedType
+
+
+class MatvecOpInterfaceParser(DispatchParser):
+    def __init__(self, root_op: ir.Operation, tuner_ctx: common.TunerContext):
+        super().__init__(root_op, tuner_ctx)
+        root_op = self.get_root_op()
+
+        contraction_dims = linalg.infer_contraction_dimensions(root_op)
+        assert contraction_dims, "no contraction dimensions"
+
+        m_dims = list(contraction_dims.m)
+        n_dims = list(contraction_dims.n)
+        k_dims = list(contraction_dims.k)
+        batch_dims = list(contraction_dims.batch)
+
+        assert bool(m_dims) ^ bool(n_dims), (
+            f"MatvecOpInterfaceParser requires exactly one of m/n empty "
+            f"(got m={m_dims}, n={n_dims})"
+        )
+        assert k_dims, "matvec requires a reduction dim"
+
+        res_maps = linalg.get_indexing_maps(root_op)
+        indexing_maps = [map_attr.value for map_attr in res_maps]
+        num_loops = indexing_maps[0].n_dims
+
+        lhs_type = ir.RankedTensorType(root_op.operands[0].type)
+        rhs_type = ir.RankedTensorType(root_op.operands[1].type)
+        res_type = ir.RankedTensorType(root_op.operands[2].type)
+
+        lhs_dims = common.get_map_result_dim_positions(indexing_maps[0])
+        rhs_dims = common.get_map_result_dim_positions(indexing_maps[1])
+        res_dims = common.get_map_result_dim_positions(indexing_maps[2])
+        assert lhs_dims is not None, "no lhs dimensions"
+        assert rhs_dims is not None, "no rhs dimensions"
+        assert res_dims is not None, "no result dimensions"
+
+        parallel_dim_indices: list[int] = list(batch_dims) + m_dims + n_dims
+        reduction_dim_index: int = k_dims[-1]
+
+        operand_shapes_and_dims = [
+            (lhs_type.shape, lhs_dims),
+            (rhs_type.shape, rhs_dims),
+            (res_type.shape, res_dims),
+        ]
+
+        def lookup_dim_size(dim_idx: int) -> int:
+            for shape, dim_list in operand_shapes_and_dims:
+                if dim_idx in dim_list:
+                    return shape[dim_list.index(dim_idx)]
+            assert False, f"dim {dim_idx} not found in any operand indexing map"
+
+        parallel_bounds: list[int] = [lookup_dim_size(d) for d in parallel_dim_indices]
+        reduction_bound = lookup_dim_size(reduction_dim_index)
+
+        def operand_size_and_bits(t: ir.RankedTensorType) -> tuple[int, int]:
+            static_elts = 1
+            for d in t.shape:
+                if d >= 0:
+                    static_elts *= d
+            return (static_elts, t.element_type.width)
+
+        candidates = [
+            (lhs_type, lhs_type.element_type.width),
+            (rhs_type, rhs_type.element_type.width),
+            (res_type, res_type.element_type.width),
+        ]
+        largest = max(candidates, key=lambda pair: operand_size_and_bits(pair[0]))
+        largest_operand_bitwidth = largest[1]
+
+        self._op_info: MatvecOpInfo = MatvecOpInfo(
+            root_op=root_op,
+            indexing_maps=indexing_maps,
+            parallel_bounds=parallel_bounds,
+            parallel_dim_indices=parallel_dim_indices,
+            reduction_bound=reduction_bound,
+            reduction_dim_index=reduction_dim_index,
+            num_loops=num_loops,
+            largest_operand_bitwidth=largest_operand_bitwidth,
+            lhs_type=common.ShapedType(lhs_type.shape, lhs_type.element_type),
+            rhs_type=common.ShapedType(rhs_type.shape, rhs_type.element_type),
+            res_type=common.ShapedType(res_type.shape, res_type.element_type),
+        )
+
+    def get_op_info(self) -> MatvecOpInfo:
+        return self._op_info
