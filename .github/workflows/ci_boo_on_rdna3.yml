@@ -58,7 +58,7 @@ on:
         default: false
 
   schedule:
-    - cron: "45 11 * * *"
+    - cron: "36 5 * * *"
 
 permissions:
   contents: write
