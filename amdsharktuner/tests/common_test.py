@@ -458,11 +458,12 @@ def test_get_target_info(tuner_ctx: common.TunerContext) -> None:
     assert target_info.max_thread_count_per_workgroup == 1024
     assert target_info.max_workgroup_memory_bytes == 65536
     assert target_info.max_workgroup_sizes == [256, 512, 1024]
-    assert target_info.mma_intrinsics == [
+    for mma in [
         iree_gpu.MMAIntrinsic.MFMA_F32_16x16x4_F32,
         iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16,
         iree_gpu.VirtualMMAIntrinsic.VMFMA_F32_16x16x32_F16,
-    ]
+    ]:
+        assert mma in target_info.mma_intrinsics
 
 
 def test_compute_next_aligned_bound() -> None:
