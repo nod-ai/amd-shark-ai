@@ -8,8 +8,9 @@ from typing import Optional
 from abc import abstractmethod
 
 from iree.compiler import ir  # type: ignore
+from iree.compiler.dialects import iree_codegen  # type: ignore
 
-from . import common, constraint_generator, dispatch_parser
+from . import common, dispatch_parser
 
 
 class DispatchTuner(dispatch_parser.DispatchParser):
@@ -33,11 +34,6 @@ class DispatchTuner(dispatch_parser.DispatchParser):
         """
         pass
 
-    @abstractmethod
-    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
-        """Returns a ConstraintGenerator associated with this dispatch root op."""
-        pass
-
     @classmethod
     @abstractmethod
     def get_dispatch_kind(cls) -> common.DispatchKind:
@@ -45,12 +41,19 @@ class DispatchTuner(dispatch_parser.DispatchParser):
         pass
 
     @abstractmethod
-    def get_knob_assignment(
+    def get_tuning_configurations(
         self,
-        config_list: list[common.TuningConfiguration],
+        constraints_op: iree_codegen.ConstraintsOp,
+        knob_assignment: common.SMTKnobAssignments,
+    ) -> list[common.TuningConfiguration]:
+        """Materialize tuning configurations for a solved knob assignment."""
+        pass
+
+    @abstractmethod
+    def get_ordering_knob(
+        self,
+        constraints_op: iree_codegen.ConstraintsOp,
+        knob_assignment: common.SMTKnobAssignments,
     ) -> Optional[common.KnobAssignment]:
-        """
-        Return a KnobAssignment that records the feature values of a single candidate,
-        retrieved from the `knob_assignment` attribute of its TuningConfiguration.
-        """
+        """Return knob assignment used for candidate ordering."""
         pass

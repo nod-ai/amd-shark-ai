@@ -45,7 +45,7 @@ from . import (
     dispatch_parser,
     process_utils,
 )
-from .rocm import rocm_candidate_ordering, rocm_common, rocm_dispatch_constraints
+from .rocm import rocm_candidate_ordering, rocm_common
 
 # Default random seed.
 DEFAULT_SHUFFLE_SEED = 42
@@ -809,10 +809,6 @@ def generate_candidate_specs(
         mlir_text = candidate_gen.strip_compilation_info(path_config.template_mlir)
         mlir_module = dispatch_parser.parse_mlir(mlir_text, tuning_client.tuner_context)
         logging.debug("Captured messages from candidate_gen.py:")
-        pipeline_options_search_space = rocm_dispatch_constraints.PipelineOptionsSearchSpace(
-            prefetch_num_stages=args.prefetch_num_stages_options,
-            no_reduce_shared_memory_bank_conflicts=args.no_reduce_shared_memory_bank_conflicts_options,
-        )
         starter_td_spec: Optional[ir.Module] = None
         if args.starter_td_spec:
             with open(args.starter_td_spec, "r") as f:
@@ -840,46 +836,27 @@ def generate_candidate_specs(
                 "Failed to set up dispatch tuner. No candidates will be generated."
             )
             return []
-        codegen_pipeline = get_iree_codegen_pipeline(args.codegen_pipeline)
-        allowed_denorm_flushing = validate_denorm_flushing_options(
-            args.denorm_flushing_options,
-            dispatch_tuner.get_dispatch_kind(),
-            codegen_pipeline,
-        )
-        # Convert conv_strategy string to IntFlag.
-        conv_strategy_map = {
-            "igemm": rocm_common.ConvolutionStrategy.igemm,
-            "direct": rocm_common.ConvolutionStrategy.direct,
-            "both": rocm_common.ConvolutionStrategy.igemm
-            | rocm_common.ConvolutionStrategy.direct,
-        }
-        conv_strategy = conv_strategy_map[args.conv_strategy]
 
         solution_gen_start_time = time.perf_counter()
-        solutions_iter = candidate_gen.generate_solutions(
-            dispatch_tuner=dispatch_tuner,
-            target_info=tuning_client.target_info,
-            tuner_context=tuning_client.tuner_context,
-            num_subgroups=args.num_subgroups,
-            allowed_waves_per_eu=args.waves_per_eu_options,
-            allowed_denorm_flushing=allowed_denorm_flushing,
-            pipeline_options_search_space=pipeline_options_search_space,
-            codegen_pipeline=codegen_pipeline,
-            conv_strategy=conv_strategy,
+        z3_solutions_iter = candidate_gen.generate_solutions(
+            input_module=mlir_module, mlir_ctx=tuning_client.tuner_context.mlir_ctx
         )
         if args.enable_random_seed:
             random.seed()
         else:
             random.seed(args.search_space_shuffle_seed)
 
-        solutions = list(solutions_iter)
+        z3_solutions = list(z3_solutions_iter)
         solution_gen_end_time = time.perf_counter()
         elapsed_time = solution_gen_end_time - solution_gen_start_time
         logging.debug(f"Completed candidate generation in {elapsed_time:.6f}s\n")
-        logging.debug(f"Max search space size: {len(solutions)}")
+        logging.debug(f"Max search space size: {len(z3_solutions)}")
 
         knobs: list[Optional[common.KnobAssignment]] = [
-            dispatch_tuner.get_knob_assignment(s) for s in solutions
+            dispatch_tuner.get_ordering_knob(
+                solution.constraints_op, solution.knob_assignments
+            )
+            for solution in z3_solutions
         ]
 
         sorted_order = candidate_ordering.reorder_assignments(
@@ -888,30 +865,38 @@ def generate_candidate_specs(
             target_info=tuning_client.target_info,
             sort_key_map=rocm_candidate_ordering.ROCM_SORT_KEY_MAP,
         )
-        solutions = [solutions[i] for i in sorted_order] if sorted_order else solutions
-        solutions = solutions[: args.num_candidates]
+        selected_order = (
+            sorted_order if sorted_order else list(range(len(z3_solutions)))
+        )
+        selected_order = selected_order[: args.num_candidates]
+        selected_solutions = [z3_solutions[i] for i in selected_order]
+        configs = [
+            dispatch_tuner.get_tuning_configurations(
+                solution.constraints_op, solution.knob_assignments
+            )
+            for solution in selected_solutions
+        ]
 
         config_specs: list[ir.Module] = candidate_gen.generate_configs_and_td_specs(
             dispatch_tuner=dispatch_tuner,
             input_module=mlir_module,
-            solutions=solutions,
+            solutions=configs,
         )
 
         # Total number of configs = candidates generated + baseline.
-        assert len(config_specs) == len(solutions) + 1
+        assert len(config_specs) == len(configs) + 1
 
         tuning_client.tuning_records = (
-            candidate_ordering.build_tuning_records_from_order(knobs, sorted_order)
+            candidate_ordering.build_tuning_records_from_order(knobs, selected_order)
         )
 
         # Prepend None for the baseline config (no knob assignment) at index 0.
-        knob_assignments = [None] + [
-            dispatch_tuner.get_knob_assignment(s) for s in solutions
-        ]
+        selected_knobs = [knobs[i] for i in selected_order]
+        knob_assignments = [None] + selected_knobs
         assert len(config_specs) == len(knob_assignments)
         logging.debug("candidate_gen.py ends")
         handle_error(
-            condition=(len(solutions) <= 1), msg="Failed to generate any candidates"
+            condition=(len(configs) <= 1), msg="Failed to generate any candidates"
         )
 
         # Create candidate trackers.

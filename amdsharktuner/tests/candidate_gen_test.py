@@ -8,6 +8,7 @@
 Usage: python -m pytest candidate_gen_test.py
 """
 
+import pytest
 from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_codegen, iree_gpu, transform  # type: ignore
 
@@ -362,3 +363,123 @@ def test_get_supported_dispatch_tuners() -> None:
     assert (
         candidate_gen.get_supported_dispatch_tuners("gfx942", Pipeline.Distribute) == []
     )
+
+
+def test_generate_solutions_from_constraints_op(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    context = tuner_ctx.mlir_ctx
+    module_str = """
+        module {
+            iree_codegen.smt.constraints
+                target = <set = 0>,
+                pipeline = #iree_gpu.pipeline<VectorDistribute>,
+                knobs = {wg_m = #iree_codegen.smt.int_knob<"wg_m">}
+                dims() {
+                ^bb0:
+                %v = iree_codegen.smt.knob "wg_m" : !smt.int
+                %c4 = smt.int.constant 4
+                %c8 = smt.int.constant 8
+                %ge = smt.int.cmp ge %v, %c4
+                %le = smt.int.cmp le %v, %c8
+                iree_codegen.smt.assert %ge, "wg_m >= 4" : !smt.bool
+                iree_codegen.smt.assert %le, "wg_m <= 8" : !smt.bool
+                }
+        }"""
+    ir_module = ir.Module.parse(module_str, context)
+    solutions = list(candidate_gen.generate_solutions(ir_module, context))
+    assert len(solutions) > 0
+    assert all(
+        isinstance(solution, candidate_gen.ConstraintSolution) for solution in solutions
+    )
+    assert all(
+        isinstance(solution.knob_assignments, common.SMTKnobAssignments)
+        for solution in solutions
+    )
+    assert all(
+        isinstance(solution.constraints_op, iree_codegen.ConstraintsOp)
+        for solution in solutions
+    )
+    assert all(solution.constraints_module is not None for solution in solutions)
+    seen: set[tuple[tuple[str, int], ...]] = set()
+    for solution in solutions:
+        key = tuple(sorted(solution.knob_assignments.items()))
+        assert key not in seen, f"Duplicate enumeration: {solution.knob_assignments}"
+        seen.add(key)
+        assert "wg_m" in solution.knob_assignments
+        assert 4 <= solution.knob_assignments["wg_m"] <= 8
+
+
+def test_generate_solutions_without_constraints_op(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    context = tuner_ctx.mlir_ctx
+    ir_module = ir.Module.parse("module {}", context)
+    # `generate_solutions` runs iree-compile to insert constraints; an empty
+    # module yields no ConstraintsOp in the parsed dump (or a parse failure).
+    with pytest.raises(RuntimeError):
+        list(candidate_gen.generate_solutions(ir_module, context))
+
+
+def test_attention_tuner_materializes_compilation_and_decomposition_configs(
+    tuner_ctx: common.TunerContext,
+    monkeypatch,
+) -> None:
+    context = tuner_ctx.mlir_ctx
+    module_str = """
+        module {
+            iree_codegen.smt.constraints
+                target = <set = 0>,
+                pipeline = #iree_gpu.pipeline<VectorDistribute>,
+                knobs = {wg_m = #iree_codegen.smt.int_knob<"wg_m">}
+                dims() {
+                ^bb0:
+                %v = iree_codegen.smt.knob "wg_m" : !smt.int
+                %c4 = smt.int.constant 4
+                %c4b = smt.int.constant 4
+                %ge = smt.int.cmp ge %v, %c4
+                %le = smt.int.cmp le %v, %c4b
+                iree_codegen.smt.assert %ge, "wg_m >= 4" : !smt.bool
+                iree_codegen.smt.assert %le, "wg_m <= 4" : !smt.bool
+                }
+        }"""
+    ir_module = ir.Module.parse(module_str, context)
+    dispatch_tuner = rocm_tuners.ROCmAttentionVectorDistributeTuner.__new__(
+        rocm_tuners.ROCmAttentionVectorDistributeTuner
+    )
+
+    def fake_materialize_compilation_info(
+        op: iree_codegen.ConstraintsOp,
+        assignment: dict[str, int],
+    ) -> ir.Attribute:
+        return ir.IntegerAttr.get(ir.IntegerType.get_signless(64), assignment["wg_m"])
+
+    def fake_materialize_decomposition_config(
+        op: iree_codegen.ConstraintsOp,
+        assignment: dict[str, int],
+    ) -> ir.Attribute:
+        return ir.IntegerAttr.get(
+            ir.IntegerType.get_signless(64), assignment["wg_m"] + 1
+        )
+
+    monkeypatch.setattr(
+        iree_codegen,
+        "materialize_compilation_info",
+        fake_materialize_compilation_info,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        iree_codegen,
+        "materialize_decomposition_config",
+        fake_materialize_decomposition_config,
+        raising=False,
+    )
+
+    solution = list(candidate_gen.generate_solutions(ir_module, context))[0]
+    config_list = dispatch_tuner.get_tuning_configurations(
+        solution.constraints_op, solution.knob_assignments
+    )
+    assert {cfg.name for cfg in config_list} == {
+        "compilation_info",
+        "decomposition_config",
+    }

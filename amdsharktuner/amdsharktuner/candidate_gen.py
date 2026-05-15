@@ -8,22 +8,104 @@
 # in the code and runs it.
 
 import logging
+import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Iterator
 
 import iree.compiler as ireec  # type: ignore
 from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_codegen, iree_gpu  # type: ignore
+import z3  # type: ignore
 
 from . import (
     common,
     process_utils,
     spec_builder,
 )
-from .rocm import rocm_common, rocm_dispatch_constraints, rocm_tuners
+from .rocm import rocm_common, rocm_tuners
 from .tuner_base import DispatchTuner
 
 tune_logger = logging.getLogger("tune")
+
+
+@dataclass(frozen=True)
+class ConstraintSolution:
+    constraints_module: ir.Module
+    constraints_op: iree_codegen.ConstraintsOp
+    knob_assignments: common.SMTKnobAssignments
+
+
+def get_z3_assignment_from_model(
+    model: z3.ModelRef,
+    z3_const_exprs: common.SMTKnobSymbols,
+) -> common.SMTKnobAssignments:
+    def get_z3_const_val(v: z3.ExprRef) -> int:
+        val = model.eval(v)
+        assert z3.is_int_value(
+            val
+        ), f"Unassigned or non-concrete constant: {v} -> {val}"
+        return val.as_long()
+
+    return common.SMTKnobAssignments(
+        {name: get_z3_const_val(expr) for name, expr in z3_const_exprs.items()}
+    )
+
+
+def get_knobs_from_constraint_op(
+    constraints_op: iree_codegen.ConstraintsOp,
+    z3_ctx: z3.Context,
+) -> common.SMTKnobSymbols:
+    knob_names: list[str] = []
+
+    def collect(attr: ir.Attribute) -> None:
+        match attr:
+            case iree_codegen.IntKnobAttr() | iree_codegen.OneOfKnobAttr():
+                knob_names.append(attr.name)
+            case ir.IntegerAttr():
+                return
+            case ir.ArrayAttr():
+                for elem in attr:
+                    collect(elem)
+            case ir.DictAttr():
+                for entry in attr:
+                    collect(entry.attr)
+            case _:
+                raise TypeError(f"Unknown knob attribute type: {type(attr)}")
+
+    collect(constraints_op.knobs)
+
+    return common.SMTKnobSymbols(
+        {name: z3.Int(name, ctx=z3_ctx) for name in knob_names}
+    )
+
+
+def generate_solutions_from_constraint_op(
+    constraints_op: iree_codegen.ConstraintsOp,
+    z3_ctx: z3.Context,
+) -> Iterator[common.SMTKnobAssignments]:
+    with constraints_op.operation.context:
+        smtlib = iree_codegen.convert_constraints_op_to_smtlib(
+            constraints_op, emit_reset=False
+        )
+    if "(reset)" in smtlib:
+        raise RuntimeError(f"Unexpected reset string in SMTLIB: \n{smtlib}")
+
+    z3_const_exprs = get_knobs_from_constraint_op(constraints_op, z3_ctx)
+    z3_vars = list(z3_const_exprs.values())
+
+    solver = z3.Solver(ctx=z3_ctx)
+    solver.add(z3.parse_smt2_string(smtlib, ctx=z3_ctx))
+
+    count = 0
+    while solver.check() == z3.sat:
+        model = solver.model()
+        solver.add(z3.Or([v != model.eval(v, model_completion=True) for v in z3_vars]))
+
+        z3_assignment = get_z3_assignment_from_model(model, z3_const_exprs)
+        count += 1
+        tune_logger.debug(f"Solution #{count}: {z3_assignment}")
+        yield z3_assignment
 
 
 def get_supported_dispatch_tuners(
@@ -89,41 +171,30 @@ def instantiate_dispatch_tuner(
 
 
 def generate_solutions(
-    dispatch_tuner: DispatchTuner,
-    target_info: iree_gpu.TargetInfo,
-    tuner_context: common.TunerContext,
-    num_subgroups: int = 4,  # GPU spec, used to determine candidate generation constraints.
-    allowed_waves_per_eu: list[int] = [2],
-    allowed_denorm_flushing: list[bool] = [False],
-    pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
-    codegen_pipeline: iree_gpu.LoweringPipeline = iree_gpu.LoweringPipeline.VectorDistribute,
-    conv_strategy: rocm_common.ConvolutionStrategy = rocm_common.ConvolutionStrategy.igemm
-    | rocm_common.ConvolutionStrategy.direct,
-) -> Iterator[list[common.TuningConfiguration]]:
-    if target_info.arch not in rocm_common.ROCM_ARCHITECTURES:
-        print(f"Warning: Untested architecture '{target_info.arch}'.")
-
-    constraint_generator = dispatch_tuner.get_constraint_generator()
-
-    # Only pass conv_strategy for convolution dispatches.
-    if dispatch_tuner.get_dispatch_kind() == common.DispatchKind.conv:
-        return constraint_generator.generate_solutions(
-            tuner_context,
-            target_info,
-            num_subgroups=num_subgroups,
-            allowed_waves_per_eu=allowed_waves_per_eu,
-            pipeline_options_search_space=pipeline_options_search_space,
-            conv_strategy=conv_strategy,
+    input_module: ir.Module,
+    mlir_ctx: ir.Context,
+) -> Iterator[ConstraintSolution]:
+    constraints_module = get_constraints_module(input_module, mlir_ctx)
+    constraints_ops = ir.get_ops_of_type(constraints_module, iree_codegen.ConstraintsOp)
+    tune_logger.debug(f"Found {len(constraints_ops)} constraints ops")
+    if len(constraints_ops) == 0:
+        raise RuntimeError("Expected at least one iree_codegen.smt.constraints op")
+    # TODO(Amily): Tuner currently supports only one ConstraintsOp.
+    if len(constraints_ops) > 1:
+        tune_logger.warning(
+            f"Found {len(constraints_ops)} iree_codegen.smt.constraints ops. "
+            "Using the first one because tuner currently supports one ConstraintsOp."
         )
-
-    return constraint_generator.generate_solutions(
-        tuner_context,
-        target_info,
-        num_subgroups=num_subgroups,
-        allowed_waves_per_eu=allowed_waves_per_eu,
-        allowed_denorm_flushing=allowed_denorm_flushing,
-        pipeline_options_search_space=pipeline_options_search_space,
-    )
+    constraints_op = constraints_ops[0]
+    z3_ctx = z3.Context()
+    for knob_assignments in generate_solutions_from_constraint_op(
+        constraints_op, z3_ctx=z3_ctx
+    ):
+        yield ConstraintSolution(
+            constraints_module=constraints_module,
+            constraints_op=constraints_op,
+            knob_assignments=knob_assignments,
+        )
 
 
 def generate_configs_and_td_specs(
@@ -181,3 +252,32 @@ def strip_compilation_info(input_path: Path) -> str:
         result.process_res is not None
     ), "expected result from stripping compilation info"
     return result.process_res.stdout
+
+
+def get_constraints_module(input_module: ir.Module, mlir_ctx: ir.Context) -> ir.Module:
+    """Run `iree-compile` and return IR dump stderr as an in-memory module."""
+    iree_compile: str = ireec.binaries.find_tool("iree-compile")  # type: ignore[attr-defined]
+    module_str = str(input_module)
+    command = [
+        iree_compile,
+        "-",
+        "--iree-codegen-experimental-verify-pipeline-constraints",
+        "--mlir-print-ir-after=iree-codegen-insert-smt-constraints",
+    ]
+    tune_logger.debug("Running iree-compile to insert SMT constraints.")
+    result = process_utils.run_command(
+        process_utils.RunPack(
+            command=command,
+            check=False,
+            stdin=module_str,
+            capture_stdout=False,
+        )
+    )
+    try:
+        with mlir_ctx:
+            constraints_module = ir.Module.parse(result.process_res.stderr)
+    except Exception as e:
+        error_msg = f"Failed to insert SMT constraints into input module: {e}"
+        tune_logger.error(error_msg)
+        raise RuntimeError(error_msg)
+    return constraints_module

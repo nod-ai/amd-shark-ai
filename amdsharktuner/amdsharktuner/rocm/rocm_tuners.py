@@ -10,8 +10,21 @@ from typing import Optional
 from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_codegen, iree_gpu, linalg  # type: ignore
 
-from .. import common, constraint_generator, dispatch_parser, spec_builder, tuner_base
-from . import rocm_constraint_generators, rocm_parsers
+from .. import common, dispatch_parser, spec_builder, tuner_base
+from . import rocm_parsers
+
+
+def _materialize_compilation_info_config(
+    constraints_op: iree_codegen.ConstraintsOp,
+    knob_assignment: common.SMTKnobAssignments,
+) -> common.TuningConfiguration:
+    compilation_info = iree_codegen.materialize_compilation_info(
+        constraints_op, knob_assignment
+    )
+    return common.TuningConfiguration(
+        name="compilation_info",
+        configuration=compilation_info,
+    )
 
 
 class ROCmContractionVectorDistributeTuner(
@@ -41,11 +54,6 @@ class ROCmContractionVectorDistributeTuner(
 
         return True
 
-    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
-        return rocm_constraint_generators.ROCmContractionVectorDistributeConstraintGenerator(
-            self.get_op_info()
-        )
-
     def get_td_spec(
         self,
         config_list: list[common.TuningConfiguration],
@@ -57,11 +65,19 @@ class ROCmContractionVectorDistributeTuner(
     def get_dispatch_kind(cls) -> common.DispatchKind:
         return common.DispatchKind.contraction
 
-    def get_knob_assignment(
+    def get_tuning_configurations(
         self,
-        config_list: list[common.TuningConfiguration],
+        constraints_op: iree_codegen.ConstraintsOp,
+        knob_assignment: common.SMTKnobAssignments,
+    ) -> list[common.TuningConfiguration]:
+        return [_materialize_compilation_info_config(constraints_op, knob_assignment)]
+
+    def get_ordering_knob(
+        self,
+        constraints_op: iree_codegen.ConstraintsOp,
+        knob_assignment: common.SMTKnobAssignments,
     ) -> Optional[common.KnobAssignment]:
-        return config_list[0].knob_assignment
+        return None
 
 
 class ROCmContractionTileAndFuseTuner(
@@ -91,11 +107,6 @@ class ROCmContractionTileAndFuseTuner(
 
         return True
 
-    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
-        return rocm_constraint_generators.ROCmContractionTileAndFuseConstraintGenerator(
-            self.get_op_info()
-        )
-
     def get_td_spec(
         self,
         config_list: list[common.TuningConfiguration],
@@ -107,11 +118,19 @@ class ROCmContractionTileAndFuseTuner(
     def get_dispatch_kind(cls) -> common.DispatchKind:
         return common.DispatchKind.contraction
 
-    def get_knob_assignment(
+    def get_tuning_configurations(
         self,
-        config_list: list[common.TuningConfiguration],
+        constraints_op: iree_codegen.ConstraintsOp,
+        knob_assignment: common.SMTKnobAssignments,
+    ) -> list[common.TuningConfiguration]:
+        return [_materialize_compilation_info_config(constraints_op, knob_assignment)]
+
+    def get_ordering_knob(
+        self,
+        constraints_op: iree_codegen.ConstraintsOp,
+        knob_assignment: common.SMTKnobAssignments,
     ) -> Optional[common.KnobAssignment]:
-        return config_list[0].knob_assignment
+        return None
 
 
 class ROCmConvolutionVectorDistributeTuner(
@@ -137,11 +156,6 @@ class ROCmConvolutionVectorDistributeTuner(
             and list(convolution_dims.depth) == []
         )
 
-    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
-        return rocm_constraint_generators.ROCmConvolutionVectorDistributeConstraintGenerator(
-            self.get_op_info()
-        )
-
     def get_td_spec(
         self,
         config_list: list[common.TuningConfiguration],
@@ -153,9 +167,17 @@ class ROCmConvolutionVectorDistributeTuner(
     def get_dispatch_kind(cls) -> common.DispatchKind:
         return common.DispatchKind.conv
 
-    def get_knob_assignment(
+    def get_tuning_configurations(
         self,
-        config_list: list[common.TuningConfiguration],
+        constraints_op: iree_codegen.ConstraintsOp,
+        knob_assignment: common.SMTKnobAssignments,
+    ) -> list[common.TuningConfiguration]:
+        return [_materialize_compilation_info_config(constraints_op, knob_assignment)]
+
+    def get_ordering_knob(
+        self,
+        constraints_op: iree_codegen.ConstraintsOp,
+        knob_assignment: common.SMTKnobAssignments,
     ) -> Optional[common.KnobAssignment]:
         return None
 
@@ -175,11 +197,6 @@ class ROCmConvolutionTileAndFuseTuner(
             return False
         return True
 
-    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
-        return rocm_constraint_generators.ROCmConvolutionTileAndFuseConstraintGenerator(
-            self.get_op_info()
-        )
-
     def get_td_spec(
         self,
         config_list: list[common.TuningConfiguration],
@@ -191,9 +208,17 @@ class ROCmConvolutionTileAndFuseTuner(
     def get_dispatch_kind(cls) -> common.DispatchKind:
         return common.DispatchKind.conv
 
-    def get_knob_assignment(
+    def get_tuning_configurations(
         self,
-        config_list: list[common.TuningConfiguration],
+        constraints_op: iree_codegen.ConstraintsOp,
+        knob_assignment: common.SMTKnobAssignments,
+    ) -> list[common.TuningConfiguration]:
+        return [_materialize_compilation_info_config(constraints_op, knob_assignment)]
+
+    def get_ordering_knob(
+        self,
+        constraints_op: iree_codegen.ConstraintsOp,
+        knob_assignment: common.SMTKnobAssignments,
     ) -> Optional[common.KnobAssignment]:
         return None
 
@@ -208,13 +233,6 @@ class ROCmAttentionVectorDistributeTuner(
     def supports_root_op(cls, root_op: ir.Operation) -> bool:
         return iree_codegen.isa_attention_op(root_op)
 
-    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
-        return (
-            rocm_constraint_generators.ROCmAttentionVectorDistributeConstraintGenerator(
-                self.get_op_info()
-            )
-        )
-
     def get_td_spec(
         self,
         config_list: list[common.TuningConfiguration],
@@ -226,9 +244,29 @@ class ROCmAttentionVectorDistributeTuner(
     def get_dispatch_kind(cls) -> common.DispatchKind:
         return common.DispatchKind.attention
 
-    def get_knob_assignment(
+    def get_tuning_configurations(
         self,
-        config_list: list[common.TuningConfiguration],
+        constraints_op: iree_codegen.ConstraintsOp,
+        knob_assignment: common.SMTKnobAssignments,
+    ) -> list[common.TuningConfiguration]:
+        compilation_info = _materialize_compilation_info_config(
+            constraints_op, knob_assignment
+        )
+        decomposition_config = iree_codegen.materialize_decomposition_config(
+            constraints_op, knob_assignment
+        )
+        return [
+            compilation_info,
+            common.TuningConfiguration(
+                name="decomposition_config",
+                configuration=decomposition_config,
+            ),
+        ]
+
+    def get_ordering_knob(
+        self,
+        constraints_op: iree_codegen.ConstraintsOp,
+        knob_assignment: common.SMTKnobAssignments,
     ) -> Optional[common.KnobAssignment]:
         return None
 

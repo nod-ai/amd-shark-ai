@@ -141,7 +141,8 @@ class TuningRecord:
 
 
 def build_tuning_records_from_order(
-    knobs: list[Optional[common.KnobAssignment]], sorted_order: list[int]
+    knobs: list[Optional[common.KnobAssignment]],
+    sorted_order: list[int],
 ) -> list[TuningRecord]:
     tuning_records: list[TuningRecord] = []
     # Insert baseline entry (always candidate_id = 0, gen_id = 0).
