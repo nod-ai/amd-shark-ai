@@ -462,6 +462,7 @@ def test_get_target_info(tuner_ctx: common.TunerContext) -> None:
         iree_gpu.MMAIntrinsic.MFMA_F32_16x16x4_F32,
         iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16,
         iree_gpu.VirtualMMAIntrinsic.VMFMA_F32_16x16x32_F16,
+        iree_gpu.VirtualMMAIntrinsic.VDMFMA_F32_8x16x64x2_F16,
     ]
 
 

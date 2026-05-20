@@ -96,7 +96,6 @@ def generate_solutions(
     allowed_waves_per_eu: list[int] = [2],
     allowed_denorm_flushing: list[bool] = [False],
     pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
-    codegen_pipeline: iree_gpu.LoweringPipeline = iree_gpu.LoweringPipeline.VectorDistribute,
     conv_strategy: rocm_common.ConvolutionStrategy = rocm_common.ConvolutionStrategy.igemm
     | rocm_common.ConvolutionStrategy.direct,
 ) -> Iterator[list[common.TuningConfiguration]]:
@@ -105,13 +104,18 @@ def generate_solutions(
 
     constraint_generator = dispatch_tuner.get_constraint_generator()
 
-    # Only pass conv_strategy for convolution dispatches.
+    # conv_strategy is only meaningful for convolution generators; contraction and
+    # attention generators don't accept it. The flag is interpreted per-pipeline:
+    # TileAndFuse enumerates each requested flag (IGEMM, direct, or both), while
+    # VectorDistribute conv has no IGEMM/direct selection and tunes whatever
+    # contraction form the parser produced.
     if dispatch_tuner.get_dispatch_kind() == common.DispatchKind.conv:
         return constraint_generator.generate_solutions(
             tuner_context,
             target_info,
             num_subgroups=num_subgroups,
             allowed_waves_per_eu=allowed_waves_per_eu,
+            allowed_denorm_flushing=allowed_denorm_flushing,
             pipeline_options_search_space=pipeline_options_search_space,
             conv_strategy=conv_strategy,
         )

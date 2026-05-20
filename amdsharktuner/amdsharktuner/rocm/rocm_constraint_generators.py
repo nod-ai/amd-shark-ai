@@ -55,8 +55,10 @@ class ROCmConvolutionVectorDistributeConstraintGenerator(
     """
     ROCm Constraint generator for convolution operations using VectorDistribute pipeline.
 
-    Generates tuning configurations for convolution operations using the
-    VectorDistribute lowering pipeline. Supports IGEMM-based convolutions.
+    Tunes convolutions presented as generalized (gemm-like) contractions. Unlike the
+    TileAndFuse pipeline, the VectorDistribute pipeline does not expose an
+    IGEMM-vs-direct lowering selection — the parser hands the tuner a contraction
+    form and tile-size enumeration proceeds against that form directly.
 
     Attributes:
         op_info: ROCmConvolutionOpInfo containing all convolution operation metadata.
@@ -69,8 +71,22 @@ class ROCmConvolutionVectorDistributeConstraintGenerator(
         self,
         tuner_context: common.TunerContext,
         gpu_target_info: iree_gpu.TargetInfo,
+        conv_strategy: rocm_common.ConvolutionStrategy = rocm_common.ConvolutionStrategy.igemm,
         **pipeline_constraint_options,
     ) -> Iterator[list[common.TuningConfiguration]]:
+        # `conv_strategy` (IGEMM/direct) is a TileAndFuse-only knob; VectorDistribute
+        # conv has no such selection and just tunes the contraction form prepared by
+        # the parser. The kwarg is accepted to keep a uniform call signature with the
+        # TileAndFuse conv generator; warn if the caller asked for a strategy that
+        # excludes IGEMM (e.g. direct-only) since that intent is silently bypassed.
+        if not (conv_strategy & rocm_common.ConvolutionStrategy.igemm):
+            tuner_context.logger.warning(
+                "conv_strategy=%s cannot be honored under the VectorDistribute "
+                "pipeline (IGEMM/direct selection is a TileAndFuse-only option); "
+                "proceeding with the contraction form supplied by the parser.",
+                conv_strategy,
+            )
+
         # Verify convolution_dims is set (should always be populated by parsers).
         assert (
             self.op_info.convolution_dims is not None
