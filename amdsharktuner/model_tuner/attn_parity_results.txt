@@ -1,0 +1,44 @@
+# Attention compiler-bridge parity proof
+#
+# Generated: 2026-05-21T20:08:03+00:00
+# Fixture:   model_tuner/parity_check.py (b=2, m=128, n=64, k1=64, k2=128 attention on gfx942 with two F16 MMAs)
+# Inputs:    model_tuner/attn_parity_python.txt (legacy Python Z3 path, attn-parity-old-snapshot branch)
+#            model_tuner/attn_parity_compiler.txt (compiler-bridge path, tuner_use_iree_constraints branch + IREE v1 emitter)
+#
+# Reproduce:
+#   git checkout attn-parity-old-snapshot
+#   PYTHONPATH=$PWD/amdsharktuner:... model_tuner/parity_check.py --side=python   --out=...py
+#   git checkout tuner_use_iree_constraints
+#   PYTHONPATH=$PWD/amdsharktuner:... model_tuner/parity_check.py --side=compiler --out=...cc
+#   model_tuner/parity_check.py --diff --python=...py --compiler=...cc
+
+## Candidate counts
+python   total: 110   unique semantic signatures: 110
+compiler total: 110   unique semantic signatures: 110
+
+## Semantic signature comparison
+  (signature = (qk_mma, pv_mma, workgroup tile, reduction tile))
+intersection:    110
+only-in-python:  0
+only-in-compiler:0
+
+## RESULT: ✓ BIJECTIVE PARITY ACHIEVED
+Every candidate the legacy Python Z3 attention generator produces is
+reachable from the compiler-bridge path with the same (qk_mma, pv_mma,
+workgroup, reduction) signature, and the compiler emits no extras.
+
+## Per-MMA-pair breakdown (proves no pair is silently dropped or added)
+(qk_mma, pv_mma)                                                                             py   cc delta
+  ('mma_layout<MFMA_F32_16x16x16_F16>', 'mma_layout<MFMA_F32_16x16x16_F16>')                 24   24    +0
+  ('mma_layout<MFMA_F32_16x16x16_F16>', 'virtual_mma_layout<VMFMA_F32_16x16x32_F16>')        15   15    +0
+  ('mma_layout<MFMA_F32_32x32x8_F16>', 'mma_layout<MFMA_F32_32x32x8_F16>')                   10   10    +0
+  ('mma_layout<MFMA_F32_32x32x8_F16>', 'virtual_mma_layout<VMFMA_F32_32x32x16_F16>')          6    6    +0
+  ('virtual_mma_layout<VMFMA_F32_16x16x32_F16>', 'mma_layout<MFMA_F32_16x16x16_F16>')        24   24    +0
+  ('virtual_mma_layout<VMFMA_F32_16x16x32_F16>', 'virtual_mma_layout<VMFMA_F32_16x16x32_F16>')   15   15    +0
+  ('virtual_mma_layout<VMFMA_F32_32x32x16_F16>', 'mma_layout<MFMA_F32_32x32x8_F16>')         10   10    +0
+  ('virtual_mma_layout<VMFMA_F32_32x32x16_F16>', 'virtual_mma_layout<VMFMA_F32_32x32x16_F16>')    6    6    +0
+
+## Files
+  attn_parity_python.txt:   110 candidate lines, one per (compilation_info, decomposition_config) pair, legacy Python Z3 output
+  attn_parity_compiler.txt: 110 candidate lines, same format, compiler-bridge output (string format differs from python: smt_internal_*
+    keys leak into the materialized lowering_config, decomposition_config nests inside lowering_config, etc. — semantic signatures match exactly)
