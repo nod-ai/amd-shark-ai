@@ -189,29 +189,47 @@ def test_generate_solutions_yields_assignments() -> None:
 
 
 def test_generate_constraint_solutions_from_constraint_op() -> None:
-    mlir = """
-    module {
-        iree_codegen.smt.constraints
-            target = <set = 0>,
-            pipeline = #iree_gpu.pipeline<VectorDistribute>,
-            knobs = {wg_m = #iree_codegen.smt.int_knob<"wg_m">}
-            dims() {
-            ^bb0:
-            %v = iree_codegen.smt.knob "wg_m" : !smt.int
-            %c4 = smt.int.constant 4
-            %c8 = smt.int.constant 8
-            %ge = smt.int.cmp ge %v, %c4
-            %le = smt.int.cmp le %v, %c8
-            iree_codegen.smt.assert %ge, "wg_m >= 4" : !smt.bool
-            iree_codegen.smt.assert %le, "wg_m <= 8" : !smt.bool
-            }
-    }
+    """End-to-end check of `candidate_gen.generate_solutions`. Feeds the
+    HAL-wrapped sample matmul dispatch (the same kind of input
+    libtuner consumes as `args.input_file`) through iree-compile to
+    obtain a constraints op, then enumerates Z3 solutions and asserts
+    the pipeline-filter contract picks the VD op (not TaF, even though
+    iree-compile emits both for an AMD matmul).
+
+    Previously this test passed a synthetic constraints-op-only module
+    (no dispatch wrapper) which iree-compile rejected — failing on both
+    un-modified RattataKing's branch and with the review-fix pipeline
+    flags. Rewriting against a real HAL-wrapped dispatch exercises the
+    actual bridge contract.
     """
+    from pathlib import Path
+
+    from iree.compiler.dialects import iree_gpu  # type: ignore
+
+    fixture = (
+        Path(__file__).resolve().parents[1]
+        / "dispatch_tuner"
+        / "dispatch_sample_benchmark.mlir"
+    )
+    if not fixture.is_file():
+        pytest.skip(
+            f"{fixture} not present (regenerate with iree-compile "
+            "--iree-hal-dump-executable-files-to=... + "
+            "--iree-codegen-add-tuner-attributes)"
+        )
+    mlir = fixture.read_text()
     with ir.Context() as ctx:
         module = ir.Module.parse(mlir, ctx)
-        solutions = list(candidate_gen.generate_solutions(module, ctx))
+        solutions = list(
+            candidate_gen.generate_solutions(
+                module, ctx, iree_gpu.LoweringPipeline.VectorDistribute
+            )
+        )
     assert len(solutions) > 0
     for solution in solutions:
         assert isinstance(solution, candidate_gen.ConstraintSolution)
         assert isinstance(solution.constraints_op, iree_codegen.ConstraintsOp)
         assert isinstance(solution.knob_assignments, dict)
+        # Pipeline-filter contract: must be the VD op (not TaF), even
+        # though iree-compile emits both for an AMD matmul.
+        assert "VectorDistribute" in str(solution.constraints_op.pipeline)

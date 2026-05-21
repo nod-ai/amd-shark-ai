@@ -406,3 +406,63 @@ def test_generate_solutions_from_constraint_op(
         seen.add(key)
         assert "wg_m" in solution
         assert 4 <= solution["wg_m"] <= 8
+
+
+def test_select_constraints_op_picks_by_pipeline_attr(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    """`InsertSMTConstraintsPass` produces one op per registered pipeline,
+    so the tuner must filter by attribute equality (not by position) to
+    avoid silently picking the wrong pipeline's constraints. Locks in
+    the post-#2 fix from the tuner-review."""
+    context = tuner_ctx.mlir_ctx
+    module_str = """
+        module {
+            iree_codegen.smt.constraints
+                target = <set = 0>,
+                pipeline = #iree_gpu.pipeline<TileAndFuse>,
+                knobs = {wg_m = #iree_codegen.smt.int_knob<"wg_m">}
+                dims() {
+                ^bb0:
+                %v = iree_codegen.smt.knob "wg_m" : !smt.int
+                %c1 = smt.int.constant 1
+                %ge = smt.int.cmp ge %v, %c1
+                iree_codegen.smt.assert %ge, "wg_m >= 1" : !smt.bool
+                }
+            iree_codegen.smt.constraints
+                target = <set = 0>,
+                pipeline = #iree_gpu.pipeline<VectorDistribute>,
+                knobs = {wg_n = #iree_codegen.smt.int_knob<"wg_n">}
+                dims() {
+                ^bb0:
+                %v = iree_codegen.smt.knob "wg_n" : !smt.int
+                %c1 = smt.int.constant 1
+                %ge = smt.int.cmp ge %v, %c1
+                iree_codegen.smt.assert %ge, "wg_n >= 1" : !smt.bool
+                }
+        }"""
+    ir_module = ir.Module.parse(module_str, context)
+    constraints_ops = ir.get_ops_of_type(ir_module, iree_codegen.ConstraintsOp)
+    assert len(constraints_ops) == 2
+
+    vd_op = candidate_gen._select_constraints_op_for_pipeline(
+        constraints_ops,
+        iree_gpu.LoweringPipeline.VectorDistribute,
+        context,
+    )
+    assert "VectorDistribute" in str(vd_op.pipeline)
+
+    taf_op = candidate_gen._select_constraints_op_for_pipeline(
+        constraints_ops,
+        iree_gpu.LoweringPipeline.TileAndFuse,
+        context,
+    )
+    assert "TileAndFuse" in str(taf_op.pipeline)
+
+    # Wrong-pipeline request must raise, not silently pick something.
+    with pytest.raises(RuntimeError, match="No iree_codegen.smt.constraints"):
+        candidate_gen._select_constraints_op_for_pipeline(
+            constraints_ops,
+            iree_gpu.LoweringPipeline.Distribute,
+            context,
+        )
