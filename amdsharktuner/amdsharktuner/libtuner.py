@@ -864,7 +864,6 @@ def generate_candidate_specs(
             allowed_waves_per_eu=args.waves_per_eu_options,
             allowed_denorm_flushing=allowed_denorm_flushing,
             pipeline_options_search_space=pipeline_options_search_space,
-            codegen_pipeline=codegen_pipeline,
             conv_strategy=conv_strategy,
         )
         if args.enable_random_seed:

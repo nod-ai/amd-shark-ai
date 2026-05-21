@@ -4,6 +4,9 @@
 # See https://llvm.org/LICENSE.txt for license information.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
+from typing import cast
+from unittest.mock import MagicMock
+
 import pytest
 
 # TODO: remove after https://github.com/llvm/llvm-project/pull/117918 is resolved.
@@ -1086,3 +1089,123 @@ def test_direct_conv_filter_loop_tile_sizes(
                 assert workgroup_tile_sizes[filter_idx] == 0
                 assert subgroup_tile_sizes[filter_idx] == 0
                 assert reduction_tile_sizes[filter_idx] == 1
+
+
+def test_generate_solutions_vector_distribute_conv_accepts_conv_strategy(
+    tuner_ctx: common.TunerContext, gpu_target_info: iree_gpu.TargetInfo
+) -> None:
+    """Regression: VectorDistribute conv generator must accept conv_strategy.
+
+    Previously raised `TypeError: generate_generic_contraction_solutions() got an
+    unexpected keyword argument 'conv_strategy'` because candidate_gen forwarded
+    conv_strategy for all conv dispatches but ROCmConvolutionVectorDistribute did
+    not consume it.
+    """
+    context = tuner_ctx.mlir_ctx
+    f16 = tuner_ctx.type.f16
+    f32 = tuner_ctx.type.f32
+
+    input_shape = (2, 64, 64, 128)
+    kernel_shape = (3, 3, 128, 256)
+    output_shape = (2, 62, 62, 256)
+
+    with ir.Location.unknown(context):
+        module = ir.Module.create()
+        build_func_with_conv2d_nhwc_hwcf(
+            module=module,
+            input_shape=input_shape,
+            kernel_shape=kernel_shape,
+            output_shape=output_shape,
+            input_type=f16,
+            kernel_type=f16,
+            output_type=f32,
+        )
+
+        root_ops = iree_codegen.get_tuner_root_ops(module)
+        assert len(root_ops) == 1
+        root_op = root_ops[0]
+
+        parser = rocm_parsers.IGEMMConvolutionParser(root_op, tuner_ctx)
+        op_info = parser.get_op_info()
+        gen = rocm_constraint_generators.ROCmConvolutionVectorDistributeConstraintGenerator(
+            op_info
+        )
+
+        # Pass conv_strategy explicitly — both the default (igemm) and the
+        # combined flag must be accepted and the returned iterator must be
+        # consumable without raising. Solution count is intentionally not
+        # asserted: enumerating VectorDistribute conv candidates depends on
+        # state outside this regression's scope.
+        for strategy in (
+            rocm_common.ConvolutionStrategy.igemm,
+            rocm_common.ConvolutionStrategy.igemm
+            | rocm_common.ConvolutionStrategy.direct,
+        ):
+            list(
+                gen.generate_solutions(
+                    tuner_context=tuner_ctx,
+                    gpu_target_info=gpu_target_info,
+                    num_subgroups=4,
+                    pipeline_options_search_space=rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
+                    conv_strategy=strategy,
+                )
+            )
+
+
+def test_generate_solutions_vector_distribute_conv_warns_on_direct_only(
+    tuner_ctx: common.TunerContext, gpu_target_info: iree_gpu.TargetInfo
+) -> None:
+    """If the user asks for direct-only on VectorDistribute, warn and continue.
+
+    IGEMM/direct selection is a TileAndFuse-only knob; VectorDistribute conv has no
+    such choice. A direct-only request is silently bypassed, so the generator must
+    log a warning instead of failing.
+    """
+    context = tuner_ctx.mlir_ctx
+    f16 = tuner_ctx.type.f16
+    f32 = tuner_ctx.type.f32
+
+    with ir.Location.unknown(context):
+        module = ir.Module.create()
+        build_func_with_conv2d_nhwc_hwcf(
+            module=module,
+            input_shape=(2, 64, 64, 128),
+            kernel_shape=(3, 3, 128, 256),
+            output_shape=(2, 62, 62, 256),
+            input_type=f16,
+            kernel_type=f16,
+            output_type=f32,
+        )
+
+        root_ops = iree_codegen.get_tuner_root_ops(module)
+        root_op = root_ops[0]
+
+        parser = rocm_parsers.IGEMMConvolutionParser(root_op, tuner_ctx)
+        op_info = parser.get_op_info()
+        gen = rocm_constraint_generators.ROCmConvolutionVectorDistributeConstraintGenerator(
+            op_info
+        )
+
+        # tuner_ctx.logger is a MagicMock(spec=Logger), so check the mock
+        # directly rather than going through pytest's caplog. Cast through
+        # MagicMock since the static type is Logger. The warning is emitted
+        # before generation runs, so we don't need to consume the returned
+        # iterator to observe it.
+        warning_mock = cast(MagicMock, tuner_ctx.logger.warning)
+        warning_mock.reset_mock()
+        gen.generate_solutions(
+            tuner_context=tuner_ctx,
+            gpu_target_info=gpu_target_info,
+            num_subgroups=4,
+            pipeline_options_search_space=rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
+            conv_strategy=rocm_common.ConvolutionStrategy.direct,
+        )
+
+        warning_calls = warning_mock.call_args_list
+        assert any(
+            "cannot be honored under the VectorDistribute pipeline" in str(call)
+            for call in warning_calls
+        ), (
+            "Expected a warning when direct-only was requested on VectorDistribute. "
+            f"Got warning calls: {warning_calls}"
+        )
