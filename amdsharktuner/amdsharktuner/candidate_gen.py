@@ -173,19 +173,23 @@ def instantiate_dispatch_tuner(
 def generate_solutions(
     input_module: ir.Module,
     mlir_ctx: ir.Context,
+    codegen_pipeline: iree_gpu.LoweringPipeline,
 ) -> Iterator[ConstraintSolution]:
     constraints_module = get_constraints_module(input_module, mlir_ctx)
     constraints_ops = ir.get_ops_of_type(constraints_module, iree_codegen.ConstraintsOp)
     tune_logger.debug(f"Found {len(constraints_ops)} constraints ops")
     if len(constraints_ops) == 0:
         raise RuntimeError("Expected at least one iree_codegen.smt.constraints op")
-    # TODO(Amily): Tuner currently supports only one ConstraintsOp.
-    if len(constraints_ops) > 1:
-        tune_logger.warning(
-            f"Found {len(constraints_ops)} iree_codegen.smt.constraints ops. "
-            "Using the first one because tuner currently supports one ConstraintsOp."
-        )
-    constraints_op = constraints_ops[0]
+    for op in constraints_ops:
+        pipeline = op.pipeline
+        if (
+            isinstance(pipeline, iree_gpu.PipelineAttr)
+            and pipeline.value == codegen_pipeline
+        ):
+            constraints_op = op
+            break
+    else:
+        raise RuntimeError(f"Expected constraints op for pipeline {codegen_pipeline}")
     z3_ctx = z3.Context()
     for knob_assignments in generate_solutions_from_constraint_op(
         constraints_op, z3_ctx=z3_ctx

@@ -839,7 +839,9 @@ def generate_candidate_specs(
 
         solution_gen_start_time = time.perf_counter()
         z3_solutions_iter = candidate_gen.generate_solutions(
-            input_module=mlir_module, mlir_ctx=tuning_client.tuner_context.mlir_ctx
+            input_module=mlir_module,
+            mlir_ctx=tuning_client.tuner_context.mlir_ctx,
+            codegen_pipeline=get_iree_codegen_pipeline(args.codegen_pipeline),
         )
         if args.enable_random_seed:
             random.seed()
