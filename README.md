@@ -5,19 +5,19 @@
 | Name                                                             |    Stmts |     Miss |   Cover |   Missing |
 |----------------------------------------------------------------- | -------: | -------: | ------: | --------: |
 | amdsharktuner/amdsharktuner/\_\_init\_\_.py                      |        0 |        0 |    100% |           |
-| amdsharktuner/amdsharktuner/candidate\_gen.py                    |       62 |       26 |     58% |47, 79-80, 103-119, 135-147, 157-162, 168-183 |
+| amdsharktuner/amdsharktuner/candidate\_gen.py                    |       62 |       26 |     58% |47, 79-80, 102-123, 139-151, 161-166, 172-187 |
 | amdsharktuner/amdsharktuner/candidate\_ordering.py               |      103 |       11 |     89% |92-95, 115-116, 190-198 |
 | amdsharktuner/amdsharktuner/common.py                            |      237 |       10 |     96% |115, 120, 125, 127, 169, 317, 340-341, 414, 460 |
 | amdsharktuner/amdsharktuner/constraint\_generator.py             |       85 |        7 |     92% |246, 255-265 |
 | amdsharktuner/amdsharktuner/dispatch\_parser.py                  |      151 |        8 |     95% |33-35, 136, 287, 306-309, 439 |
-| amdsharktuner/amdsharktuner/libtuner.py                          |      628 |      359 |     43% |102-104, 107, 110, 113, 116, 119, 131, 135, 139, 150, 158, 168, 201, 205-214, 306, 455-456, 461-516, 527-549, 553-567, 571-612, 616-710, 718-722, 752-758, 798-969, 1011-1043, 1052-1087, 1140, 1249-1333, 1346-1479 |
+| amdsharktuner/amdsharktuner/libtuner.py                          |      628 |      359 |     43% |102-104, 107, 110, 113, 116, 119, 131, 135, 139, 150, 158, 168, 201, 205-214, 306, 455-456, 461-516, 527-549, 553-567, 571-612, 616-710, 718-722, 752-758, 798-968, 1010-1042, 1051-1086, 1139, 1248-1332, 1345-1478 |
 | amdsharktuner/amdsharktuner/merge\_td\_specs.py                  |       32 |       32 |      0% |     19-79 |
 | amdsharktuner/amdsharktuner/process\_utils.py                    |       84 |       32 |     62% |104-114, 144-183 |
 | amdsharktuner/amdsharktuner/rocm/\_\_init\_\_.py                 |        4 |        0 |    100% |           |
 | amdsharktuner/amdsharktuner/rocm/rocm\_candidate\_ordering.py    |        7 |        0 |    100% |           |
 | amdsharktuner/amdsharktuner/rocm/rocm\_common.py                 |      154 |       27 |     82% |255, 382-437 |
-| amdsharktuner/amdsharktuner/rocm/rocm\_constraint\_generators.py |       61 |        9 |     85% |66, 75-81, 254-257, 266-269, 313, 321 |
-| amdsharktuner/amdsharktuner/rocm/rocm\_dispatch\_constraints.py  |      282 |       13 |     95% |111, 181-190, 299, 391, 584, 655, 674, 821, 824 |
+| amdsharktuner/amdsharktuner/rocm/rocm\_constraint\_generators.py |       63 |        6 |     90% |270-273, 282-285, 329, 337 |
+| amdsharktuner/amdsharktuner/rocm/rocm\_dispatch\_constraints.py  |      282 |        8 |     97% |111, 299, 391, 584, 655, 674, 821, 824 |
 | amdsharktuner/amdsharktuner/rocm/rocm\_parsers.py                |       61 |        0 |    100% |           |
 | amdsharktuner/amdsharktuner/rocm/rocm\_solutions.py              |      181 |        7 |     96% |151, 401-402, 451, 558, 560, 562 |
 | amdsharktuner/amdsharktuner/rocm/rocm\_tuners.py                 |      120 |       44 |     63% |31-32, 42, 45, 58, 64, 71, 75-92, 95, 103-104, 108, 114, 129, 141, 154, 160, 167, 171-176, 179, 187-188, 192, 198, 205, 212, 222-223, 227, 233 |
@@ -52,13 +52,13 @@
 | amdsharktuner/tests/rocm/\_\_init\_\_.py                         |        0 |        0 |    100% |           |
 | amdsharktuner/tests/rocm/rocm\_candidate\_ordering\_test.py      |       52 |        0 |    100% |           |
 | amdsharktuner/tests/rocm/rocm\_common\_test.py                   |      138 |        0 |    100% |           |
-| amdsharktuner/tests/rocm/rocm\_constraint\_generator\_test.py    |      494 |        0 |    100% |           |
+| amdsharktuner/tests/rocm/rocm\_constraint\_generator\_test.py    |      531 |        0 |    100% |           |
 | amdsharktuner/tests/rocm/rocm\_dispatch\_constraints\_test.py    |      213 |        0 |    100% |           |
 | amdsharktuner/tests/rocm/rocm\_dispatch\_parser\_test.py         |       27 |        0 |    100% |           |
 | amdsharktuner/tests/rocm/rocm\_parsers\_test.py                  |       59 |        0 |    100% |           |
 | amdsharktuner/tests/smt\_candidate\_gen\_test.py                 |      100 |        0 |    100% |           |
 | amdsharktuner/tests/spec\_builder\_test.py                       |      135 |        0 |    100% |           |
-| **TOTAL**                                                        | **5634** | **1116** | **80%** |           |
+| **TOTAL**                                                        | **5673** | **1108** | **80%** |           |
 
 
 ## Setup coverage badge
