@@ -76,7 +76,26 @@ def get_knobs_from_constraint_op(
                 for entry in attr:
                     collect(entry.attr)
             case _:
-                raise TypeError(f"Unknown knob attribute type: {type(attr)}")
+                # Typed wrapper attrs such as iree_gpu.LoweringConfigAttr
+                # carry an inner DictionaryAttr (`.attributes`) that may
+                # contain knob references — recurse into it so per-matmul
+                # subgroup_basis knobs nested inside an attention
+                # decomposition_config get discovered. Fixed typed leaves
+                # (#iree_gpu.mma_layout<...>, #iree_gpu.derived_thread_config)
+                # have no inner dict and contribute no knob, so they're
+                # silently skipped.
+                inner = getattr(attr, "attributes", None)
+                # If a typed attr exposes `.attributes` as something other
+                # than a DictAttr, we'd silently miss the knobs nested
+                # under it. Fail loudly so any future regression surfaces
+                # here instead of becoming a missing-knob extraction error
+                # downstream.
+                assert inner is None or isinstance(inner, ir.DictAttr), (
+                    f"unexpected `.attributes` on typed attr "
+                    f"{type(attr).__name__}: {type(inner).__name__}"
+                )
+                if inner is not None:
+                    collect(inner)
 
     collect(constraints_op.knobs)
 

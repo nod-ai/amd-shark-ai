@@ -448,14 +448,12 @@ def test_select_constraints_op_picks_by_pipeline_attr(
     vd_op = candidate_gen._select_constraints_op_for_pipeline(
         constraints_ops,
         iree_gpu.LoweringPipeline.VectorDistribute,
-        context,
     )
     assert "VectorDistribute" in str(vd_op.pipeline)
 
     taf_op = candidate_gen._select_constraints_op_for_pipeline(
         constraints_ops,
         iree_gpu.LoweringPipeline.TileAndFuse,
-        context,
     )
     assert "TileAndFuse" in str(taf_op.pipeline)
 
@@ -464,5 +462,4 @@ def test_select_constraints_op_picks_by_pipeline_attr(
         candidate_gen._select_constraints_op_for_pipeline(
             constraints_ops,
             iree_gpu.LoweringPipeline.Distribute,
-            context,
         )
