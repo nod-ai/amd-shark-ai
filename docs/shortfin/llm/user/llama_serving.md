@@ -52,7 +52,7 @@ Overview:
   [AMD Instinct™ MI300X Series Accelerator](https://www.amd.com/en/products/accelerators/instinct/mi300/mi300x.html)
     - Other accelerators should work too, but amdshark-ai is currently most
       optimized on MI300X
-- Compatible versions of Linux and ROCm (see the [ROCm compatability matrix](https://rocm.docs.amd.com/en/latest/compatibility/compatibility-matrix.html))
+- Compatible versions of Linux and ROCm (see the [ROCm compatibility matrix](https://rocm.docs.amd.com/en/latest/compatibility/compatibility-matrix.html))
 - Python >= 3.11
 
 ### Create virtual environment
