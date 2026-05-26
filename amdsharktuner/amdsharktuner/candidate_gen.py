@@ -57,7 +57,7 @@ def get_z3_assignment_from_model(
     )
 
 
-def get_knobs_from_constraint_op(
+def get_smt_symbols_from_constraint_op(
     constraints_op: iree_codegen.ConstraintsOp,
     z3_ctx: z3.Context,
 ) -> common.SMTKnobSymbols:
@@ -67,7 +67,7 @@ def get_knobs_from_constraint_op(
         match attr:
             case iree_codegen.IntKnobAttr() | iree_codegen.OneOfKnobAttr():
                 knob_names.append(attr.name)
-            case ir.IntegerAttr():
+            case ir.IntegerAttr() | ir.BoolAttr() | ir.StringAttr():
                 return
             case ir.ArrayAttr():
                 for elem in attr:
@@ -80,10 +80,7 @@ def get_knobs_from_constraint_op(
                 # carry an inner DictionaryAttr (`.attributes`) that may
                 # contain knob references — recurse into it so per-matmul
                 # subgroup_basis knobs nested inside an attention
-                # decomposition_config get discovered. Fixed typed leaves
-                # (#iree_gpu.mma_layout<...>, #iree_gpu.derived_thread_config)
-                # have no inner dict and contribute no knob, so they're
-                # silently skipped.
+                # decomposition_config get discovered.
                 inner = getattr(attr, "attributes", None)
                 # If a typed attr exposes `.attributes` as something other
                 # than a DictAttr, we'd silently miss the knobs nested
@@ -96,6 +93,12 @@ def get_knobs_from_constraint_op(
                 )
                 if inner is not None:
                     collect(inner)
+                    return
+                
+                tune_logger.warning(
+                    f"Skipping unknown knob attribute type: {type(attr)}"
+                )
+                return
 
     collect(constraints_op.knobs)
 
@@ -115,7 +118,7 @@ def generate_solutions_from_constraint_op(
     if "(reset)" in smtlib:
         raise RuntimeError(f"Unexpected reset string in SMTLIB: \n{smtlib}")
 
-    z3_const_exprs = get_knobs_from_constraint_op(constraints_op, z3_ctx)
+    z3_const_exprs = get_smt_symbols_from_constraint_op(constraints_op, z3_ctx)
     z3_vars = list(z3_const_exprs.values())
 
     solver = z3.Solver(ctx=z3_ctx)
