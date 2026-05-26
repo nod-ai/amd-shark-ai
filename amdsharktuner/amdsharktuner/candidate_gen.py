@@ -94,7 +94,7 @@ def get_smt_symbols_from_constraint_op(
                 if inner is not None:
                     collect(inner)
                     return
-                
+
                 tune_logger.warning(
                     f"Skipping unknown knob attribute type: {type(attr)}"
                 )

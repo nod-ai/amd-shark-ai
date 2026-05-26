@@ -27,6 +27,20 @@ def _materialize_compilation_info_config(
     )
 
 
+def _materialize_configuration_attr_config(
+    constraints_op: iree_codegen.ConstraintsOp,
+    attr_name: str,
+    knob_assignment: common.SMTKnobAssignments,
+) -> common.TuningConfiguration:
+    configuration = iree_codegen.materialize_configuration_attr(
+        constraints_op, attr_name, knob_assignment
+    )
+    return common.TuningConfiguration(
+        name=attr_name,
+        configuration=configuration,
+    )
+
+
 class ROCmContractionVectorDistributeTuner(
     tuner_base.DispatchTuner, dispatch_parser.ContractionOpInterfaceParser
 ):
@@ -252,15 +266,12 @@ class ROCmAttentionVectorDistributeTuner(
         compilation_info = _materialize_compilation_info_config(
             constraints_op, knob_assignment
         )
-        decomposition_config = iree_codegen.materialize_decomposition_config(
-            constraints_op, knob_assignment
+        decomposition_config = _materialize_configuration_attr_config(
+            constraints_op, "decomposition_config", knob_assignment
         )
         return [
             compilation_info,
-            common.TuningConfiguration(
-                name="decomposition_config",
-                configuration=decomposition_config,
-            ),
+            decomposition_config,
         ]
 
     def get_ordering_knob(
