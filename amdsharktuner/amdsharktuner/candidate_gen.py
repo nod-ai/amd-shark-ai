@@ -99,7 +99,8 @@ def get_smt_symbols_from_constraint_op(
                 # Skip non-knob attributes.
                 return
 
-    collect(constraints_op.knobs)
+    with constraints_op.operation.context:
+        collect(constraints_op.knobs)
 
     return common.SMTKnobSymbols(
         {name: z3.Int(name, ctx=z3_ctx) for name in knob_names}
@@ -114,10 +115,10 @@ def generate_solutions_from_constraint_op(
         smtlib = iree_codegen.convert_constraints_op_to_smtlib(
             constraints_op, emit_reset=False
         )
+        z3_const_exprs = get_smt_symbols_from_constraint_op(constraints_op, z3_ctx)
     if "(reset)" in smtlib:
         raise RuntimeError(f"Unexpected reset string in SMTLIB: \n{smtlib}")
 
-    z3_const_exprs = get_smt_symbols_from_constraint_op(constraints_op, z3_ctx)
     z3_vars = list(z3_const_exprs.values())
 
     solver = z3.Solver(ctx=z3_ctx)
