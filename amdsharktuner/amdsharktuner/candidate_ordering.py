@@ -171,8 +171,10 @@ def flatten_records(
     """
     rows = []
     for tuning_record in tuning_records:
-        # Drop the baseline entry due to missing knob info.
-        if not tuning_record.knob:
+        # Drop only the baseline entry. Some dispatches do not currently expose
+        # recognized knob metadata, but their compile/benchmark results are
+        # still useful and should be exported.
+        if tuning_record.candidate_id == 0:
             continue
         row = {}
         for attr, val in vars(tuning_record).items():
@@ -187,11 +189,24 @@ def flatten_records(
     return rows
 
 
+def prepare_record_csv_data(
+    tuning_records: list[TuningRecord],
+) -> tuple[list[str], list[dict[str, Any]]]:
+    rows = flatten_records(tuning_records)
+    if not rows:
+        return [], []
+
+    return list(rows[0].keys()), rows
+
+
 def export_record_to_csv(tuning_records: list[TuningRecord], dest_file: Path) -> None:
     assert tuning_records
 
-    rows = flatten_records(tuning_records)
-    headers = list(rows[0].keys())
+    headers, rows = prepare_record_csv_data(tuning_records)
+    if not rows:
+        logging.warning(f"No candidate tuning records to export to {dest_file}.")
+        dest_file.write_text("", encoding="utf-8")
+        return
 
     with open(dest_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=headers)

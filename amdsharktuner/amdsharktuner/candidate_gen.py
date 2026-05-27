@@ -31,7 +31,7 @@ tune_logger = logging.getLogger("tune")
 # constraint-insertion pass runs early in the pipeline, so well-formed
 # dispatches return in well under a second; this guard catches
 # pathological inputs that would otherwise hang the whole tuning run.
-_IREE_COMPILE_TIMEOUT_SECONDS = 120
+_IREE_COMPILE_TIMEOUT_SECONDS = 16
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,9 +95,7 @@ def get_smt_symbols_from_constraint_op(
                     collect(inner)
                     return
 
-                tune_logger.warning(
-                    f"Skipping unknown knob attribute type: {type(attr)}"
-                )
+                # Skip non-knob attributes.
                 return
 
     collect(constraints_op.knobs)
@@ -349,9 +347,7 @@ def get_constraints_module(
     mlir_ctx: ir.Context,
     codegen_pipeline: iree_gpu.LoweringPipeline,
 ) -> ir.Module:
-    """Run `iree-compile` and return the IR dump from
-    `--mlir-print-ir-after=iree-codegen-insert-smt-constraints` parsed
-    as an in-memory module.
+    """Run `iree-compile` to executable configurations and parse stdout.
 
     The compile is bounded by a default timeout and pinned to the
     requested codegen pipeline so the downstream constraints-op filter
@@ -367,9 +363,8 @@ def get_constraints_module(
     command = [
         iree_compile,
         "-",
-        *_pipeline_flag_args(codegen_pipeline),
-        "--iree-codegen-experimental-verify-pipeline-constraints",
-        "--mlir-print-ir-after=iree-codegen-insert-smt-constraints",
+        "--iree-codegen-emit-pipeline-constraints",
+        "--compile-to=executable-configurations",
     ]
     tune_logger.debug(
         f"Running iree-compile to insert SMT constraints for pipeline "
@@ -380,7 +375,6 @@ def get_constraints_module(
             command=command,
             check=False,
             stdin=module_str,
-            capture_stdout=False,
             timeout_seconds=_IREE_COMPILE_TIMEOUT_SECONDS,
         )
     )
@@ -390,30 +384,25 @@ def get_constraints_module(
             f"on dispatch with constraint insertion."
         )
 
-    # The constraint-insertion pass runs early in the pipeline. Downstream
-    # lowering (HAL serialization, vm.module canonicalization) often fails
-    # for dispatches the tuner doesn't fully lower — but the IR snapshot
-    # produced by --mlir-print-ir-after has already been emitted to stderr
-    # by then. So: try to parse stderr first regardless of exit code. Only
-    # raise if the parse fails — and in that case, include the exit code
-    # and stderr tail so the failure mode is debuggable.
-    stderr = result.process_res.stderr
+    stdout = result.process_res.stdout or ""
     try:
         with mlir_ctx:
-            constraints_module = ir.Module.parse(stderr)
+            constraints_module = ir.Module.parse(stdout)
     except Exception as e:
+        stdout_tail = stdout[-2000:] if stdout else "<empty>"
+        stderr = result.process_res.stderr or ""
         stderr_tail = stderr[-2000:] if stderr else "<empty>"
         raise RuntimeError(
-            f"Failed to parse iree-compile IR dump as MLIR "
+            f"Failed to parse iree-compile configured executable IR as MLIR "
             f"(iree-compile exit code: {result.process_res.returncode}): {e}\n"
+            f"Stdout tail:\n{stdout_tail}\n"
             f"Stderr tail:\n{stderr_tail}"
         )
     if result.process_res.returncode != 0:
-        # IR captured successfully but lowering failed afterward; not fatal
+        # IR captured successfully; diagnostics after emission are not fatal
         # because the constraints op is the only artifact we need.
         tune_logger.debug(
             f"iree-compile exited {result.process_res.returncode} after "
-            f"emitting the constraint-insertion IR snapshot; using the "
-            f"captured snapshot anyway."
+            f"emitting configured executable IR; using stdout anyway."
         )
     return constraints_module
