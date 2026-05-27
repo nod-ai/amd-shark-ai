@@ -1,6 +1,0 @@
-# Force text + LF for the parity proof snapshots. These are bytewise
-# diffed by the bijective-parity test against fresh compiler output;
-# CRLF mangling on Windows checkouts would cause silent false failures.
-attn_parity_python.txt    text eol=lf
-attn_parity_compiler.txt  text eol=lf
-attn_parity_results.txt   text eol=lf

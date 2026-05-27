@@ -4,7 +4,6 @@
 # See https://llvm.org/LICENSE.txt for license information.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-from typing import Optional
 from abc import abstractmethod
 
 from iree.compiler import ir  # type: ignore
@@ -44,16 +43,7 @@ class DispatchTuner(dispatch_parser.DispatchParser):
     def get_tuning_configurations(
         self,
         constraints_op: iree_codegen.ConstraintsOp,
-        knob_assignment: common.SMTKnobAssignments,
+        solution: common.SMTKnobAssignments,
     ) -> list[common.TuningConfiguration]:
         """Materialize tuning configurations for a solved knob assignment."""
-        pass
-
-    @abstractmethod
-    def get_ordering_knob(
-        self,
-        constraints_op: iree_codegen.ConstraintsOp,
-        knob_assignment: common.SMTKnobAssignments,
-    ) -> Optional[common.KnobAssignment]:
-        """Return knob assignment used for candidate ordering."""
         pass

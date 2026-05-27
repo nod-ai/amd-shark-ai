@@ -13,7 +13,7 @@ from enum import IntFlag
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from iree.compiler import ir  # type: ignore
+from iree.compiler import ir  # type: ignore[attr-defined, import-untyped]
 from iree.compiler.dialects import iree_gpu, linalg  # type: ignore
 
 from amdsharktuner import common, process_utils

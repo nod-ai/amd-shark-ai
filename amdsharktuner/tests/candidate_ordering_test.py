@@ -4,33 +4,9 @@
 # See https://llvm.org/LICENSE.txt for license information.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-import math
-
 from amdsharktuner import candidate_ordering
-
-
-def test_math_expression() -> None:
-    assert candidate_ordering.is_pow2(1) == True
-    assert candidate_ordering.is_pow2(5) == False
-    assert candidate_ordering.is_pow2(32) == True
-    assert candidate_ordering.is_pow2(6) == False
-
-    assert candidate_ordering.is_mult_simd_num(6, 4) == False
-    assert candidate_ordering.is_mult_simd_num(8, 4) == True
-
-    ai = candidate_ordering.arith_intensity(2, 3, 4)
-    expected = (2 * 2 * 3 * 4) / (2 * (2 * 3 + 3 * 4 + 2 * 4))
-    assert math.isclose(ai, expected, rel_tol=1e-9)
-
-    q_ie = candidate_ordering.quantization_inefficiency(2048, 256, 1024, 32, 32)
-    assert q_ie == 0
-    q_ie = candidate_ordering.quantization_inefficiency(10, 4, 10, 4, 4)
-    assert q_ie == 0.21875
-
-    assert candidate_ordering.size_ratio(256, 32) == 0.125
-    assert candidate_ordering.size_ratio(32, 256) == 0.125
-    assert candidate_ordering.size_ratio(32, 1024) == 0.03125
-    assert candidate_ordering.size_ratio(256, 256) == 1
+from amdsharktuner import common
+from iree.compiler.dialects import iree_gpu  # type: ignore
 
 
 def test_prepare_record_csv_data_keeps_knobless_candidates() -> None:
@@ -52,7 +28,7 @@ def test_prepare_record_csv_data_keeps_knobless_candidates() -> None:
         {
             "gen_id": 1,
             "candidate_id": 1,
-            "knob": None,
+            "solution": None,
             "to_compile": False,
             "compile_status": True,
             "to_benchmark": False,
@@ -65,3 +41,91 @@ def test_prepare_record_csv_data_keeps_knobless_candidates() -> None:
             "benchmark_rank_order": None,
         }
     ]
+
+
+def test_reorder_solutions_heuristic_uses_pipeline_ordering() -> None:
+    solutions = [
+        common.SMTKnobAssignments(
+            {"sg_size": 64, "wg_0": 4, "sg_m_cnt": 1, "sg_n_cnt": 1}
+        ),
+        common.SMTKnobAssignments(
+            {"sg_size": 64, "wg_0": 1, "sg_m_cnt": 1, "sg_n_cnt": 1}
+        ),
+        common.SMTKnobAssignments(
+            {"sg_size": 64, "wg_0": 2, "sg_m_cnt": 1, "sg_n_cnt": 1}
+        ),
+    ]
+
+    assert candidate_ordering.reorder_solutions(
+        solutions,
+        candidate_ordering.CandidateOrderKind.heuristic,
+        iree_gpu.LoweringPipeline.VectorDistribute,
+        common.DispatchKind.contraction,
+    ) == [1, 2, 0]
+
+
+def test_reorder_solutions_heuristic_ignores_attention() -> None:
+    solutions = [
+        common.SMTKnobAssignments(
+            {"sg_size": 64, "wg_0": 4, "sg_m_cnt": 1, "sg_n_cnt": 1}
+        ),
+        common.SMTKnobAssignments(
+            {"sg_size": 64, "wg_0": 1, "sg_m_cnt": 1, "sg_n_cnt": 1}
+        ),
+    ]
+
+    assert candidate_ordering.reorder_solutions(
+        solutions,
+        candidate_ordering.CandidateOrderKind.heuristic,
+        iree_gpu.LoweringPipeline.VectorDistribute,
+        common.DispatchKind.attention,
+    ) == [0, 1]
+
+
+def test_reorder_solutions_heuristic_skips_when_symbols_missing() -> None:
+    solutions = [
+        common.SMTKnobAssignments(
+            {"sg_size": 64, "wg_0": 4, "sg_m_cnt": 1, "sg_n_cnt": 1}
+        ),
+        common.SMTKnobAssignments({"sg_size": 64, "sg_m_cnt": 1, "sg_n_cnt": 1}),
+    ]
+
+    assert candidate_ordering.reorder_solutions(
+        solutions,
+        candidate_ordering.CandidateOrderKind.heuristic,
+        iree_gpu.LoweringPipeline.VectorDistribute,
+        common.DispatchKind.contraction,
+    ) == [0, 1]
+
+
+def test_build_tuning_records_from_order() -> None:
+    solutions = [
+        common.SMTKnobAssignments({"sg_size": 64}),
+        common.SMTKnobAssignments({"sg_size": 32}),
+        common.SMTKnobAssignments({"sg_size": 16}),
+    ]
+
+    records = candidate_ordering.build_tuning_records_from_order(solutions, [2, 0])
+
+    assert [(record.gen_id, record.candidate_id) for record in records] == [
+        (0, 0),
+        (3, 1),
+        (1, 2),
+    ]
+
+
+def test_prepare_record_csv_data_flattens_solution() -> None:
+    records = [
+        candidate_ordering.TuningRecord(gen_id=0, candidate_id=0),
+        candidate_ordering.TuningRecord(
+            gen_id=1,
+            candidate_id=1,
+            solution=common.SMTKnobAssignments({"sg_size": 64, "m_tile": 128}),
+        ),
+    ]
+
+    headers, rows = candidate_ordering.prepare_record_csv_data(records)
+
+    assert "solution_sg_size" in headers
+    assert rows[0]["solution_sg_size"] == 64
+    assert rows[0]["solution_m_tile"] == 128

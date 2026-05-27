@@ -151,7 +151,6 @@ class TuningConfiguration:
 
     name: str
     configuration: ir.Attribute
-    knob_assignment: Optional[KnobAssignment] = None
 
 
 class DispatchKind(Enum):

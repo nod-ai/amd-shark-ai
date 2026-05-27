@@ -5,7 +5,6 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 import logging
-from typing import Optional
 
 from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_codegen, iree_gpu, linalg  # type: ignore
@@ -16,10 +15,10 @@ from . import rocm_parsers
 
 def _materialize_compilation_info_config(
     constraints_op: iree_codegen.ConstraintsOp,
-    knob_assignment: common.SMTKnobAssignments,
+    solution: common.SMTKnobAssignments,
 ) -> common.TuningConfiguration:
     compilation_info = iree_codegen.materialize_compilation_info(
-        constraints_op, knob_assignment
+        constraints_op, solution
     )
     return common.TuningConfiguration(
         name="compilation_info",
@@ -30,10 +29,10 @@ def _materialize_compilation_info_config(
 def _materialize_configuration_attr_config(
     constraints_op: iree_codegen.ConstraintsOp,
     attr_name: str,
-    knob_assignment: common.SMTKnobAssignments,
+    solution: common.SMTKnobAssignments,
 ) -> common.TuningConfiguration:
     configuration = iree_codegen.materialize_configuration_attr(
-        constraints_op, attr_name, knob_assignment
+        constraints_op, attr_name, solution
     )
     return common.TuningConfiguration(
         name=attr_name,
@@ -82,16 +81,9 @@ class ROCmContractionVectorDistributeTuner(
     def get_tuning_configurations(
         self,
         constraints_op: iree_codegen.ConstraintsOp,
-        knob_assignment: common.SMTKnobAssignments,
+        solution: common.SMTKnobAssignments,
     ) -> list[common.TuningConfiguration]:
-        return [_materialize_compilation_info_config(constraints_op, knob_assignment)]
-
-    def get_ordering_knob(
-        self,
-        constraints_op: iree_codegen.ConstraintsOp,
-        knob_assignment: common.SMTKnobAssignments,
-    ) -> Optional[common.KnobAssignment]:
-        return None
+        return [_materialize_compilation_info_config(constraints_op, solution)]
 
 
 class ROCmContractionTileAndFuseTuner(
@@ -135,16 +127,9 @@ class ROCmContractionTileAndFuseTuner(
     def get_tuning_configurations(
         self,
         constraints_op: iree_codegen.ConstraintsOp,
-        knob_assignment: common.SMTKnobAssignments,
+        solution: common.SMTKnobAssignments,
     ) -> list[common.TuningConfiguration]:
-        return [_materialize_compilation_info_config(constraints_op, knob_assignment)]
-
-    def get_ordering_knob(
-        self,
-        constraints_op: iree_codegen.ConstraintsOp,
-        knob_assignment: common.SMTKnobAssignments,
-    ) -> Optional[common.KnobAssignment]:
-        return None
+        return [_materialize_compilation_info_config(constraints_op, solution)]
 
 
 class ROCmConvolutionVectorDistributeTuner(
@@ -184,16 +169,9 @@ class ROCmConvolutionVectorDistributeTuner(
     def get_tuning_configurations(
         self,
         constraints_op: iree_codegen.ConstraintsOp,
-        knob_assignment: common.SMTKnobAssignments,
+        solution: common.SMTKnobAssignments,
     ) -> list[common.TuningConfiguration]:
-        return [_materialize_compilation_info_config(constraints_op, knob_assignment)]
-
-    def get_ordering_knob(
-        self,
-        constraints_op: iree_codegen.ConstraintsOp,
-        knob_assignment: common.SMTKnobAssignments,
-    ) -> Optional[common.KnobAssignment]:
-        return None
+        return [_materialize_compilation_info_config(constraints_op, solution)]
 
 
 class ROCmConvolutionTileAndFuseTuner(
@@ -225,16 +203,9 @@ class ROCmConvolutionTileAndFuseTuner(
     def get_tuning_configurations(
         self,
         constraints_op: iree_codegen.ConstraintsOp,
-        knob_assignment: common.SMTKnobAssignments,
+        solution: common.SMTKnobAssignments,
     ) -> list[common.TuningConfiguration]:
-        return [_materialize_compilation_info_config(constraints_op, knob_assignment)]
-
-    def get_ordering_knob(
-        self,
-        constraints_op: iree_codegen.ConstraintsOp,
-        knob_assignment: common.SMTKnobAssignments,
-    ) -> Optional[common.KnobAssignment]:
-        return None
+        return [_materialize_compilation_info_config(constraints_op, solution)]
 
 
 class ROCmAttentionVectorDistributeTuner(
@@ -261,25 +232,18 @@ class ROCmAttentionVectorDistributeTuner(
     def get_tuning_configurations(
         self,
         constraints_op: iree_codegen.ConstraintsOp,
-        knob_assignment: common.SMTKnobAssignments,
+        solution: common.SMTKnobAssignments,
     ) -> list[common.TuningConfiguration]:
         compilation_info = _materialize_compilation_info_config(
-            constraints_op, knob_assignment
+            constraints_op, solution
         )
         decomposition_config = _materialize_configuration_attr_config(
-            constraints_op, "decomposition_config", knob_assignment
+            constraints_op, "decomposition_config", solution
         )
         return [
             compilation_info,
             decomposition_config,
         ]
-
-    def get_ordering_knob(
-        self,
-        constraints_op: iree_codegen.ConstraintsOp,
-        knob_assignment: common.SMTKnobAssignments,
-    ) -> Optional[common.KnobAssignment]:
-        return None
 
 
 def get_tuners_for_pipeline(

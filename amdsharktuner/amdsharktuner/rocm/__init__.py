@@ -6,7 +6,6 @@
 
 """ROCm-specific tuning implementations for amdsharktuner."""
 
-from . import rocm_candidate_ordering
 from . import rocm_common
 
 # Note: rocm_tuners is not imported here to avoid

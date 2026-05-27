@@ -46,7 +46,7 @@ def sample_constraints_op() -> Generator[iree_codegen.ConstraintsOp, None, None]
 
 
 @pytest.fixture
-def sample_knob_assignment() -> dict[str, int]:
+def sample_solution() -> dict[str, int]:
     assignment = {
         "test": 100,
         "wg_m": 128,
@@ -78,14 +78,14 @@ def test_get_z3_assignment_from_model() -> None:
     assert result["sum"] == 10
 
 
-def test_get_knobs_from_constraint_op(
+def test_get_smt_symbols_from_constraint_op(
     sample_constraints_op: iree_codegen.ConstraintsOp,
-    sample_knob_assignment: dict[str, int],
+    sample_solution: dict[str, int],
 ) -> None:
-    symbols = candidate_gen.get_knobs_from_constraint_op(
+    symbols = candidate_gen.get_smt_symbols_from_constraint_op(
         sample_constraints_op, z3_ctx=z3.Context()
     )
-    expected_keys = sample_knob_assignment.keys()
+    expected_keys = sample_solution.keys()
 
     assert set(symbols.keys()) == expected_keys
     for name, expr in symbols.items():
@@ -94,7 +94,7 @@ def test_get_knobs_from_constraint_op(
         assert expr.decl().name() == name
 
 
-def test_get_knobs_from_constraint_op_ignores_constant_entries() -> None:
+def test_get_smt_symbols_from_constraint_op_ignores_constant_entries() -> None:
     mlir = """
     module {
         iree_codegen.smt.constraints
@@ -113,7 +113,7 @@ def test_get_knobs_from_constraint_op_ignores_constant_entries() -> None:
     with ir.Context():
         module = ir.Module.parse(mlir)
         ops = ir.get_ops_of_type(module, iree_codegen.ConstraintsOp)
-        symbols = candidate_gen.get_knobs_from_constraint_op(
+        symbols = candidate_gen.get_smt_symbols_from_constraint_op(
             ops[0], z3_ctx=z3.Context()
         )
 
@@ -229,7 +229,7 @@ def test_generate_constraint_solutions_from_constraint_op() -> None:
     for solution in solutions:
         assert isinstance(solution, candidate_gen.ConstraintSolution)
         assert isinstance(solution.constraints_op, iree_codegen.ConstraintsOp)
-        assert isinstance(solution.knob_assignments, dict)
+        assert isinstance(solution.solution, dict)
         # Pipeline-filter contract: must be the VD op (not TaF), even
         # though iree-compile emits both for an AMD matmul.
         assert "VectorDistribute" in str(solution.constraints_op.pipeline)

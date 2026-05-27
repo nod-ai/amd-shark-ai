@@ -36,9 +36,10 @@ _IREE_COMPILE_TIMEOUT_SECONDS = 16
 
 @dataclass(frozen=True, slots=True)
 class ConstraintSolution:
+    gen_id: int
     constraints_module: ir.Module
     constraints_op: iree_codegen.ConstraintsOp
-    knob_assignments: common.SMTKnobAssignments
+    solution: common.SMTKnobAssignments
 
 
 def get_z3_assignment_from_model(
@@ -249,13 +250,15 @@ def generate_solutions(
     # run and prevents context bleed across consecutive `generate_solutions`
     # calls (Z3 expressions are context-bound; see `z3.Context` docs).
     z3_ctx = z3.Context()
-    for knob_assignments in generate_solutions_from_constraint_op(
-        constraints_op, z3_ctx=z3_ctx
+    for gen_id, solution in enumerate(
+        generate_solutions_from_constraint_op(constraints_op, z3_ctx=z3_ctx),
+        start=1,
     ):
         yield ConstraintSolution(
+            gen_id=gen_id,
             constraints_module=constraints_module,
             constraints_op=constraints_op,
-            knob_assignments=knob_assignments,
+            solution=solution,
         )
 
 
@@ -316,32 +319,6 @@ def strip_compilation_info(input_path: Path) -> str:
     return result.process_res.stdout
 
 
-def _pipeline_flag_args(
-    codegen_pipeline: iree_gpu.LoweringPipeline,
-) -> list[str]:
-    """`iree-compile` flags that pin LLVMGPU's matmul/conv strategy to a
-    specific pipeline. Without these, IREE applies its own selection
-    heuristic which may route a dispatch through a different pipeline
-    than the user requested via --codegen-pipeline."""
-    match codegen_pipeline:
-        case iree_gpu.LoweringPipeline.VectorDistribute:
-            return [
-                "--iree-codegen-llvmgpu-use-vector-distribution=true",
-                "--iree-codegen-llvmgpu-use-tile-and-fuse-matmul=false",
-            ]
-        case iree_gpu.LoweringPipeline.TileAndFuse:
-            return [
-                "--iree-codegen-llvmgpu-use-tile-and-fuse-matmul=true",
-                "--iree-codegen-llvmgpu-use-vector-distribution=false",
-            ]
-        case _:
-            # Other pipelines (BaseLowering, Distribute, Vectorize,
-            # WinogradVectorize) currently have no SMT emitter; let
-            # iree-compile use its defaults and the constraints op
-            # filter downstream will surface the lack of a matching op.
-            return []
-
-
 def get_constraints_module(
     input_module: ir.Module,
     mlir_ctx: ir.Context,
@@ -349,9 +326,9 @@ def get_constraints_module(
 ) -> ir.Module:
     """Run `iree-compile` to executable configurations and parse stdout.
 
-    The compile is bounded by a default timeout and pinned to the
-    requested codegen pipeline so the downstream constraints-op filter
-    can match by attr equality.
+    The compile is bounded by a default timeout. IREE emits constraints
+    for all available target pipelines; the downstream constraints-op
+    filter picks the requested codegen pipeline by attr equality.
     """
     iree_compile: str = ireec.binaries.find_tool("iree-compile")  # type: ignore[attr-defined]
     # NOTE(#review-issue-6): str(input_module) can drift if the input
