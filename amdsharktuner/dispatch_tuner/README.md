@@ -28,8 +28,7 @@ For an initial trial to test the tuning loop, use following command:
 
 ```shell
 cd amdshark-ai/amdsharktuner
-python -m dispatch_tuner dispatch_tuner/dispatch_sample.mlir \
-    dispatch_tuner/tmp/dispatch_sample_benchmark.mlir \
+python -m dispatch_tuner dispatch_tuner/tmp/dispatch_sample_benchmark.mlir \
     --compile-flags-file=dispatch_tuner/compile_flags.txt \
     --devices=hip://0 --num-candidates=30
 ```
