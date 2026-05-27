@@ -14,9 +14,15 @@ from iree.compiler.dialects import iree_codegen, iree_gpu, transform  # type: ig
 import z3  # type: ignore
 
 from amdsharktuner import candidate_gen, common
-from amdsharktuner.rocm import rocm_common, rocm_tuners
+from amdsharktuner.rocm import rocm_tuners
 
-from amdsharktuner.test_utils import tuner_ctx
+from amdsharktuner.test_utils import get_test_lowering_config, tuner_ctx
+
+
+def get_test_translation_info_config(
+    pipeline_options: iree_gpu.PipelineOptionsAttr,
+) -> ir.DictAttr:
+    return ir.DictAttr.get({"gpu_pipeline_options": pipeline_options})
 
 
 def walk_collect_ops(
@@ -69,7 +75,7 @@ def test_get_td_spec_contraction(tuner_ctx: common.TunerContext) -> None:
 
     mma_intrinsic = iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16
     mma_attr = iree_gpu.MMAAttr.get(mma_intrinsic)
-    lowering_config = common.get_lowering_config(
+    lowering_config = get_test_lowering_config(
         tuner_ctx=tuner_ctx,
         mma_kind=mma_attr,
         workgroup=[8, 8, 0],
@@ -77,9 +83,7 @@ def test_get_td_spec_contraction(tuner_ctx: common.TunerContext) -> None:
         subgroup_basis=[[16, 16, 1], [0, 1, 2]],
     )
     pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_num_stages=2)
-    config_dict = rocm_common.get_translation_info_config(
-        pipeline_options, waves_per_eu=8
-    )
+    config_dict = get_test_translation_info_config(pipeline_options)
     pipeline_attr = iree_gpu.PipelineAttr.get(
         iree_gpu.LoweringPipeline.VectorDistribute
     )
@@ -137,7 +141,6 @@ def test_get_td_spec_contraction(tuner_ctx: common.TunerContext) -> None:
         "gpu_pipeline_options = #iree_gpu.pipeline_options<prefetch_num_stages = 2>"
         in matcher_sequence_str
     )
-    assert 'llvm_func_attrs = {"amdgpu-waves-per-eu" = "8"}' in matcher_sequence_str
 
 
 def test_get_td_spec_convolution(tuner_ctx: common.TunerContext) -> None:
@@ -157,7 +160,7 @@ def test_get_td_spec_convolution(tuner_ctx: common.TunerContext) -> None:
 
     mma_intrinsic = iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16
     mma_attr = iree_gpu.MMAAttr.get(mma_intrinsic)
-    lowering_config = common.get_lowering_config(
+    lowering_config = get_test_lowering_config(
         tuner_ctx=tuner_ctx,
         mma_kind=mma_attr,
         workgroup=[1, 1, 464, 320, 0, 0, 0],
@@ -165,9 +168,7 @@ def test_get_td_spec_convolution(tuner_ctx: common.TunerContext) -> None:
         subgroup_basis=[[1, 1, 1, 1, 1, 1, 4], [0, 1, 2, 3, 4, 5, 6]],
     )
     pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_num_stages=0)
-    config_dict = rocm_common.get_translation_info_config(
-        pipeline_options, waves_per_eu=2
-    )
+    config_dict = get_test_translation_info_config(pipeline_options)
     pipeline_attr = iree_gpu.PipelineAttr.get(
         iree_gpu.LoweringPipeline.VectorDistribute
     )

@@ -5,12 +5,10 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 import logging
-from collections.abc import Sequence
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from enum import Enum
 from types import TracebackType
-from typing import Optional, Any, Callable, Protocol
-from abc import ABC
+from typing import Optional, Callable, Protocol
 import os
 import time
 import z3  # type: ignore
@@ -126,15 +124,6 @@ class TimeBudget:
         if self.deadline is None:
             return None
         return max(0.0, self.deadline - current_time)
-
-
-@dataclass
-class KnobAssignment(ABC):
-    """A KnobAssignment is a record of tuning parameters values from constraint_generator"""
-
-    def get_knobs(self) -> dict:
-        """Return a dict of all knob parameters and their assigned values."""
-        return asdict(self)
 
 
 @dataclass
@@ -261,87 +250,6 @@ def get_map_result_dim_positions(map: ir.AffineMap) -> Optional[list[int]]:
         return None
 
     return [ir.AffineDimExpr(expr).position for expr in map.results]
-
-
-def is_result_type_compatible_with_accumulator(
-    a_type: ir.Type,
-    b_type: ir.Type,
-    c_type: ir.Type,
-    res_type: ir.Type,
-) -> bool:
-    """Check if a result element type is compatible with the MMA accumulator type.
-
-    For bf16/f16 inputs with f32 accumulator, the hardware can cast, so we
-    allow either the input precision or f32 as the result type. Otherwise
-    the result type must match the accumulator type exactly.
-    """
-    if (
-        isinstance(a_type, ir.BF16Type)
-        and isinstance(b_type, ir.BF16Type)
-        and isinstance(c_type, ir.F32Type)
-    ):
-        return isinstance(res_type, (ir.BF16Type, ir.F32Type))
-
-    if (
-        isinstance(a_type, ir.F16Type)
-        and isinstance(b_type, ir.F16Type)
-        and isinstance(c_type, ir.F32Type)
-    ):
-        return isinstance(res_type, (ir.F16Type, ir.F32Type))
-
-    return res_type == c_type
-
-
-# The key name for GPUPipelineOptionsAttr in the translation info config dictionary.
-GPU_PIPELINE_OPTIONS_KEY = "gpu_pipeline_options"
-# The key name for llvm_func_attrs attribute in the translation info config dictionary.
-LLVM_FUNC_ATTRS_KEY = "llvm_func_attrs"
-DENORMAL_FP_MATH_F32_KEY = "iree_codegen.denormal_fp_math_f32"
-
-
-def get_lowering_config(
-    tuner_ctx: TunerContext,
-    **kwargs: Any,
-) -> iree_gpu.LoweringConfigAttr:
-    lowering_config_dict: dict[str, Any] = {}
-    for key, value in kwargs.items():
-        # A local variable to hold the transformed value.
-        promoted_value = value
-        match key:
-            case "workgroup" | "reduction" | "subgroup" | "promote_operands" | "padding" | "padding_conv":
-                if isinstance(value, Sequence):
-                    promoted_value = ir.ArrayAttr.get(
-                        [tuner_ctx.type.getI64(x) for x in value]
-                    )
-                elif not isinstance(value, ir.ArrayAttr):
-                    assert (
-                        False
-                    ), f"Unsupported type for key '{key}': {type(value).__name__}"
-            case "subgroup_basis":
-                if isinstance(value, list) and len(value) == 2:
-                    counts, mapping = value
-                    assert isinstance(counts, list) and isinstance(
-                        mapping, list
-                    ), f"subgroup_basis must contain two lists [counts, mapping]"
-                    counts_attr = tuner_ctx.type.getI64ArrayAttr(counts)
-                    mapping_attr = tuner_ctx.type.getI64ArrayAttr(mapping)
-                    promoted_value = ir.ArrayAttr.get([counts_attr, mapping_attr])
-
-                else:
-                    assert (
-                        False
-                    ), f"Unsupported type for key '{key}': {type(value).__name__}"
-            case "mma_kind":
-                if not isinstance(value, (iree_gpu.MMAAttr, iree_gpu.VirtualMMAAttr)):
-                    assert (
-                        False
-                    ), f"Unsupported type for key '{key}': {type(value).__name__}"
-            case _:
-                assert False, f"Unhandled key in lowering configuration: {key}"
-
-        lowering_config_dict[key] = promoted_value
-    lowering_config_attrs = ir.DictAttr.get(lowering_config_dict)
-    return iree_gpu.LoweringConfigAttr.get(lowering_config_attrs)
 
 
 def combine_tuning_specs(
@@ -528,35 +436,6 @@ def get_dim_bounds(
             result.append(dim)
 
     return result
-
-
-def calculate_padded_dimensions(
-    M: list[int],
-    N: list[int],
-    contraction_dims: ContractionDimensions,
-    contraction_maps: list[ir.AffineMap],
-) -> tuple[list[int], list[int], bool]:
-    """Calculates padded M and N dimensions for matmul operations.
-
-    Returns:
-        A tuple of (M_padded, N_padded, any_padding_applied) where:
-        - M_padded: Padded M dimensions.
-        - N_padded: Padded N dimensions.
-        - any_padding_applied: True if any padding was applied to M or N, False otherwise.
-    """
-    # Detect LHS transposition. Padding is disabled only when LHS is transposed.
-    k_dim_inner = contraction_dims.k[-1]
-    lhs_map = contraction_maps[0]
-    lhs_last_expr = lhs_map.results[-1]
-    lhs_dim_expr = ir.AffineDimExpr(lhs_last_expr)
-
-    transposed_lhs = k_dim_inner != lhs_dim_expr.position
-
-    M_padded = get_dim_bounds(M, transposed_lhs)
-    N_padded = get_dim_bounds(N, transposed_lhs)
-
-    any_padding_applied = M_padded != M or N_padded != N
-    return M_padded, N_padded, any_padding_applied
 
 
 class SMTKnobSymbols(dict[str, z3.ExprRef]):

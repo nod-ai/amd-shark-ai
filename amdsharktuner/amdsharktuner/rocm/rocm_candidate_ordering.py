@@ -102,7 +102,7 @@ def _get_vgpr_attrs(
 
 
 def _get_vgpr_pressure(attrs: _VgprAttrs) -> float:
-    vgpr_usage_per_thread = VGPR_SPILL_LIMIT * 32 / attrs.sg_size
+    vgpr_usage_per_thread = VGPR_SPILL_LIMIT * MAX_MMA_KIND_OUTPUT_BITS / attrs.sg_size
     return vgpr_usage_per_thread * attrs.num_mfma_c_output
 
 
@@ -155,31 +155,3 @@ def get_heuristic_key_fn(
         return _vgpr_pressure_sort_key(valid_attrs[index])
 
     return heuristic_key
-
-
-def get_vgpr_pressure(
-    solution: common.SMTKnobAssignments,
-    codegen_pipeline: iree_gpu.LoweringPipeline,
-    dispatch_kind: common.DispatchKind,
-) -> float | None:
-    if dispatch_kind not in (common.DispatchKind.contraction, common.DispatchKind.conv):
-        return None
-
-    attrs = _get_vgpr_attrs(solution, codegen_pipeline)
-    if attrs is None:
-        return None
-
-    return _get_vgpr_pressure(attrs)
-
-
-def vgpr_pressure_sort_key(
-    solution: common.SMTKnobAssignments,
-    codegen_pipeline: iree_gpu.LoweringPipeline,
-    dispatch_kind: common.DispatchKind,
-) -> tuple[int, float] | None:
-    vgpr_pressure = get_vgpr_pressure(solution, codegen_pipeline, dispatch_kind)
-    if vgpr_pressure is None:
-        return None
-    if vgpr_pressure <= VGPR_PRESSURE_THRESHOLD:
-        return (0, -vgpr_pressure)
-    return (1, vgpr_pressure)

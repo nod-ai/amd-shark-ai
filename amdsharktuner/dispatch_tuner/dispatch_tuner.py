@@ -61,9 +61,6 @@ def arg_parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Autotune sample script")
     client_args = parser.add_argument_group("amdshark Tuner Options")
     client_args.add_argument(
-        "dispatch_file", type=Path, help="Path to the dispatch file to tune (.mlir)"
-    )
-    client_args.add_argument(
         "--dispatch-tuner-num-dispatch-candidates",
         type=int,
         default=None,
@@ -161,7 +158,7 @@ def main() -> None:
         print("Check the summary in:")
         print(summary_log_file.resolve())
 
-        output_csv_name = f"{args.dispatch_file.stem}_candidate_analysis.csv"
+        output_csv_name = f"{args.input_file.stem}_candidate_analysis.csv"
         csv_path = Path(path_config.base_dir) / output_csv_name
 
         libtuner.candidate_ordering.export_record_to_csv(

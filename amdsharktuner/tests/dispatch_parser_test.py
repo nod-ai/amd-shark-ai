@@ -15,9 +15,12 @@ from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import func, iree_codegen, iree_gpu, linalg, scf  # type: ignore
 
 from amdsharktuner import common, dispatch_parser
-from amdsharktuner.rocm import rocm_common
 
-from amdsharktuner.test_utils import tuner_ctx
+from amdsharktuner.test_utils import get_test_lowering_config, tuner_ctx
+
+
+def get_empty_translation_info_config() -> ir.DictAttr:
+    return ir.DictAttr.get({})
 
 
 GENERIC_TEMPLATE = r"""
@@ -188,15 +191,14 @@ def test_get_named_contraction_op(tuner_ctx: common.TunerContext):
 def test_get_mmt_tile_sizes(tuner_ctx: common.TunerContext) -> None:
     mma_intrinsic = iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16
     mma_attr = iree_gpu.MMAAttr.get(mma_intrinsic)
-    lowering_config = common.get_lowering_config(
+    lowering_config = get_test_lowering_config(
         tuner_ctx=tuner_ctx,
         mma_kind=mma_attr,
         workgroup=[128, 320, 0],
         reduction=[0, 0, 32],
         subgroup_basis=[[1, 4, 1], [0, 1, 2]],
     )
-    pipeline_options = iree_gpu.PipelineOptionsAttr.get()
-    config_dict = rocm_common.get_translation_info_config(pipeline_options, 0)
+    config_dict = get_empty_translation_info_config()
     pipeline_attr = iree_gpu.PipelineAttr.get(
         iree_gpu.LoweringPipeline.VectorDistribute
     )
@@ -214,15 +216,14 @@ def test_get_mmt_tile_sizes(tuner_ctx: common.TunerContext) -> None:
 def test_get_conv_tile_sizes(tuner_ctx: common.TunerContext) -> None:
     mma_intrinsic = iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16
     mma_attr = iree_gpu.MMAAttr.get(mma_intrinsic)
-    lowering_config = common.get_lowering_config(
+    lowering_config = get_test_lowering_config(
         tuner_ctx=tuner_ctx,
         mma_kind=mma_attr,
         workgroup=[1, 1, 464, 320, 1, 1, 0],
         reduction=[0, 0, 0, 0, 0, 0, 16],
         subgroup_basis=[[1, 1, 1, 1, 1, 1, 4], [0, 1, 2, 3, 4, 5, 6]],
     )
-    pipeline_options = iree_gpu.PipelineOptionsAttr.get()
-    config_dict = rocm_common.get_translation_info_config(pipeline_options, 1)
+    config_dict = get_empty_translation_info_config()
     pipeline_attr = iree_gpu.PipelineAttr.get(
         iree_gpu.LoweringPipeline.VectorDistribute
     )

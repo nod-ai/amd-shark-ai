@@ -17,6 +17,8 @@ def _materialize_compilation_info_config(
     constraints_op: iree_codegen.ConstraintsOp,
     solution: common.SMTKnobAssignments,
 ) -> common.TuningConfiguration:
+    # TODO: If needed, plumb an option here to inject
+    # `amdgpu-waves-per-eu` into the materialized translation info.
     compilation_info = iree_codegen.materialize_compilation_info(
         constraints_op, solution
     )
