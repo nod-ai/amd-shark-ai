@@ -286,6 +286,9 @@ class ExecutionPhases(str, Enum):
     compile_models = "compile-models"
     benchmark_models = "benchmark-models"
 
+    def __str__(self) -> str:
+        return self.value
+
 
 class CodegenPipelines(str, Enum):
     llvmgpu_vector_distribute = "llvmgpu_vector_distribute"
@@ -334,10 +337,12 @@ def parse_arguments(
     )
     general_args.add_argument(
         "--stop-after",
-        choices=list(ExecutionPhases),
+        choices=[
+            phase for phase in ExecutionPhases if phase != ExecutionPhases.dont_stop
+        ],
         type=ExecutionPhases,
         default=ExecutionPhases.dont_stop,
-        help="Stop execution after specified phase",
+        help=f"Stop execution after specified phase (default: run all phases).",
     )
     general_args.add_argument(
         "--dry-run",
@@ -349,7 +354,7 @@ def parse_arguments(
         choices=list(BenchmarkTimingMethod),
         type=BenchmarkTimingMethod,
         default=BenchmarkTimingMethod.iree_benchmark_module,
-        help="Select which timing tool to use for benchmark execution measurements.",
+        help=f"Select which timing tool to use for benchmark execution measurements (default: {BenchmarkTimingMethod.iree_benchmark_module}).",
     )
 
     # candidate_gen options.
@@ -365,7 +370,7 @@ def parse_arguments(
         choices=list(candidate_ordering.CandidateOrderKind),
         type=candidate_ordering.CandidateOrderKind,
         default=candidate_ordering.CandidateOrderKind.shuffle,
-        help="How to order generated candidates for compilation and benchmarking.",
+        help=f"How to order generated candidates for compilation and benchmarking (default: {candidate_ordering.CandidateOrderKind.shuffle}).",
     )
     candidate_gen_args.add_argument(
         "--search-space-shuffle-seed",
