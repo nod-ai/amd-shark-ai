@@ -296,6 +296,9 @@ class BenchmarkTimingMethod(str, Enum):
     iree_benchmark_module = "iree_benchmark_module"
     rocprof = "rocprof"
 
+    def __str__(self) -> str:
+        return self.value
+
 
 def parse_arguments(
     initial_parser: Optional[argparse.ArgumentParser] = None,

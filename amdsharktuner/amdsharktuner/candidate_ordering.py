@@ -18,6 +18,9 @@ class CandidateOrderKind(str, Enum):
     shuffle = "shuffle"
     heuristic = "heuristic"
 
+    def __str__(self) -> str:
+        return self.value
+
 
 def reorder_solutions(
     solutions: list[common.SMTKnobAssignments],
