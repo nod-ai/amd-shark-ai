@@ -8,13 +8,21 @@
 Usage: python -m pytest candidate_gen_test.py
 """
 
+import pytest
 from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_codegen, iree_gpu, transform  # type: ignore
+import z3  # type: ignore
 
 from amdsharktuner import candidate_gen, common
-from amdsharktuner.rocm import rocm_common, rocm_tuners
+from amdsharktuner.rocm import rocm_tuners
 
-from amdsharktuner.test_utils import tuner_ctx
+from amdsharktuner.test_utils import get_test_lowering_config, tuner_ctx
+
+
+def get_test_translation_info_config(
+    pipeline_options: iree_gpu.PipelineOptionsAttr,
+) -> ir.DictAttr:
+    return ir.DictAttr.get({"gpu_pipeline_options": pipeline_options})
 
 
 def walk_collect_ops(
@@ -67,7 +75,7 @@ def test_get_td_spec_contraction(tuner_ctx: common.TunerContext) -> None:
 
     mma_intrinsic = iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16
     mma_attr = iree_gpu.MMAAttr.get(mma_intrinsic)
-    lowering_config = common.get_lowering_config(
+    lowering_config = get_test_lowering_config(
         tuner_ctx=tuner_ctx,
         mma_kind=mma_attr,
         workgroup=[8, 8, 0],
@@ -75,9 +83,7 @@ def test_get_td_spec_contraction(tuner_ctx: common.TunerContext) -> None:
         subgroup_basis=[[16, 16, 1], [0, 1, 2]],
     )
     pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_num_stages=2)
-    config_dict = rocm_common.get_translation_info_config(
-        pipeline_options, waves_per_eu=8
-    )
+    config_dict = get_test_translation_info_config(pipeline_options)
     pipeline_attr = iree_gpu.PipelineAttr.get(
         iree_gpu.LoweringPipeline.VectorDistribute
     )
@@ -135,7 +141,6 @@ def test_get_td_spec_contraction(tuner_ctx: common.TunerContext) -> None:
         "gpu_pipeline_options = #iree_gpu.pipeline_options<prefetch_num_stages = 2>"
         in matcher_sequence_str
     )
-    assert 'llvm_func_attrs = {"amdgpu-waves-per-eu" = "8"}' in matcher_sequence_str
 
 
 def test_get_td_spec_convolution(tuner_ctx: common.TunerContext) -> None:
@@ -155,7 +160,7 @@ def test_get_td_spec_convolution(tuner_ctx: common.TunerContext) -> None:
 
     mma_intrinsic = iree_gpu.MMAIntrinsic.MFMA_F32_16x16x16_F16
     mma_attr = iree_gpu.MMAAttr.get(mma_intrinsic)
-    lowering_config = common.get_lowering_config(
+    lowering_config = get_test_lowering_config(
         tuner_ctx=tuner_ctx,
         mma_kind=mma_attr,
         workgroup=[1, 1, 464, 320, 0, 0, 0],
@@ -163,9 +168,7 @@ def test_get_td_spec_convolution(tuner_ctx: common.TunerContext) -> None:
         subgroup_basis=[[1, 1, 1, 1, 1, 1, 4], [0, 1, 2, 3, 4, 5, 6]],
     )
     pipeline_options = iree_gpu.PipelineOptionsAttr.get(prefetch_num_stages=0)
-    config_dict = rocm_common.get_translation_info_config(
-        pipeline_options, waves_per_eu=2
-    )
+    config_dict = get_test_translation_info_config(pipeline_options)
     pipeline_attr = iree_gpu.PipelineAttr.get(
         iree_gpu.LoweringPipeline.VectorDistribute
     )
@@ -362,3 +365,102 @@ def test_get_supported_dispatch_tuners() -> None:
     assert (
         candidate_gen.get_supported_dispatch_tuners("gfx942", Pipeline.Distribute) == []
     )
+
+
+def test_generate_solutions_from_constraint_op(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    context = tuner_ctx.mlir_ctx
+    module_str = """
+        module {
+            iree_codegen.smt.constraints
+                target = <set = 0>,
+                pipeline = #iree_gpu.pipeline<VectorDistribute>,
+                knobs = {wg_m = #iree_codegen.smt.int_knob<"wg_m">}
+                dims() {
+                ^bb0:
+                %v = iree_codegen.smt.knob "wg_m" : !smt.int
+                %c4 = smt.int.constant 4
+                %c8 = smt.int.constant 8
+                %ge = smt.int.cmp ge %v, %c4
+                %le = smt.int.cmp le %v, %c8
+                iree_codegen.smt.assert %ge, "wg_m >= 4" : !smt.bool
+                iree_codegen.smt.assert %le, "wg_m <= 8" : !smt.bool
+                }
+        }"""
+    ir_module = ir.Module.parse(module_str, context)
+    constraints_ops = ir.get_ops_of_type(ir_module, iree_codegen.ConstraintsOp)
+    assert len(constraints_ops) == 1
+    solutions = list(
+        candidate_gen.generate_solutions_from_constraint_op(
+            constraints_ops[0], z3_ctx=z3.Context()
+        )
+    )
+    assert len(solutions) > 0
+    assert all(
+        isinstance(solution, common.SMTKnobAssignments) for solution in solutions
+    )
+    seen: set[tuple[tuple[str, int], ...]] = set()
+    for solution in solutions:
+        key = tuple(sorted(solution.items()))
+        assert key not in seen, f"Duplicate enumeration: {solution}"
+        seen.add(key)
+        assert "wg_m" in solution
+        assert 4 <= solution["wg_m"] <= 8
+
+
+def test_select_constraints_op_picks_by_pipeline_attr(
+    tuner_ctx: common.TunerContext,
+) -> None:
+    """`InsertSMTConstraintsPass` produces one op per registered pipeline,
+    so the tuner must filter by attribute equality (not by position) to
+    avoid silently picking the wrong pipeline's constraints. Locks in
+    the post-#2 fix from the tuner-review."""
+    context = tuner_ctx.mlir_ctx
+    module_str = """
+        module {
+            iree_codegen.smt.constraints
+                target = <set = 0>,
+                pipeline = #iree_gpu.pipeline<TileAndFuse>,
+                knobs = {wg_m = #iree_codegen.smt.int_knob<"wg_m">}
+                dims() {
+                ^bb0:
+                %v = iree_codegen.smt.knob "wg_m" : !smt.int
+                %c1 = smt.int.constant 1
+                %ge = smt.int.cmp ge %v, %c1
+                iree_codegen.smt.assert %ge, "wg_m >= 1" : !smt.bool
+                }
+            iree_codegen.smt.constraints
+                target = <set = 0>,
+                pipeline = #iree_gpu.pipeline<VectorDistribute>,
+                knobs = {wg_n = #iree_codegen.smt.int_knob<"wg_n">}
+                dims() {
+                ^bb0:
+                %v = iree_codegen.smt.knob "wg_n" : !smt.int
+                %c1 = smt.int.constant 1
+                %ge = smt.int.cmp ge %v, %c1
+                iree_codegen.smt.assert %ge, "wg_n >= 1" : !smt.bool
+                }
+        }"""
+    ir_module = ir.Module.parse(module_str, context)
+    constraints_ops = ir.get_ops_of_type(ir_module, iree_codegen.ConstraintsOp)
+    assert len(constraints_ops) == 2
+
+    vd_op = candidate_gen._select_constraints_op_for_pipeline(
+        constraints_ops,
+        iree_gpu.LoweringPipeline.VectorDistribute,
+    )
+    assert "VectorDistribute" in str(vd_op.pipeline)
+
+    taf_op = candidate_gen._select_constraints_op_for_pipeline(
+        constraints_ops,
+        iree_gpu.LoweringPipeline.TileAndFuse,
+    )
+    assert "TileAndFuse" in str(taf_op.pipeline)
+
+    # Wrong-pipeline request must raise, not silently pick something.
+    with pytest.raises(RuntimeError, match="No iree_codegen.smt.constraints"):
+        candidate_gen._select_constraints_op_for_pipeline(
+            constraints_ops,
+            iree_gpu.LoweringPipeline.Distribute,
+        )

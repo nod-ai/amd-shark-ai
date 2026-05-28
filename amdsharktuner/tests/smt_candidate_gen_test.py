@@ -10,9 +10,9 @@ import pytest
 import z3  # type: ignore
 
 from iree.compiler import ir  # type: ignore
-from iree.compiler.dialects import iree_codegen, iree_gpu  # type: ignore
+from iree.compiler.dialects import iree_codegen  # type: ignore
 
-from amdsharktuner import common, smt_candidate_gen
+from amdsharktuner import candidate_gen, common
 
 
 @pytest.fixture
@@ -32,11 +32,9 @@ def sample_constraints_op() -> Generator[iree_codegen.ConstraintsOp, None, None]
                     subgroup_size = #iree_codegen.smt.int_knob<"sg_size">,
                     mma_kind = #iree_codegen.smt.one_of_knob<"mma_idx",
                             ["opt_a", "opt_b", "opt_c"]>,
-                    subgroup_basis = {
-                            counts = [#iree_codegen.smt.int_knob<"sg_x">,
+                    subgroup_basis = [[#iree_codegen.smt.int_knob<"sg_x">,
                                         #iree_codegen.smt.int_knob<"sg_y">],
-                            mapping = [#iree_codegen.smt.int_knob<"map_0">,
-                                        #iree_codegen.smt.int_knob<"map_1">]}}
+                                      [0, 1]]}
                 dims() {
                 }
         }
@@ -48,24 +46,20 @@ def sample_constraints_op() -> Generator[iree_codegen.ConstraintsOp, None, None]
 
 
 @pytest.fixture
-def sample_knob_assignment() -> common.SMTKnobAssignment:
-    assignment = common.SMTKnobAssignment(
-        {
-            "test": 100,
-            "wg_m": 128,
-            "wg_n": 64,
-            "wg_k": 64,
-            "wg_x": 64,
-            "wg_y": 2,
-            "wg_z": 1,
-            "sg_size": 64,
-            "mma_idx": 1,
-            "sg_x": 2,
-            "sg_y": 4,
-            "map_0": 0,
-            "map_1": 1,
-        }
-    )
+def sample_solution() -> dict[str, int]:
+    assignment = {
+        "test": 100,
+        "wg_m": 128,
+        "wg_n": 64,
+        "wg_k": 64,
+        "wg_x": 64,
+        "wg_y": 2,
+        "wg_z": 1,
+        "sg_size": 64,
+        "mma_idx": 1,
+        "sg_x": 2,
+        "sg_y": 4,
+    }
     return assignment
 
 
@@ -77,60 +71,53 @@ def test_get_z3_assignment_from_model() -> None:
     solver.add(b == 6)
     assert solver.check() == z3.sat
     model = solver.model()
-    symbols = common.KnobSymbols({"a": a, "b": b, "sum": a + b})
-    result = smt_candidate_gen.get_z3_assignment_from_model(model, symbols)
+    symbols = common.SMTKnobSymbols({"a": a, "b": b, "sum": a + b})
+    result = candidate_gen.get_z3_assignment_from_model(model, symbols)
     assert result["a"] == 4
     assert result["b"] == 6
     assert result["sum"] == 10
 
 
-def test_resolve_knob_array_attr_template() -> None:
-    with ir.Context():
-        arr = ir.Attribute.parse(
-            '[#iree_codegen.smt.int_knob<"wg_m">, '
-            '#iree_codegen.smt.int_knob<"wg_n">]'
-        )
-        assignment = common.SMTKnobAssignment({"wg_m": 64, "wg_n": 128})
-        result = smt_candidate_gen._resolve_knob_array_attr_template(arr, assignment)
-        assert result == [64, 128]
-
-        with pytest.raises(AssertionError, match="wg_m"):
-            smt_candidate_gen._resolve_knob_array_attr_template(
-                arr, common.SMTKnobAssignment({})
-            )
-
-
-def test_get_template_entry() -> None:
-    with ir.Context():
-        knob_template = ir.Attribute.parse(
-            '{wg_m = #iree_codegen.smt.int_knob<"wg_m">}'
-        )
-    assert isinstance(knob_template, ir.DictAttr)
-    key: common.AttrKey = common.AttrKey("wg_m", iree_codegen.IntKnobAttr)
-    result = smt_candidate_gen._get_template_entry(knob_template, key)
-
-    assert result is not None
-    assert isinstance(result, iree_codegen.IntKnobAttr)
-    assert result.name == "wg_m"
-    key = common.AttrKey("test", iree_codegen.IntKnobAttr)
-    result = smt_candidate_gen._get_template_entry(knob_template, key)
-    assert result is None
-
-
-def test_get_knobs_from_constraint_op(
+def test_get_smt_symbols_from_constraint_op(
     sample_constraints_op: iree_codegen.ConstraintsOp,
-    sample_knob_assignment: common.SMTKnobAssignment,
+    sample_solution: dict[str, int],
 ) -> None:
-    symbols = smt_candidate_gen.get_knobs_from_constraint_op(
+    symbols = candidate_gen.get_smt_symbols_from_constraint_op(
         sample_constraints_op, z3_ctx=z3.Context()
     )
-    expected_keys = sample_knob_assignment.keys()
+    expected_keys = sample_solution.keys()
 
     assert set(symbols.keys()) == expected_keys
     for name, expr in symbols.items():
         assert z3.is_int(expr)
         # Check Z3 variable is created with the expected name.
         assert expr.decl().name() == name
+
+
+def test_get_smt_symbols_from_constraint_op_ignores_constant_entries() -> None:
+    mlir = """
+    module {
+        iree_codegen.smt.constraints
+            target = <set = 0>,
+            pipeline = #iree_gpu.pipeline<VectorDistribute>,
+            knobs = {
+                workgroup = [#iree_codegen.smt.int_knob<"wg_m">, 1],
+                subgroup_basis = [[#iree_codegen.smt.int_knob<"sg_m">, 1], [0, 1]],
+                subgroup_size = #iree_codegen.smt.int_knob<"sg_size">,
+                literal = 42
+            }
+            dims() {
+            }
+    }
+    """
+    with ir.Context():
+        module = ir.Module.parse(mlir)
+        ops = ir.get_ops_of_type(module, iree_codegen.ConstraintsOp)
+        symbols = candidate_gen.get_smt_symbols_from_constraint_op(
+            ops[0], z3_ctx=z3.Context()
+        )
+
+    assert set(symbols.keys()) == {"wg_m", "sg_m", "sg_size"}
 
 
 def test_generate_solutions_yields_assignments() -> None:
@@ -156,7 +143,7 @@ def test_generate_solutions_yields_assignments() -> None:
         module = ir.Module.parse(unsolvable_mlir_str)
         ops = ir.get_ops_of_type(module, iree_codegen.ConstraintsOp)
         solutions = list(
-            smt_candidate_gen.generate_solutions_from_constraint_op(
+            candidate_gen.generate_solutions_from_constraint_op(
                 ops[0], z3_ctx=z3.Context()
             )
         )
@@ -186,7 +173,7 @@ def test_generate_solutions_yields_assignments() -> None:
         module = ir.Module.parse(solvable_mlir_str)
         ops = ir.get_ops_of_type(module, iree_codegen.ConstraintsOp)
         solutions = list(
-            smt_candidate_gen.generate_solutions_from_constraint_op(
+            candidate_gen.generate_solutions_from_constraint_op(
                 ops[0], z3_ctx=z3.Context()
             )
         )
@@ -196,55 +183,53 @@ def test_generate_solutions_yields_assignments() -> None:
         key = tuple(sorted(sol.items()))
         assert key not in seen, f"Duplicate solution: {sol}"
         seen.add(key)
-        assert isinstance(sol, common.SMTKnobAssignment)
+        assert isinstance(sol, dict)
         assert "wg_m" in sol
         assert 4 <= sol["wg_m"] <= 8
 
 
-def test_build_lowering_config_attr(
-    sample_constraints_op: iree_codegen.ConstraintsOp,
-    sample_knob_assignment: common.SMTKnobAssignment,
-) -> None:
-    config = smt_candidate_gen.GPUCompilationInfoBuilder.LoweringConfig.build_lowering_config_attr(
-        sample_constraints_op, sample_knob_assignment
+def test_generate_constraint_solutions_from_constraint_op() -> None:
+    """End-to-end check of `candidate_gen.generate_solutions`. Feeds the
+    HAL-wrapped sample matmul dispatch (the same kind of input
+    libtuner consumes as `args.input_file`) through iree-compile to
+    obtain a constraints op, then enumerates Z3 solutions and asserts
+    the pipeline-filter contract picks the VD op (not TaF, even though
+    iree-compile emits both for an AMD matmul).
+
+    Previously this test passed a synthetic constraints-op-only module
+    (no dispatch wrapper) which iree-compile rejected — failing on both
+    un-modified RattataKing's branch and with the review-fix pipeline
+    flags. Rewriting against a real HAL-wrapped dispatch exercises the
+    actual bridge contract.
+    """
+    from pathlib import Path
+
+    from iree.compiler.dialects import iree_gpu  # type: ignore
+
+    fixture = (
+        Path(__file__).resolve().parents[1]
+        / "dispatch_tuner"
+        / "dispatch_sample_benchmark.mlir"
     )
-    assert isinstance(config, iree_gpu.LoweringConfigAttr)
-    config_dict = config.attributes
-
-    assert "test" not in config_dict
-    assert "workgroup" in config_dict
-    assert str(config_dict["workgroup"]) == "[128, 64, 64]"
-    assert str(config_dict["mma_kind"]) == '"opt_b"'
-    assert str(config_dict["subgroup_basis"]) == "[[2, 4], [0, 1]]"
-    assert "workgroup_size" not in config_dict
-    assert "subgroup_size" not in config_dict
-
-
-def test_build_translation_info_attr(
-    sample_constraints_op: iree_codegen.ConstraintsOp,
-    sample_knob_assignment: common.SMTKnobAssignment,
-) -> None:
-    translation_info = smt_candidate_gen.GPUCompilationInfoBuilder.TranslationInfo.build_translation_info_attr(
-        sample_constraints_op, sample_knob_assignment
-    )
-    assert isinstance(translation_info, iree_codegen.TranslationInfoAttr)
-
-    assert "test" not in str(translation_info)
-    assert str(translation_info.workgroup_size) == "[64, 2, 1]"
-    assert translation_info.subgroup_size == 64
-
-
-def test_build_compilation_info_attr(
-    sample_constraints_op: iree_codegen.ConstraintsOp,
-    sample_knob_assignment: common.SMTKnobAssignment,
-) -> None:
-    compilation_info = (
-        smt_candidate_gen.GPUCompilationInfoBuilder.build_compilation_info_attr(
-            sample_constraints_op, sample_knob_assignment
+    if not fixture.is_file():
+        pytest.skip(
+            f"{fixture} not present (regenerate with iree-compile "
+            "--iree-hal-dump-executable-files-to=... + "
+            "--iree-codegen-add-tuner-attributes)"
         )
-    )
-    assert isinstance(compilation_info, iree_codegen.CompilationInfoAttr)
-    assert isinstance(compilation_info.lowering_config, iree_gpu.LoweringConfigAttr)
-    assert isinstance(
-        compilation_info.translation_info, iree_codegen.TranslationInfoAttr
-    )
+    mlir = fixture.read_text()
+    with ir.Context() as ctx:
+        module = ir.Module.parse(mlir, ctx)
+        solutions = list(
+            candidate_gen.generate_solutions(
+                module, ctx, iree_gpu.LoweringPipeline.VectorDistribute
+            )
+        )
+    assert len(solutions) > 0
+    for solution in solutions:
+        assert isinstance(solution, candidate_gen.ConstraintSolution)
+        assert isinstance(solution.constraints_op, iree_codegen.ConstraintsOp)
+        assert isinstance(solution.solution, dict)
+        # Pipeline-filter contract: must be the VD op (not TaF), even
+        # though iree-compile emits both for an AMD matmul.
+        assert "VectorDistribute" in str(solution.constraints_op.pipeline)

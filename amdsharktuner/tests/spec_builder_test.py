@@ -148,10 +148,8 @@ def test_spec_builder(tuner_ctx: common.TunerContext) -> None:
 
     attributes = ir.DictAttr.get({"reduction": ir.ArrayAttr.get([])})
     lowering_config = iree_gpu.LoweringConfigAttr.get(attributes)
-    pipeline_attr = iree_codegen.DispatchLoweringPassPipelineAttr.get(
-        iree_codegen.DispatchLoweringPassPipeline.None_
-    )
-    translation_info = iree_codegen.TranslationInfoAttr.get(pipeline_attr)
+    pipeline_attr = iree_gpu.PipelineAttr.get(iree_gpu.LoweringPipeline.Default)
+    translation_info = iree_codegen.TranslationInfoAttr.get(pass_pipeline=pipeline_attr)
     compilation_info = iree_codegen.CompilationInfoAttr.get(
         lowering_config, translation_info
     )
@@ -239,10 +237,8 @@ def test_spec_builder_with_batch_dims(tuner_ctx: common.TunerContext) -> None:
 
     attributes = ir.DictAttr.get({"reduction": ir.ArrayAttr.get([])})
     lowering_config = iree_gpu.LoweringConfigAttr.get(attributes)
-    pipeline_attr = iree_codegen.DispatchLoweringPassPipelineAttr.get(
-        iree_codegen.DispatchLoweringPassPipeline.None_
-    )
-    translation_info = iree_codegen.TranslationInfoAttr.get(pipeline_attr)
+    pipeline_attr = iree_gpu.PipelineAttr.get(iree_gpu.LoweringPipeline.Default)
+    translation_info = iree_codegen.TranslationInfoAttr.get(pass_pipeline=pipeline_attr)
     compilation_info = iree_codegen.CompilationInfoAttr.get(
         lowering_config, translation_info
     )

@@ -5,13 +5,41 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 import logging
-from typing import Optional
 
 from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_codegen, iree_gpu, linalg  # type: ignore
 
-from .. import common, constraint_generator, dispatch_parser, spec_builder, tuner_base
-from . import rocm_constraint_generators, rocm_parsers
+from .. import common, dispatch_parser, spec_builder, tuner_base
+from . import rocm_parsers
+
+
+def _materialize_compilation_info_config(
+    constraints_op: iree_codegen.ConstraintsOp,
+    solution: common.SMTKnobAssignments,
+) -> common.TuningConfiguration:
+    # TODO: If needed, plumb an option here to inject
+    # `amdgpu-waves-per-eu` into the materialized translation info.
+    compilation_info = iree_codegen.materialize_compilation_info(
+        constraints_op, solution
+    )
+    return common.TuningConfiguration(
+        name="compilation_info",
+        configuration=compilation_info,
+    )
+
+
+def _materialize_configuration_attr_config(
+    constraints_op: iree_codegen.ConstraintsOp,
+    attr_name: str,
+    solution: common.SMTKnobAssignments,
+) -> common.TuningConfiguration:
+    configuration = iree_codegen.materialize_configuration_attr(
+        constraints_op, attr_name, solution
+    )
+    return common.TuningConfiguration(
+        name=attr_name,
+        configuration=configuration,
+    )
 
 
 class ROCmContractionVectorDistributeTuner(
@@ -41,11 +69,6 @@ class ROCmContractionVectorDistributeTuner(
 
         return True
 
-    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
-        return rocm_constraint_generators.ROCmContractionVectorDistributeConstraintGenerator(
-            self.get_op_info()
-        )
-
     def get_td_spec(
         self,
         config_list: list[common.TuningConfiguration],
@@ -57,11 +80,12 @@ class ROCmContractionVectorDistributeTuner(
     def get_dispatch_kind(cls) -> common.DispatchKind:
         return common.DispatchKind.contraction
 
-    def get_knob_assignment(
+    def get_tuning_configurations(
         self,
-        config_list: list[common.TuningConfiguration],
-    ) -> Optional[common.KnobAssignment]:
-        return config_list[0].knob_assignment
+        constraints_op: iree_codegen.ConstraintsOp,
+        solution: common.SMTKnobAssignments,
+    ) -> list[common.TuningConfiguration]:
+        return [_materialize_compilation_info_config(constraints_op, solution)]
 
 
 class ROCmContractionTileAndFuseTuner(
@@ -91,11 +115,6 @@ class ROCmContractionTileAndFuseTuner(
 
         return True
 
-    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
-        return rocm_constraint_generators.ROCmContractionTileAndFuseConstraintGenerator(
-            self.get_op_info()
-        )
-
     def get_td_spec(
         self,
         config_list: list[common.TuningConfiguration],
@@ -107,11 +126,12 @@ class ROCmContractionTileAndFuseTuner(
     def get_dispatch_kind(cls) -> common.DispatchKind:
         return common.DispatchKind.contraction
 
-    def get_knob_assignment(
+    def get_tuning_configurations(
         self,
-        config_list: list[common.TuningConfiguration],
-    ) -> Optional[common.KnobAssignment]:
-        return config_list[0].knob_assignment
+        constraints_op: iree_codegen.ConstraintsOp,
+        solution: common.SMTKnobAssignments,
+    ) -> list[common.TuningConfiguration]:
+        return [_materialize_compilation_info_config(constraints_op, solution)]
 
 
 class ROCmConvolutionVectorDistributeTuner(
@@ -137,11 +157,6 @@ class ROCmConvolutionVectorDistributeTuner(
             and list(convolution_dims.depth) == []
         )
 
-    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
-        return rocm_constraint_generators.ROCmConvolutionVectorDistributeConstraintGenerator(
-            self.get_op_info()
-        )
-
     def get_td_spec(
         self,
         config_list: list[common.TuningConfiguration],
@@ -153,11 +168,12 @@ class ROCmConvolutionVectorDistributeTuner(
     def get_dispatch_kind(cls) -> common.DispatchKind:
         return common.DispatchKind.conv
 
-    def get_knob_assignment(
+    def get_tuning_configurations(
         self,
-        config_list: list[common.TuningConfiguration],
-    ) -> Optional[common.KnobAssignment]:
-        return None
+        constraints_op: iree_codegen.ConstraintsOp,
+        solution: common.SMTKnobAssignments,
+    ) -> list[common.TuningConfiguration]:
+        return [_materialize_compilation_info_config(constraints_op, solution)]
 
 
 class ROCmConvolutionTileAndFuseTuner(
@@ -175,11 +191,6 @@ class ROCmConvolutionTileAndFuseTuner(
             return False
         return True
 
-    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
-        return rocm_constraint_generators.ROCmConvolutionTileAndFuseConstraintGenerator(
-            self.get_op_info()
-        )
-
     def get_td_spec(
         self,
         config_list: list[common.TuningConfiguration],
@@ -191,11 +202,12 @@ class ROCmConvolutionTileAndFuseTuner(
     def get_dispatch_kind(cls) -> common.DispatchKind:
         return common.DispatchKind.conv
 
-    def get_knob_assignment(
+    def get_tuning_configurations(
         self,
-        config_list: list[common.TuningConfiguration],
-    ) -> Optional[common.KnobAssignment]:
-        return None
+        constraints_op: iree_codegen.ConstraintsOp,
+        solution: common.SMTKnobAssignments,
+    ) -> list[common.TuningConfiguration]:
+        return [_materialize_compilation_info_config(constraints_op, solution)]
 
 
 class ROCmAttentionVectorDistributeTuner(
@@ -208,13 +220,6 @@ class ROCmAttentionVectorDistributeTuner(
     def supports_root_op(cls, root_op: ir.Operation) -> bool:
         return iree_codegen.isa_attention_op(root_op)
 
-    def get_constraint_generator(self) -> constraint_generator.ConstraintGenerator:
-        return (
-            rocm_constraint_generators.ROCmAttentionVectorDistributeConstraintGenerator(
-                self.get_op_info()
-            )
-        )
-
     def get_td_spec(
         self,
         config_list: list[common.TuningConfiguration],
@@ -226,11 +231,21 @@ class ROCmAttentionVectorDistributeTuner(
     def get_dispatch_kind(cls) -> common.DispatchKind:
         return common.DispatchKind.attention
 
-    def get_knob_assignment(
+    def get_tuning_configurations(
         self,
-        config_list: list[common.TuningConfiguration],
-    ) -> Optional[common.KnobAssignment]:
-        return None
+        constraints_op: iree_codegen.ConstraintsOp,
+        solution: common.SMTKnobAssignments,
+    ) -> list[common.TuningConfiguration]:
+        compilation_info = _materialize_compilation_info_config(
+            constraints_op, solution
+        )
+        decomposition_config = _materialize_configuration_attr_config(
+            constraints_op, "decomposition_config", solution
+        )
+        return [
+            compilation_info,
+            decomposition_config,
+        ]
 
 
 def get_tuners_for_pipeline(

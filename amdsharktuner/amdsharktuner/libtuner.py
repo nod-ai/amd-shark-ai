@@ -45,7 +45,7 @@ from . import (
     dispatch_parser,
     process_utils,
 )
-from .rocm import rocm_candidate_ordering, rocm_common, rocm_dispatch_constraints
+from .rocm import rocm_common
 
 # Default random seed.
 DEFAULT_SHUFFLE_SEED = 42
@@ -71,7 +71,7 @@ class CandidateTracker:
     compiled_vmfb_path: Optional[Path] = None
     spec_path: Optional[Path] = None
     td_spec_str: Optional[str] = None
-    knob_assignment: Optional[common.KnobAssignment] = None
+    solution: Optional[common.SMTKnobAssignments] = None
     kernel_trace_path: Optional[Path] = None
 
 
@@ -286,6 +286,9 @@ class ExecutionPhases(str, Enum):
     compile_models = "compile-models"
     benchmark_models = "benchmark-models"
 
+    def __str__(self) -> str:
+        return self.value
+
 
 class CodegenPipelines(str, Enum):
     llvmgpu_vector_distribute = "llvmgpu_vector_distribute"
@@ -295,6 +298,9 @@ class CodegenPipelines(str, Enum):
 class BenchmarkTimingMethod(str, Enum):
     iree_benchmark_module = "iree_benchmark_module"
     rocprof = "rocprof"
+
+    def __str__(self) -> str:
+        return self.value
 
 
 def parse_arguments(
@@ -331,10 +337,12 @@ def parse_arguments(
     )
     general_args.add_argument(
         "--stop-after",
-        choices=list(ExecutionPhases),
+        choices=[
+            phase for phase in ExecutionPhases if phase != ExecutionPhases.dont_stop
+        ],
         type=ExecutionPhases,
         default=ExecutionPhases.dont_stop,
-        help="Stop execution after specified phase",
+        help=f"Stop execution after specified phase (default: run all phases).",
     )
     general_args.add_argument(
         "--dry-run",
@@ -346,7 +354,7 @@ def parse_arguments(
         choices=list(BenchmarkTimingMethod),
         type=BenchmarkTimingMethod,
         default=BenchmarkTimingMethod.iree_benchmark_module,
-        help="Select which timing tool to use for benchmark execution measurements.",
+        help=f"Select which timing tool to use for benchmark execution measurements (default: {BenchmarkTimingMethod.iree_benchmark_module}).",
     )
 
     # candidate_gen options.
@@ -362,7 +370,7 @@ def parse_arguments(
         choices=list(candidate_ordering.CandidateOrderKind),
         type=candidate_ordering.CandidateOrderKind,
         default=candidate_ordering.CandidateOrderKind.shuffle,
-        help="How to order generated candidates for compilation and benchmarking.",
+        help=f"How to order generated candidates for compilation and benchmarking (default: {candidate_ordering.CandidateOrderKind.shuffle}).",
     )
     candidate_gen_args.add_argument(
         "--search-space-shuffle-seed",
@@ -376,69 +384,11 @@ def parse_arguments(
         help="Uses a non-deterministic random shuffle seed for candidate generation phase.",
     )
     candidate_gen_args.add_argument(
-        "--num-subgroups",
-        help="Number of subgroups per workgroup to use. (-1 == unconstrained)",
-        type=int,
-        default=-1,
-    )
-    candidate_gen_args.add_argument(
-        "--lhs-dims", help="Map of LHS matmul dims", type=str, default="mk"
-    )
-    candidate_gen_args.add_argument(
-        "--rhs-dims", help="Map of RHS matmul dims", type=str, default="nk"
-    )
-    candidate_gen_args.add_argument(
-        "--tile-dims", help="Map of tile size matmul dims", type=str, default="mnk"
-    )
-    candidate_gen_args.add_argument(
-        "--prefetch-num-stages-options",
-        type=lambda t: [int(s.strip()) for s in t.split(",")],
-        default=[2],
-        help="Comma-separated list of allowed values for prefetch_num_stages "
-        "pipeline option. Values: 0/1 = disable prefetching, 2 = two-stage "
-        "pipeline (default, combines read+write), 3 = three-stage pipeline "
-        "(separate read, write, compute stages).",
-    )
-    candidate_gen_args.add_argument(
-        "--no-reduce-shared-memory-bank-conflicts-options",
-        type=lambda t: [s.strip().lower() == "true" for s in t.split(",")],
-        default=[None],
-        help="Comma-separated list of allowed values for the no_reduce_shared_memory_bank_conflicts pipeline option. Possible values: [True, False]",
-    )
-    candidate_gen_args.add_argument(
-        "--waves-per-eu-options",
-        type=lambda t: [int(s) for s in t.split(",")],
-        default=[2],
-        help="Comma-separated list of allowed values for the waves_per_eu config option. Possible values: Any positive integer value",
-    )
-    candidate_gen_args.add_argument(
-        "--denorm-flushing-options",
-        type=lambda t: [s.strip().lower() == "true" for s in t.split(",")],
-        default=[False],
-        help="Comma-separated list of allowed values for denorm flushing. "
-        "When True, sets denormal_fp_math_f32 to preserve-sign to flush "
-        "denormals to zero. Only applicable to attention ops. "
-        "Possible values: [True, False]",
-    )
-    candidate_gen_args.add_argument(
         "--codegen-pipeline",
         choices=[x.value for x in CodegenPipelines],
         default=CodegenPipelines.llvmgpu_tile_and_fuse,
         help="Codegen pipeline to tune for",
     )
-    candidate_gen_args.add_argument(
-        "--conv-strategy",
-        choices=["igemm", "direct", "both"],
-        default="both",
-        help=(
-            "[Advanced] convolution lowering strategy for TileAndFuse pipeline. "
-            "For advanced users to control internal lowering strategies. "
-            "'igemm': Use implicit GEMM transformation (flattens K dimension). "
-            "'direct': Treat convolution as matmul-like operation (unit strides only). "
-            "'both': Generate candidates from both strategies (default, recommended)."
-        ),
-    )
-
     candidate_gen_args.add_argument(
         "--starter-td-spec",
         type=Path,
@@ -758,37 +708,6 @@ def get_iree_codegen_pipeline(pipeline: CodegenPipelines):
             assert False, "unexpected codegen pipeline"
 
 
-def validate_denorm_flushing_options(
-    allowed_denorm_flushing: list[bool],
-    dispatch_kind: common.DispatchKind,
-    codegen_pipeline: iree_gpu.LoweringPipeline,
-) -> list[bool]:
-    """Validate denorm flushing options against dispatch kind and pipeline.
-
-    Returns the (possibly reset) allowed_denorm_flushing list.
-    """
-    if not any(allowed_denorm_flushing):
-        return allowed_denorm_flushing
-
-    if dispatch_kind != common.DispatchKind.attention:
-        logging.warning(
-            "Denorm flushing is only applicable to attention ops. "
-            "Ignoring --denorm-flushing-options for this dispatch "
-            f"(kind={dispatch_kind.name})."
-        )
-        return [False]
-
-    if codegen_pipeline == iree_gpu.LoweringPipeline.TileAndFuse:
-        logging.warning(
-            "Denorm flushing is only supported for the "
-            "VectorDistribute pipeline, not TileAndFuse. "
-            "Ignoring --denorm-flushing-options."
-        )
-        return [False]
-
-    return allowed_denorm_flushing
-
-
 def generate_candidate_specs(
     args: argparse.Namespace,
     path_config: PathConfig,
@@ -809,10 +728,6 @@ def generate_candidate_specs(
         mlir_text = candidate_gen.strip_compilation_info(path_config.template_mlir)
         mlir_module = dispatch_parser.parse_mlir(mlir_text, tuning_client.tuner_context)
         logging.debug("Captured messages from candidate_gen.py:")
-        pipeline_options_search_space = rocm_dispatch_constraints.PipelineOptionsSearchSpace(
-            prefetch_num_stages=args.prefetch_num_stages_options,
-            no_reduce_shared_memory_bank_conflicts=args.no_reduce_shared_memory_bank_conflicts_options,
-        )
         starter_td_spec: Optional[ir.Module] = None
         if args.starter_td_spec:
             with open(args.starter_td_spec, "r") as f:
@@ -820,11 +735,6 @@ def generate_candidate_specs(
 
         tuning_client.target_info = common.get_target_info(mlir_module)
         assert tuning_client.target_info, "Failed to query target info."
-        if args.candidate_order == candidate_ordering.CandidateOrderKind.heuristic:
-            assert tuning_client.target_info.workgroup_count != 0, (
-                "Failed to retrieve the number of CUs required for the candidate reordering heuristic. "
-                "Try compiling with the GPU SKU specified in the flags (e.g., --iree-rocm-target=mi300x)."
-            )
 
         dispatch_tuners = candidate_gen.get_supported_dispatch_tuners(
             tuning_client.target_info.arch,
@@ -840,84 +750,72 @@ def generate_candidate_specs(
                 "Failed to set up dispatch tuner. No candidates will be generated."
             )
             return []
-        codegen_pipeline = get_iree_codegen_pipeline(args.codegen_pipeline)
-        allowed_denorm_flushing = validate_denorm_flushing_options(
-            args.denorm_flushing_options,
-            dispatch_tuner.get_dispatch_kind(),
-            codegen_pipeline,
-        )
-        # Convert conv_strategy string to IntFlag.
-        conv_strategy_map = {
-            "igemm": rocm_common.ConvolutionStrategy.igemm,
-            "direct": rocm_common.ConvolutionStrategy.direct,
-            "both": rocm_common.ConvolutionStrategy.igemm
-            | rocm_common.ConvolutionStrategy.direct,
-        }
-        conv_strategy = conv_strategy_map[args.conv_strategy]
 
         solution_gen_start_time = time.perf_counter()
-        solutions_iter = candidate_gen.generate_solutions(
-            dispatch_tuner=dispatch_tuner,
-            target_info=tuning_client.target_info,
-            tuner_context=tuning_client.tuner_context,
-            num_subgroups=args.num_subgroups,
-            allowed_waves_per_eu=args.waves_per_eu_options,
-            allowed_denorm_flushing=allowed_denorm_flushing,
-            pipeline_options_search_space=pipeline_options_search_space,
-            codegen_pipeline=codegen_pipeline,
-            conv_strategy=conv_strategy,
+        z3_solutions_iter = candidate_gen.generate_solutions(
+            input_module=mlir_module,
+            mlir_ctx=tuning_client.tuner_context.mlir_ctx,
+            codegen_pipeline=get_iree_codegen_pipeline(args.codegen_pipeline),
         )
         if args.enable_random_seed:
             random.seed()
         else:
             random.seed(args.search_space_shuffle_seed)
 
-        solutions = list(solutions_iter)
+        z3_solutions = list(z3_solutions_iter)
         solution_gen_end_time = time.perf_counter()
         elapsed_time = solution_gen_end_time - solution_gen_start_time
         logging.debug(f"Completed candidate generation in {elapsed_time:.6f}s\n")
-        logging.debug(f"Max search space size: {len(solutions)}")
+        logging.debug(f"Max search space size: {len(z3_solutions)}")
 
-        knobs: list[Optional[common.KnobAssignment]] = [
-            dispatch_tuner.get_knob_assignment(s) for s in solutions
-        ]
+        codegen_pipeline = get_iree_codegen_pipeline(args.codegen_pipeline)
+        solution_assignments = [solution.solution for solution in z3_solutions]
 
-        sorted_order = candidate_ordering.reorder_assignments(
-            knobs=knobs,
+        sorted_order = candidate_ordering.reorder_solutions(
+            solutions=solution_assignments,
             strategy=args.candidate_order,
-            target_info=tuning_client.target_info,
-            sort_key_map=rocm_candidate_ordering.ROCM_SORT_KEY_MAP,
+            codegen_pipeline=codegen_pipeline,
+            dispatch_kind=dispatch_tuner.get_dispatch_kind(),
         )
-        solutions = [solutions[i] for i in sorted_order] if sorted_order else solutions
-        solutions = solutions[: args.num_candidates]
+        selected_order = sorted_order[: args.num_candidates]
+        selected_solutions = [z3_solutions[i] for i in selected_order]
+        configs = [
+            dispatch_tuner.get_tuning_configurations(
+                solution.constraints_op, solution.solution
+            )
+            for solution in selected_solutions
+        ]
 
         config_specs: list[ir.Module] = candidate_gen.generate_configs_and_td_specs(
             dispatch_tuner=dispatch_tuner,
             input_module=mlir_module,
-            solutions=solutions,
+            solutions=configs,
         )
 
         # Total number of configs = candidates generated + baseline.
-        assert len(config_specs) == len(solutions) + 1
+        assert len(config_specs) == len(configs) + 1
 
         tuning_client.tuning_records = (
-            candidate_ordering.build_tuning_records_from_order(knobs, sorted_order)
+            candidate_ordering.build_tuning_records_from_order(
+                solution_assignments, selected_order
+            )
         )
 
-        # Prepend None for the baseline config (no knob assignment) at index 0.
-        knob_assignments = [None] + [
-            dispatch_tuner.get_knob_assignment(s) for s in solutions
+        # Prepend None for the baseline config (no SMT solution) at index 0.
+        selected_solution_assignments = [
+            solution_assignments[i] for i in selected_order
         ]
-        assert len(config_specs) == len(knob_assignments)
+        candidate_solutions = [None] + selected_solution_assignments
+        assert len(config_specs) == len(candidate_solutions)
         logging.debug("candidate_gen.py ends")
         handle_error(
-            condition=(len(solutions) <= 1), msg="Failed to generate any candidates"
+            condition=(len(configs) <= 1), msg="Failed to generate any candidates"
         )
 
         # Create candidate trackers.
         candidates = []
-        for candidate_num, (spec, knob) in enumerate(
-            zip(config_specs, knob_assignments)
+        for candidate_num, (spec, solution) in enumerate(
+            zip(config_specs, candidate_solutions)
         ):
             candidates.append(candidate_num)
             # Move the specs to the canonical path_config location.
@@ -952,7 +850,7 @@ def generate_candidate_specs(
                 candidate_id=candidate_num,
                 spec_path=spec_path,
                 td_spec_str=td_spec_str,
-                knob_assignment=knob,
+                solution=solution,
             )
             tuning_client.candidate_trackers.append(new_candidate)
     except Exception as e:

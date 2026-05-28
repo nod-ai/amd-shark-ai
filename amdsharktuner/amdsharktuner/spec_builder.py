@@ -13,7 +13,6 @@ from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_codegen, preprocessing_transform, transform  # type: ignore
 
 from .common import *
-from .rocm.rocm_dispatch_constraints import *
 from .dispatch_parser import *
 
 ROOT_OP_ATTR_NAME = "root_op"
@@ -326,14 +325,75 @@ class AttentionSpecBuilder(SpecBuilder):
         k2_sizes = self.op_info.k2_sizes
 
         with ir.InsertionPoint(entry_block):
-            batch, m, n, k1, k2 = preprocessing_transform.MatchAttentionOp(
+            # Match against `iree_linalg_ext.online_attention` (the
+            # post-`ConvertAttentionToOnlineAttention`-pass form): by the
+            # time the tuning spec runs in the codegen pipeline, the
+            # original `iree_linalg_ext.attention` op has already been
+            # decomposed. Matching the un-decomposed form here yields no
+            # match, leaving the per-candidate compilation_info unattached
+            # and all candidates falling back to default codegen.
+            #
+            # `scale_type` mirrors the query element type (the original
+            # scale operand was parsed alongside the attention op).
+            # `max_type` / `sum_type` are the running-max and partial-sum
+            # accumulators added by the online decomposition; IREE's pass
+            # currently emits them with the query element type when the
+            # output element type is the same and falls back to f32 for
+            # lower-precision outputs.
+            f32 = ir.F32Type.get()
+            scale_type = query_elem_type
+            max_sum_type = (
+                query_elem_type if output_elem_type == query_elem_type else f32
+            )
+
+            # OnlineAttentionOp carries 7 indexing maps (Q, K, V, Scale,
+            # Output, Max, Sum). The parsed AttentionOpInfo only has the
+            # first 5 (from the un-decomposed AttentionOp). Append the
+            # max/sum maps — both project the iteration domain to
+            # (batch + m) dims, matching what
+            # `ConvertAttentionToOnlineAttention` emits.
+            base_maps = list(self.op_info.indexing_maps)
+            assert (
+                len(base_maps) == 5
+            ), f"expected 5 attention indexing maps, got {len(base_maps)}"
+            iteration_rank = base_maps[0].n_dims
+            max_sum_dims = self.op_info.batch_dims + self.op_info.m_dims
+            max_sum_map = ir.AffineMap.get(
+                iteration_rank,
+                0,
+                [ir.AffineDimExpr.get(d) for d in max_sum_dims],
+            )
+            online_indexing_maps = base_maps + [max_sum_map, max_sum_map]
+
+            # MatchOnlineAttentionOp's Python binding (unlike MatchAttentionOp's)
+            # requires explicit result types for the 5 dim-list outputs.
+            i64_param_type = transform.ParamType.get(ir.IntegerType.get_signless(64))
+            match_op = preprocessing_transform.MatchOnlineAttentionOp(
+                batch_dims=i64_param_type,
+                m_dims=i64_param_type,
+                n_dims=i64_param_type,
+                k1_dims=i64_param_type,
+                k2_dims=i64_param_type,
                 operand_handle=body_target,
                 query_type=query_elem_type,
                 key_type=key_elem_type,
                 value_type=value_elem_type,
+                scale_type=scale_type,
                 output_type=output_elem_type,
-                indexing_maps=self.op_info.indexing_maps,
+                max_type=max_sum_type,
+                sum_type=max_sum_type,
+                indexing_maps=online_indexing_maps,
             )
+            # The Python binding for MatchOnlineAttentionOp returns the
+            # op (not an unpackable tuple) — fetch the named results
+            # directly. MatchAttentionOp's binding happens to return a
+            # tuple, hence the name-based access here vs. the destructuring
+            # used in `ContractionSpecBuilder.build_matcher`.
+            batch = match_op.batch_dims
+            m = match_op.m_dims
+            n = match_op.n_dims
+            k1 = match_op.k1_dims
+            k2 = match_op.k2_dims
 
             preprocessing_transform.MatchDimsEqualOp(batch, batch_sizes)
             preprocessing_transform.MatchDimsEqualOp(m, m_sizes)

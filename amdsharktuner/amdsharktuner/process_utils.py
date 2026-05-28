@@ -121,6 +121,9 @@ class RunPack:
     command: list[str]
     check: bool = True
     timeout_seconds: Optional[float] = None
+    stdin: Optional[str] = None
+    capture_stdout: bool = True
+    capture_stderr: bool = True
 
 
 @dataclass
@@ -144,6 +147,9 @@ def run_command(run_pack: RunPack) -> RunResult:
     command = run_pack.command
     check = run_pack.check
     timeout_seconds = run_pack.timeout_seconds
+    stdin = run_pack.stdin
+    capture_stdout = run_pack.capture_stdout
+    capture_stderr = run_pack.capture_stderr
 
     result = None
     is_timeout = False
@@ -152,11 +158,16 @@ def run_command(run_pack: RunPack) -> RunResult:
         command_str = shlex.join(command)
         logging.debug(f"Run: {command_str}")
 
+        stdout = subprocess.PIPE if capture_stdout else subprocess.DEVNULL
+        stderr = subprocess.PIPE if capture_stderr else subprocess.DEVNULL
+
         # Add timeout to subprocess.run call.
         result = subprocess.run(
             command,
+            input=stdin,
             check=check,
-            capture_output=True,
+            stdout=stdout,
+            stderr=stderr,
             text=True,
             timeout=timeout_seconds,
         )

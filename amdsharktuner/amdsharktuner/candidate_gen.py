@@ -8,22 +8,131 @@
 # in the code and runs it.
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Iterator
 
 import iree.compiler as ireec  # type: ignore
 from iree.compiler import ir  # type: ignore
 from iree.compiler.dialects import iree_codegen, iree_gpu  # type: ignore
+import z3  # type: ignore
 
 from . import (
     common,
     process_utils,
     spec_builder,
 )
-from .rocm import rocm_common, rocm_dispatch_constraints, rocm_tuners
+from .rocm import rocm_common, rocm_tuners
 from .tuner_base import DispatchTuner
 
 tune_logger = logging.getLogger("tune")
+
+# Default upper bound on per-dispatch iree-compile invocations. The
+# constraint-insertion pass runs early in the pipeline, so well-formed
+# dispatches return in well under a second; this guard catches
+# pathological inputs that would otherwise hang the whole tuning run.
+_IREE_COMPILE_TIMEOUT_SECONDS = 16
+
+
+@dataclass(frozen=True, slots=True)
+class ConstraintSolution:
+    gen_id: int
+    constraints_module: ir.Module
+    constraints_op: iree_codegen.ConstraintsOp
+    solution: common.SMTKnobAssignments
+
+
+def get_z3_assignment_from_model(
+    model: z3.ModelRef,
+    z3_const_exprs: common.SMTKnobSymbols,
+) -> common.SMTKnobAssignments:
+    def get_z3_const_val(v: z3.ExprRef) -> int:
+        val = model.eval(v)
+        assert z3.is_int_value(
+            val
+        ), f"Unassigned or non-concrete constant: {v} -> {val}"
+        return val.as_long()
+
+    return common.SMTKnobAssignments(
+        {name: get_z3_const_val(expr) for name, expr in z3_const_exprs.items()}
+    )
+
+
+def get_smt_symbols_from_constraint_op(
+    constraints_op: iree_codegen.ConstraintsOp,
+    z3_ctx: z3.Context,
+) -> common.SMTKnobSymbols:
+    knob_names: list[str] = []
+
+    def collect(attr: ir.Attribute) -> None:
+        match attr:
+            case iree_codegen.IntKnobAttr() | iree_codegen.OneOfKnobAttr():
+                knob_names.append(attr.name)
+            case ir.IntegerAttr() | ir.BoolAttr() | ir.StringAttr():
+                return
+            case ir.ArrayAttr():
+                for elem in attr:
+                    collect(elem)
+            case ir.DictAttr():
+                for entry in attr:
+                    collect(entry.attr)
+            case _:
+                # Typed wrapper attrs such as iree_gpu.LoweringConfigAttr
+                # carry an inner DictionaryAttr (`.attributes`) that may
+                # contain knob references — recurse into it so per-matmul
+                # subgroup_basis knobs nested inside an attention
+                # decomposition_config get discovered.
+                inner = getattr(attr, "attributes", None)
+                # If a typed attr exposes `.attributes` as something other
+                # than a DictAttr, we'd silently miss the knobs nested
+                # under it. Fail loudly so any future regression surfaces
+                # here instead of becoming a missing-knob extraction error
+                # downstream.
+                assert inner is None or isinstance(inner, ir.DictAttr), (
+                    f"unexpected `.attributes` on typed attr "
+                    f"{type(attr).__name__}: {type(inner).__name__}"
+                )
+                if inner is not None:
+                    collect(inner)
+                    return
+
+                # Skip non-knob attributes.
+                return
+
+    with constraints_op.operation.context:
+        collect(constraints_op.knobs)
+
+    return common.SMTKnobSymbols(
+        {name: z3.Int(name, ctx=z3_ctx) for name in knob_names}
+    )
+
+
+def generate_solutions_from_constraint_op(
+    constraints_op: iree_codegen.ConstraintsOp,
+    z3_ctx: z3.Context,
+) -> Iterator[common.SMTKnobAssignments]:
+    with constraints_op.operation.context:
+        smtlib = iree_codegen.convert_constraints_op_to_smtlib(
+            constraints_op, emit_reset=False
+        )
+        z3_const_exprs = get_smt_symbols_from_constraint_op(constraints_op, z3_ctx)
+    if "(reset)" in smtlib:
+        raise RuntimeError(f"Unexpected reset string in SMTLIB: \n{smtlib}")
+
+    z3_vars = list(z3_const_exprs.values())
+
+    solver = z3.Solver(ctx=z3_ctx)
+    solver.add(z3.parse_smt2_string(smtlib, ctx=z3_ctx))
+
+    count = 0
+    while solver.check() == z3.sat:
+        model = solver.model()
+        solver.add(z3.Or([v != model.eval(v, model_completion=True) for v in z3_vars]))
+
+        z3_assignment = get_z3_assignment_from_model(model, z3_const_exprs)
+        count += 1
+        tune_logger.debug(f"Solution #{count}: {z3_assignment}")
+        yield z3_assignment
 
 
 def get_supported_dispatch_tuners(
@@ -88,42 +197,70 @@ def instantiate_dispatch_tuner(
     return dispatch_tuner
 
 
-def generate_solutions(
-    dispatch_tuner: DispatchTuner,
-    target_info: iree_gpu.TargetInfo,
-    tuner_context: common.TunerContext,
-    num_subgroups: int = 4,  # GPU spec, used to determine candidate generation constraints.
-    allowed_waves_per_eu: list[int] = [2],
-    allowed_denorm_flushing: list[bool] = [False],
-    pipeline_options_search_space: rocm_dispatch_constraints.PipelineOptionsSearchSpace = rocm_dispatch_constraints.PipelineOptionsSearchSpace(),
-    codegen_pipeline: iree_gpu.LoweringPipeline = iree_gpu.LoweringPipeline.VectorDistribute,
-    conv_strategy: rocm_common.ConvolutionStrategy = rocm_common.ConvolutionStrategy.igemm
-    | rocm_common.ConvolutionStrategy.direct,
-) -> Iterator[list[common.TuningConfiguration]]:
-    if target_info.arch not in rocm_common.ROCM_ARCHITECTURES:
-        print(f"Warning: Untested architecture '{target_info.arch}'.")
+def _select_constraints_op_for_pipeline(
+    constraints_ops: list[iree_codegen.ConstraintsOp],
+    codegen_pipeline: iree_gpu.LoweringPipeline,
+) -> iree_codegen.ConstraintsOp:
+    """Pick the constraints op whose pipeline attr matches the requested
+    codegen pipeline.
 
-    constraint_generator = dispatch_tuner.get_constraint_generator()
-
-    # Only pass conv_strategy for convolution dispatches.
-    if dispatch_tuner.get_dispatch_kind() == common.DispatchKind.conv:
-        return constraint_generator.generate_solutions(
-            tuner_context,
-            target_info,
-            num_subgroups=num_subgroups,
-            allowed_waves_per_eu=allowed_waves_per_eu,
-            pipeline_options_search_space=pipeline_options_search_space,
-            conv_strategy=conv_strategy,
-        )
-
-    return constraint_generator.generate_solutions(
-        tuner_context,
-        target_info,
-        num_subgroups=num_subgroups,
-        allowed_waves_per_eu=allowed_waves_per_eu,
-        allowed_denorm_flushing=allowed_denorm_flushing,
-        pipeline_options_search_space=pipeline_options_search_space,
+    `InsertSMTConstraintsPass` (in IREE) runs every registered pipeline's
+    emitter, so for an AMD target the output IR can contain *both* a
+    VectorDistribute and a TileAndFuse constraints op per dispatch.
+    Picking the first one silently couples the tuner to whatever order
+    pipelines were registered in — wrong pipeline ⇒ wrong knob template
+    ⇒ wrong CompilationInfoAttr ⇒ wasted GPU time benchmarking configs
+    the actual codegen can't lower. Filter by attribute equality.
+    """
+    for op in constraints_ops:
+        pipeline = op.pipeline
+        if (
+            isinstance(pipeline, iree_gpu.PipelineAttr)
+            and pipeline.value == codegen_pipeline
+        ):
+            return op
+    produced = ", ".join(str(op.pipeline) for op in constraints_ops)
+    raise RuntimeError(
+        f"No iree_codegen.smt.constraints op matches the requested "
+        f"pipeline {codegen_pipeline.name}. iree-compile produced: "
+        f"[{produced}]. Either the dispatch did not route through "
+        f"{codegen_pipeline.name} (check --codegen-pipeline), or the "
+        f"IREE-side emitter for that pipeline does not yet handle this op kind."
     )
+
+
+def generate_solutions(
+    input_module: ir.Module,
+    mlir_ctx: ir.Context,
+    codegen_pipeline: iree_gpu.LoweringPipeline,
+) -> Iterator[ConstraintSolution]:
+    """Drive iree-compile to insert SMT constraints into `input_module`,
+    pick the constraints op for the requested codegen pipeline, then
+    enumerate Z3-satisfying knob assignments."""
+    constraints_module = get_constraints_module(
+        input_module, mlir_ctx, codegen_pipeline
+    )
+    constraints_ops = ir.get_ops_of_type(constraints_module, iree_codegen.ConstraintsOp)
+    tune_logger.debug(f"Found {len(constraints_ops)} constraints op(s) total")
+    if len(constraints_ops) == 0:
+        raise RuntimeError("Expected at least one iree_codegen.smt.constraints op")
+    constraints_op = _select_constraints_op_for_pipeline(
+        constraints_ops, codegen_pipeline
+    )
+    # Fresh Z3 context per dispatch — preserves thread isolation per tuning
+    # run and prevents context bleed across consecutive `generate_solutions`
+    # calls (Z3 expressions are context-bound; see `z3.Context` docs).
+    z3_ctx = z3.Context()
+    for gen_id, solution in enumerate(
+        generate_solutions_from_constraint_op(constraints_op, z3_ctx=z3_ctx),
+        start=1,
+    ):
+        yield ConstraintSolution(
+            gen_id=gen_id,
+            constraints_module=constraints_module,
+            constraints_op=constraints_op,
+            solution=solution,
+        )
 
 
 def generate_configs_and_td_specs(
@@ -181,3 +318,69 @@ def strip_compilation_info(input_path: Path) -> str:
         result.process_res is not None
     ), "expected result from stripping compilation info"
     return result.process_res.stdout
+
+
+def get_constraints_module(
+    input_module: ir.Module,
+    mlir_ctx: ir.Context,
+    codegen_pipeline: iree_gpu.LoweringPipeline,
+) -> ir.Module:
+    """Run `iree-compile` to executable configurations and parse stdout.
+
+    The compile is bounded by a default timeout. IREE emits constraints
+    for all available target pipelines; the downstream constraints-op
+    filter picks the requested codegen pipeline by attr equality.
+    """
+    iree_compile: str = ireec.binaries.find_tool("iree-compile")  # type: ignore[attr-defined]
+    # NOTE(#review-issue-6): str(input_module) can drift if the input
+    # carries unstable attribute pretty-print forms. If we hit MLIR
+    # round-trip issues in production, switch to bytecode via
+    # `input_module.operation.write_bytecode(io.BytesIO())` and pipe
+    # bytes to iree-compile.
+    module_str = str(input_module)
+    command = [
+        iree_compile,
+        "-",
+        "--iree-codegen-emit-pipeline-constraints",
+        "--compile-to=executable-configurations",
+    ]
+    tune_logger.debug(
+        f"Running iree-compile to insert SMT constraints for pipeline "
+        f"{codegen_pipeline.name}."
+    )
+    result = process_utils.run_command(
+        process_utils.RunPack(
+            command=command,
+            check=False,
+            stdin=module_str,
+            timeout_seconds=_IREE_COMPILE_TIMEOUT_SECONDS,
+        )
+    )
+    if result.process_res is None:
+        raise RuntimeError(
+            f"iree-compile timed out after {_IREE_COMPILE_TIMEOUT_SECONDS}s "
+            f"on dispatch with constraint insertion."
+        )
+
+    stdout = result.process_res.stdout or ""
+    try:
+        with mlir_ctx:
+            constraints_module = ir.Module.parse(stdout)
+    except Exception as e:
+        stdout_tail = stdout[-2000:] if stdout else "<empty>"
+        stderr = result.process_res.stderr or ""
+        stderr_tail = stderr[-2000:] if stderr else "<empty>"
+        raise RuntimeError(
+            f"Failed to parse iree-compile configured executable IR as MLIR "
+            f"(iree-compile exit code: {result.process_res.returncode}): {e}\n"
+            f"Stdout tail:\n{stdout_tail}\n"
+            f"Stderr tail:\n{stderr_tail}"
+        )
+    if result.process_res.returncode != 0:
+        # IR captured successfully; diagnostics after emission are not fatal
+        # because the constraints op is the only artifact we need.
+        tune_logger.debug(
+            f"iree-compile exited {result.process_res.returncode} after "
+            f"emitting configured executable IR; using stdout anyway."
+        )
+    return constraints_module
