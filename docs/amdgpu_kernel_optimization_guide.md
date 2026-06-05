@@ -337,6 +337,10 @@ For `ds_read_b128`, the access happens in four phases of 16 threads each:
 > to avoid bank conflicts when accessing LDS in a > column-wise fashion, as with MFMA instructions.
 > Instead, prefer XOR-based swizzling as described [here](https://rocm.blogs.amd.com/software-tools-optimization/lds-bank-conflict/README.html)
 
+For empirically discovered LDS latency tables and phase-groups on MI300X, RX 9070
+XT, and W7900, see the
+[empirical LDS measurements](./empirical-lds/lds_summary.md).
+
 ### Global Memory
 
 To achieve peak kernel performance on MI300, it's crucial to access the global
