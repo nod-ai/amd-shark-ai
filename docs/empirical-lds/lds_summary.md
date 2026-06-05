@@ -79,10 +79,11 @@ conflict behavior visible in benchmark latency.
 ## Methodology
 
 The source experiments used the `lds_phase_mask` HIP benchmark and the
-`profile_lds_bank_count.py` profiling harness from the LDS phase harness
-project. The benchmark uses a shared 64-read timing block. Threads are mapped
-pairwise to the same bank, then reads are performed to check if a conflict
-occurs. Only threads belonging to the same bank can conflict.
+`profile_bank_count.py` profiling harness from the LDS phase harness
+project. The runnable harness is preserved in [harness/](harness/README.md).
+The benchmark uses a shared 64-read timing block. Threads are mapped pairwise
+to the same bank, then reads are performed to check if a conflict occurs. Only
+threads belonging to the same bank can conflict.
 
 The profiler records average active-thread latency from the benchmark timer and
 collects raw rocprof LDS bank-conflict counters when available. Latency is the

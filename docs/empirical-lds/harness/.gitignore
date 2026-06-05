@@ -1,0 +1,15 @@
+# Python generated files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build outputs
+build/
+
+# Profiling/tool outputs
+rocprof/
+rocprofatt/
+.rocprofv3/
+
+# Local environments
+venv/

@@ -7,7 +7,7 @@ the maximum possible number of bank conflicts.
 
 Each table starts at the natural byte stride for that access width: 4 bytes for
 `ds_read_b32`, 8 bytes for `ds_read_b64`, and 16 bytes for `ds_read_b128`. The
-values were collected from `profile_lds_bank_count.py` with 3 runs per stride
+values were collected from `profile_bank_count.py` with 3 runs per stride
 using the shared 64-read `lds_phase_mask` timing block. Bank-conflict counts
 are collected with rocprof, normalized by the 4096 launched workgroups, and
 cover the full 64-read block. Latencies are average active-thread timer values
