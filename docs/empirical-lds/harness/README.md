@@ -315,9 +315,6 @@ printf '32 0xffffffffffffffff 32 64\n' | rocprofv3 --output-format csv \
 
 ## Notes
 
-- Counter-based profiling was investigated first. See
-  `docs/rocprof-counters.md` for notes on `mem_banks_count`,
-  `LDSBankConflict`, and `SQC_LDS_BANK_CONFLICT`.
 - The current bank-count path classifies using benchmark latency values. Raw
   LDS bank-conflict PMC values are displayed when available, but they are not
   the default classifier.

@@ -9,11 +9,30 @@ conflict behavior visible in benchmark latency.
 
 | Architecture | GPU | target | wavefront size | measured bank count |
 | ------------ | --- | ------ | -------------- | ------------------- |
+| [CDNA4](cdna4info.md) | MI350X | `gfx950` | 64 | 64 |
 | [CDNA3](cdna3info.md) | MI300X | `gfx942` | 64 | 32 |
 | [RDNA4](rdna4info.md) | RX 9070 XT | `gfx1201` | 32 | 32 |
 | [RDNA3](rdna3info.md) | W7900 | `gfx1100` | 32 | 32 |
 
 ## Measured LDS Phase Groups
+
+### CDNA4 / MI350X
+
+#### ds_read_b32
+
+- T0-T63
+
+#### ds_read_b64
+
+- T0-T31
+- T32-T63
+
+#### ds_read_b128
+
+- T0-T3, T12-T15, T20-T23, T24-T27
+- T32-T35, T44-T47, T52-T55, T56-T59
+- T4-T7, T8-T11, T16-T19, T28-T31
+- T36-T39, T40-T43, T48-T51, T60-T63
 
 ### CDNA3 / MI300X
 
