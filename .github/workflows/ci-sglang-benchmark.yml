@@ -59,7 +59,7 @@ jobs:
 
       - name: "Setting up Python"
         id: setup_python
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: ${{matrix.python-version}}
       - name: Create Python venv
@@ -100,7 +100,7 @@ jobs:
           pytest -v --test_device=${{ matrix.test_device }} app_tests/benchmark_tests/llm/sglang_benchmarks/shortfin_benchmark_test.py --log-cli-level=INFO --html=shortfin_index.html --self-contained-html
 
       - name: Upload pytest report
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: shortfin_benchmark
           path: shortfin_index.html
@@ -120,7 +120,7 @@ jobs:
 
       - name: "Setting up Python"
         id: setup_python
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: ${{matrix.version}}
 
@@ -144,7 +144,7 @@ jobs:
           pip freeze
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       # Instruction for SGLang image sourced from here:
       #   https://sgl-project.github.io/start/install.html#method-3-using-docker
@@ -187,7 +187,7 @@ jobs:
           pytest -v app_tests/benchmark_tests/llm/sglang_benchmarks/sglang_benchmark_test.py --port 30000 --log-cli-level=INFO --html=sglang_index.html --self-contained-html
 
       - name: Upload pytest report
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: sglang_benchmark
           path: sglang_index.html
@@ -203,7 +203,7 @@ jobs:
     steps:
       - name: "Setting up Python"
         id: setup_python
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: 3.11
 
@@ -211,14 +211,14 @@ jobs:
         run: pip install pytest-html-merger
 
       - name: Download shortfin report
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: shortfin_benchmark
           path: reports
         continue-on-error: true
 
       - name: Download sglang report
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: sglang_benchmark
           path: reports
