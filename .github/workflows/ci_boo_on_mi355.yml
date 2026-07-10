@@ -129,9 +129,10 @@ jobs:
       run: |
         mkdir -p output_artifacts
         echo "OUTPUT_ARTIFACTS=$PWD/output_artifacts" >> $GITHUB_ENV
-        python -m pip install \
-          --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
-          -r .github/workflows/ci_boo_torch_pin.txt
+        # python -m pip install \
+        #   --index-url https://rocm.nightlies.amd.com/v2/gfx950-dcgpu/ \
+        #   -r .github/workflows/ci_boo_torch_pin.txt
+        pip install "torch>=2.5,<=2.10.0" --index-url https://download.pytorch.org/whl/rocm7.1
 
     - name: Install IREE Nightly Packages
       if: ${{ !inputs.commit_hash && !inputs.iree_version_tag }}
@@ -252,8 +253,8 @@ jobs:
           pip install -r amdsharktuner/requirements-dev.txt
           iree-boo-driver \
             --commands-file amd-shark-ai-reports/boo/attention_shapes.txt --csv output_artifacts/attention_shapes_miopen_iree.csv \
-            --backend inductor --backend=iree_boo_experimental \
-            2>&1 | tee output_artifacts/attention_shapes.log || true
+            --backend inductor --backend=iree_boo_experimental --verify-numerics --numerics-reference-dtype=float32 --numerics-min-samples 100 --verbose --numerics-verbose \
+            > output_artifacts/attention_shapes.log || true
 
     - name: Run hipblaslt-bench
       if: always() && (github.event_name == 'schedule' || inputs.run_hipblaslt == true)
