@@ -33,7 +33,6 @@ shortfin_cc_component(
     shortfin_support
   DEPS
     iree_base_base
-    iree_base_loop_sync
     iree_hal_hal
     iree_hal_utils_allocators
     iree_io_formats_parser_registry

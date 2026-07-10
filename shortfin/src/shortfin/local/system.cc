@@ -9,6 +9,7 @@
 #include <fmt/core.h>
 #include <fmt/xchar.h>
 
+#include "iree/async/util/proactor_pool.h"
 #include "iree/hal/utils/allocators.h"
 #include "shortfin/local/fiber.h"
 #include "shortfin/support/logging.h"
@@ -28,6 +29,13 @@ System::System(iree_allocator_t host_allocator)
                                                   vm_instance_.for_output()));
   // Register types for builtin modules we know we want to handle.
   SHORTFIN_THROW_IF_ERROR(iree_hal_module_register_all_types(vm_instance_));
+
+  // Create proactor pool for device async I/O.
+  // Use 1 proactor (single-node system is the common case).
+  SHORTFIN_THROW_IF_ERROR(iree_async_proactor_pool_create(
+      /*node_count=*/1, /*node_ids=*/nullptr,
+      iree_async_proactor_pool_options_default(), host_allocator_,
+      &proactor_pool_));
 }
 
 System::~System() {
@@ -58,6 +66,12 @@ System::~System() {
 
   // HAL drivers.
   hal_drivers_.clear();
+
+  // Release proactor pool (must be after devices are released).
+  if (proactor_pool_) {
+    iree_async_proactor_pool_release(proactor_pool_);
+    proactor_pool_ = nullptr;
+  }
 
   // If support for logging refs was compiled in, report now.
   iree::detail::LogLiveRefs();

@@ -78,7 +78,7 @@ VoidFuture Account::OnSync() {
                                                     idle_timepoint, future]() {
     iree_status_t status =
         iree_hal_semaphore_wait(sem, idle_timepoint, iree_infinite_timeout(),
-                                IREE_HAL_WAIT_FLAG_DEFAULT);
+                                IREE_ASYNC_WAIT_FLAG_NONE);
     if (!iree_status_is_ok(status)) {
       const_cast<VoidFuture &>(future).set_failure(status);
     } else {
