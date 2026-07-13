@@ -7,6 +7,7 @@
 name: CI - E2E Llama 3.1 405B FP4 Test
 
 on:
+  pull_request:
   workflow_dispatch:
   schedule:
     - cron: "30 2 * * *"
